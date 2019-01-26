@@ -272,7 +272,7 @@ func (note *Note) UpdateNote(endpointID string, resolveConflicts bool, deleted b
 //     0 if notes are equal
 //  conflictDataDiffers is returned as true if they
 //     are equal but their conflict data is different
-func (note *Note) compareModified(incomingNote *Note) (conflictDataDiffers bool, result int) {
+func (note *Note) CompareModified(incomingNote *Note) (conflictDataDiffers bool, result int) {
 
     if incomingNote.Updates > note.Updates {
         return false, -1
@@ -321,7 +321,7 @@ func (note *Note) compareModified(incomingNote *Note) (conflictDataDiffers bool,
 
                 for index2 := 0; index2 < len(incomingNoteConflicts); index2++ {
                     incomingConflictNote := incomingNoteConflicts[index2]
-                    _, compareResult := incomingConflictNote.compareModified(&localConflictNote)
+                    _, compareResult := incomingConflictNote.CompareModified(&localConflictNote)
                     if compareResult == 0 {
                         matchingConflict = true
                         break
@@ -343,7 +343,7 @@ func (note *Note) compareModified(incomingNote *Note) (conflictDataDiffers bool,
 }
 
 // Determine whether or not this Note was subsumed by changes to another
-func (note *Note) isSubsumedBy(incomingNote *Note) bool {
+func (note *Note) IsSubsumedBy(incomingNote *Note) bool {
 
     noteHistories := copyOrCreateNonblankHistory(note.Histories)
     incomingNoteHistories := copyOrCreateNonblankHistory(incomingNote.Histories)
@@ -366,7 +366,7 @@ func (note *Note) isSubsumedBy(incomingNote *Note) bool {
     if !isSubsumed {
         for index := 0; index < len(incomingNoteConflicts); index++ {
             incomingConflict := incomingNoteConflicts[index]
-            if note.isSubsumedBy(&incomingConflict) {
+            if note.IsSubsumedBy(&incomingConflict) {
                 isSubsumed = true
                 break
             }
@@ -381,14 +381,14 @@ func (note *Note) isSubsumedBy(incomingNote *Note) bool {
         isSubsumed = false
 
         localConflict := noteConflicts[index]
-        if localConflict.isSubsumedBy(incomingNote) {
+        if localConflict.IsSubsumedBy(incomingNote) {
             isSubsumed = true
             break
         }
 
         for index2 := 0; index2 < len(incomingNoteConflicts); index2++ {
             incomingConflict := incomingNoteConflicts[index2]
-            if localConflict.isSubsumedBy(&incomingConflict) {
+            if localConflict.IsSubsumedBy(&incomingConflict) {
                 isSubsumed = true
                 break
             }
@@ -488,7 +488,7 @@ func mergeTwoNotes(localNote *Note, incomingNote *Note) Note {
     winnerNoteConflicts := copyOrCreateBlankConflict(nil)
     for index := 0; index < len(mergeResultNotes); index++ {
         mergeResultNote := mergeResultNotes[index]
-        _, compareResult := winnerNote.compareModified(&mergeResultNote)
+        _, compareResult := winnerNote.CompareModified(&mergeResultNote)
         if 0 == compareResult {
             continue
         }
@@ -543,7 +543,7 @@ func mergeNotes(outerNotes *[]Note, innerNotes *[]Note, mergeNotes *[]Note, winn
 
         needToAssignWinner := (winnerNote == nil)
         if !needToAssignWinner {
-            _, compareResult := winnerNote.compareModified(&(*outerNotes)[outerNotesIndex])
+            _, compareResult := winnerNote.CompareModified(&(*outerNotes)[outerNotesIndex])
             needToAssignWinner = (-1 == compareResult)
         }
         if needToAssignWinner {
