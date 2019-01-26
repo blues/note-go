@@ -4,30 +4,6 @@
 
 package note
 
-// Notefile is The outermost data structure of a Notefile JSON
-// object, containing a set of notes that may be synchronized.
-type Notefile struct {
-    modCount int                // Incremented every modification, for checkpointing purposes
-    eventFn EventFunc			// The function to call when eventing of a change
-    eventCtx interface{}		// An argument to be passed to the event call
-	eventDeviceUID string		// The deviceUID being dealt with at the time of the event setup
-	eventDeviceSN string		// The deviceSN being dealt with at the time of the event setup
-	eventProductUID string		// The productUID being dealt with at the time of the event setup
-	eventAppUID string			// The appUID being dealt with at the time of the event setup
-    notefileID string           // The NotefileID for the open notefile
-    notefileInfo NotefileInfo   // The NotefileInfo for the open notefile
-    Queue bool                  `json:"Q,omitempty"`
-    Notes map[string]Note       `json:"N,omitempty"`
-    Trackers map[string]Tracker `json:"T,omitempty"`
-    Change int64                `json:"C,omitempty"`
-}
-
-// Tracker is the structure maintained on a per-endpoint basis
-type Tracker struct {
-    Change int64                `json:"c,omitempty"`
-    SessionID int64             `json:"i,omitempty"`
-}
-
 // SyncPriorityLowest (golint)
 const SyncPriorityLowest =          -3
 // SyncPriorityLower (golint)
