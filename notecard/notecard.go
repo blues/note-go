@@ -36,7 +36,7 @@ var openSerialPort *serial.Port         // tarm
 //var openSerialPort io.ReadWriteCloser // jacobsa
 
 // Create a card request
-func NotecardRequest(request string) (req CardRequest) {
+func Request(request string) (req CardRequest) {
     req.Request = request
     return
 }
@@ -253,10 +253,10 @@ func cardCloseI2C() {
 func NotecardTrace() (err error) {
 
     // Turn on tracing
-    req := NotecardRequest(ReqCardIO)
+    req := Request(ReqCardIO)
     req.Mode = "trace"
     req.Trace = "+usb"
-    NotecardTransaction(req)
+    Transaction(req)
 
     // Spawn the input handler
     go inputHandler()
@@ -329,7 +329,7 @@ func inputHandler() {
 }
 
 // Perform a card transaction
-func NotecardTransaction(req CardRequest) (rsp CardRequest, err error) {
+func Transaction(req CardRequest) (rsp CardRequest, err error) {
 
     // Marshal the request to JSON
     reqJSON, err2 := json.Marshal(req)
