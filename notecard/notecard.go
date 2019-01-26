@@ -35,7 +35,7 @@ const CardI2CMax = 127
 var openSerialPort *serial.Port         // tarm
 //var openSerialPort io.ReadWriteCloser // jacobsa
 
-// Create a card request
+// Request creates a card request
 func Request(request string) (req CardRequest) {
     req.Request = request
     return
@@ -51,7 +51,7 @@ func cardReportError(err error) {
     time.Sleep(10 * time.Second)
 }
 
-// NotecardPortEnum returns the list of all available ports on the specified interface
+// PortEnum returns the list of all available ports on the specified interface
 func PortEnum(interf string) (ports []string) {
     if interf == NotecardInterfaceSerial {
         ports = serialPortEnum()
@@ -62,7 +62,7 @@ func PortEnum(interf string) (ports []string) {
 	return
 }
 
-// NotecardPortDefaults gets the defaults for the specified port
+// PortDefaults gets the defaults for the specified port
 func PortDefaults(interf string) (port string, portConfig int) {
     if interf == NotecardInterfaceSerial {
         port, portConfig = serialDefault()
@@ -328,7 +328,7 @@ func inputHandler() {
 
 }
 
-// Perform a card transaction
+// Transaction performs a card transaction
 func Transaction(req CardRequest) (rsp CardRequest, err error) {
 
     // Marshal the request to JSON
@@ -356,7 +356,7 @@ func Transaction(req CardRequest) (rsp CardRequest, err error) {
     return
 }
 
-// Perform a card transaction
+// TransactionJSON performs a card transaction using raw JSON []bytes
 func TransactionJSON(reqJSON []byte) (rspJSON []byte, err error) {
 
     fmt.Printf("%s\n", reqJSON)

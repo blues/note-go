@@ -10,26 +10,76 @@ import (
 
 // Request Types
 
-// ReqFilesSet (golint)
-const ReqFilesSet =     "files.set"
 // ReqFilesAdd (golint)
 const ReqFilesAdd =     "files.add"
+// ReqFilesSet (golint)
+const ReqFilesSet =     "files.set"
 // ReqFilesDelete (golint)
 const ReqFilesDelete =  "files.delete"
 // ReqFilesGet (golint)
 const ReqFilesGet =     "files.get"
+// ReqFilesSync (golint)
+const ReqFilesSync =    "files.sync"
+// ReqServiceSync (golint)
+const ReqServiceSync =  "service.sync"
 // ReqNotesGet (golint)
 const ReqNotesGet =     "notes.get"
 // ReqNoteAdd (golint)
 const ReqNoteAdd =      "note.add"
+// ReqNoteTemplate (golint)
+const ReqNoteTemplate = "note.template"
 // ReqNoteGet (golint)
 const ReqNoteGet =      "note.get"
 // ReqNoteUpdate (golint)
 const ReqNoteUpdate =   "note.update"
 // ReqNoteDelete (golint)
 const ReqNoteDelete =   "note.delete"
+// ReqCardTime (golint)
+const ReqCardTime =		"card.time"
+// ReqCardAttn (golint)
+const ReqCardAttn =		"card.attn"
+// ReqCardVersion (golint)
+const ReqCardVersion =	"card.version"
+// ReqCardStatus (golint)
+const ReqCardStatus =	"card.status"
+// ReqCardRestart (golint)
+const ReqCardRestart =	"card.restart"
+// ReqCardRestore (golint)
+const ReqCardRestore =	"card.restore"
+// ReqCardLocation (golint)
+const ReqCardLocation =	"card.location"
+// ReqCardLocationMode (golint)
+const ReqCardLocationMode =	"card.location.mode"
+// ReqCardTemp (golint)
+const ReqCardTemp =		"card.temp"
 // ReqCardIO (golint)
 const ReqCardIO =		"card.io"
+// ReqCardUsageGet (golint)
+const ReqCardUsageGet =	"card.usage.get"
+// ReqCardUsageTest (golint)
+const ReqCardUsageTest = "card.usage.test"
+// ReqCardUsageRate (golint)
+const ReqCardUsageRate = "card.usage.rate"
+// ReqServiceEnv (golint)
+const ReqServiceEnv =	"service.env"
+// ReqServiceSet (golint)
+const ReqServiceSet =	"service.set"
+// ReqServiceGet (golint)
+const ReqServiceGet =	"service.get"
+// ReqServiceStatus (golint)
+const ReqServiceStatus = "service.status"
+// ReqWebGet (golint)
+const ReqWebGet =		"web.get"
+// ReqWebPut (golint)
+const ReqWebPut =		"web.put"
+// ReqWebPost (golint)
+const ReqWebPost =		"web.post"
+// ReqDFUStatus (golint)
+const ReqDFUStatus =	"dfu.status"
+// ReqDFUGet (golint)
+const ReqDFUGet =		"dfu.get"
+// ReqDFUServiceGet (golint)
+const ReqDFUServiceGet = "dfu.service.get"
 
 // CardRequest is the core API request/response data structure
 type CardRequest struct {
