@@ -28,18 +28,18 @@ const HubAppMonitor		= "hub.app.monitor"
 const HubAppHandlers	= "hub.app.handlers"
 
 // HubRequest is is the core data structure for notehub-specific requests
-type Request struct {
-	note.Request				`json:",omitempty"`
+type HubRequest struct {
+	note.CardRequest			`json:",omitempty"`
 	AppUID string				`json:"app,omitempty"`
 	FleetUID string				`json:"fleet,omitempty"`
 	*DbQuery					`json:",omitempty"`
-	Uploads *[]RequestFile		`json:"uploads,omitempty"`
+	Uploads *[]HubRequestFile	`json:"uploads,omitempty"`
 	Contains string				`json:"contains,omitempty"`
 	Handlers *[]string			`json:"handlers,omitempty"`
 }
 
 // HubRequestFile is is the body of the object uploaded for each file
-type RequestFile struct {
+type HubRequestFile struct {
 	Name string					`json:"name,omitempty"`
 	Length int					`json:"length,omitempty"`
 	MD5 string					`json:"md5,omitempty"`
