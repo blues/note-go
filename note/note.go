@@ -462,7 +462,7 @@ func (thisHistory *NoteHistory) isHistorySubsumedBy(incomingHistory *NoteHistory
 }
 
 // Merge the contents of two Notes
-func mergeTwoNotes(localNote *Note, incomingNote *Note) Note {
+func Merge(localNote *Note, incomingNote *Note) Note {
 
     //  Create flattened array for local note & conflicts
     clonedLocalNote := copyNote(localNote)
