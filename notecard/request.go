@@ -28,6 +28,8 @@ const ReqNoteGet =      "note.get"
 const ReqNoteUpdate =   "note.update"
 // ReqNoteDelete (golint)
 const ReqNoteDelete =   "note.delete"
+// ReqCardIO (golint)
+const ReqCardIO =		"card.io"
 
 // CardRequest is the core API request/response data structure
 type CardRequest struct {
