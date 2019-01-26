@@ -10,6 +10,8 @@ import (
 
 // Supported requests
 
+// HubDeviceMonitor (golint)
+const HubDeviceMonitor  = "hub.device.monitor"
 // HubQuery (golint)
 const HubQuery          = "hub.app.data.query"
 // HubAppUpload (golint)
