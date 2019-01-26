@@ -113,7 +113,7 @@ type CardRequest struct {
     Route string				`json:"route,omitempty"`
     Files *[]string				`json:"files,omitempty"`
     FileInfo *map[string]note.NotefileInfo `json:"info,omitempty"`
-    Notes *map[string]note.NoteInfo  `json:"notes,omitempty"`
+    Notes *map[string]note.Info `json:"notes,omitempty"`
     Pad int32					`json:"pad,omitempty"`
     Storage int32				`json:"storage,omitempty"`
     LocationOLC string			`json:"olc,omitempty"`
