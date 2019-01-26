@@ -25,8 +25,8 @@ const ReqNoteUpdate =   "note.update"
 // ReqNoteDelete (golint)
 const ReqNoteDelete =   "note.delete"
 
-// Request is the core API request/response data structure
-type Request struct {
+// CardRequest is the core API request/response data structure
+type CardRequest struct {
     Request string              `json:"req,omitempty"`
     Error string				`json:"err,omitempty"`
     RequestID uint32            `json:"id,omitempty"`
