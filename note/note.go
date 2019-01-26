@@ -146,7 +146,7 @@ func (note *Note) GetModified() (isAvailable bool, endpointID string, when strin
     return
 }
 
-// Perform the bulk of Note Update, Delete, Merge operations
+// UpdateNote performs the bulk of Note Update, Delete, Merge operations
 func (note *Note) UpdateNote(endpointID string, resolveConflicts bool, deleted bool) {
     var when int64
     var where string
@@ -266,7 +266,7 @@ func (note *Note) UpdateNote(endpointID string, resolveConflicts bool, deleted b
 
 }
 
-//  This function compares two Notes, and returns
+// CompareModified compares two Notes, and returns
 //     1 if local note is newer than incoming note
 //    -1 if incoming note is newer than local note
 //     0 if notes are equal
@@ -342,7 +342,7 @@ func (note *Note) CompareModified(incomingNote *Note) (conflictDataDiffers bool,
 
 }
 
-// Determine whether or not this Note was subsumed by changes to another
+// IsSubsumedBy determines whether or not this Note was subsumed by changes to another
 func (note *Note) IsSubsumedBy(incomingNote *Note) bool {
 
     noteHistories := copyOrCreateNonblankHistory(note.Histories)
