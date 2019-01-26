@@ -12,7 +12,6 @@ import (
     "fmt"
     "time"
     "encoding/json"
-    "github.com/rayozzie/note-go/notecard"
     "github.com/tarm/serial"
     //  "github.com/jacobsa/go-serial/serial"
 )
@@ -37,7 +36,7 @@ var openSerialPort *serial.Port         // tarm
 //var openSerialPort io.ReadWriteCloser // jacobsa
 
 // Create a card request
-func NotecardRequest(request string) (req notecard.CardRequest) {
+func NotecardRequest(request string) (req CardRequest) {
     req.Request = request
     return
 }
@@ -330,7 +329,7 @@ func inputHandler() {
 }
 
 // Perform a card transaction
-func NotecardTransaction(req notecard.CardRequest) (rsp notecard.CardRequest, err error) {
+func NotecardTransaction(req CardRequest) (rsp CardRequest, err error) {
 
     // Marshal the request to JSON
     reqJSON, err2 := json.Marshal(req)
