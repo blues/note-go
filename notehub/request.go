@@ -5,7 +5,7 @@
 package notehub
 
 import (
-	"github.com/rayozzie/note-go/note"
+	"github.com/rayozzie/note-go/notecard"
 )
 
 // Supported requests
@@ -29,7 +29,7 @@ const HubAppHandlers	= "hub.app.handlers"
 
 // HubRequest is is the core data structure for notehub-specific requests
 type HubRequest struct {
-	note.CardRequest			`json:",omitempty"`
+	notecard.CardRequest		`json:",omitempty"`
 	AppUID string				`json:"app,omitempty"`
 	FleetUID string				`json:"fleet,omitempty"`
 	*DbQuery					`json:",omitempty"`
