@@ -22,7 +22,7 @@ type Note struct {
     Body interface{}            `json:"b,omitempty"`
     Payload []byte              `json:"p,omitempty"`
     Change int64                `json:"c,omitempty"`
-    Histories *[]NoteHistory    `json:"h,omitempty"`
+    Histories *[]History		`json:"h,omitempty"`
     Conflicts *[]Note           `json:"x,omitempty"`
     Updates int32               `json:"u,omitempty"`
     Deleted bool                `json:"d,omitempty"`
@@ -30,19 +30,19 @@ type Note struct {
     Bulk bool                   `json:"k,omitempty"`
 }
 
-// NoteHistory records the update history, optimized so that if the most recent entry
+// History records the update history, optimized so that if the most recent entry
 // is by the same endpoint as an update/delete, that entry is re-used.  The primary use
-// of NoteHistory is for conflict detection, and you don't need to detect conflicts
+// of History is for conflict detection, and you don't need to detect conflicts
 // against yourself.
-type NoteHistory struct {
+type History struct {
     When int64                  `json:"w,omitempty"`
     Where string				`json:"l,omitempty"`
     EndpointID string           `json:"e,omitempty"`
     Sequence int32              `json:"s,omitempty"`
 }
 
-// NoteInfo is the info returned on a per-note basis on requests
-type NoteInfo struct {
+// Info is the info returned on a per-note basis on requests
+type Info struct {
     Body *interface{}           `json:"body,omitempty"`
     Payload *[]byte             `json:"payload,omitempty"`
     Deleted bool                `json:"deleted,omitempty"`
@@ -411,27 +411,27 @@ func copyOrCreateBlankConflict(conflictsToCopy *[]Note) []Note {
 }
 
 // Copy a history, else if blank create a new one that is truly blank, with 0 items
-func copyOrCreateBlankHistory(historiesToCopy *[]NoteHistory) []NoteHistory {
+func copyOrCreateBlankHistory(historiesToCopy *[]History) []History {
     if historiesToCopy != nil {
         return *historiesToCopy
     }
-    return []NoteHistory{}
+    return []History{}
 }
 
 // Copy a history, else if blank create a new entry with exactly 1 item
-func copyOrCreateNonblankHistory(historiesToCopy *[]NoteHistory) []NoteHistory {
+func copyOrCreateNonblankHistory(historiesToCopy *[]History) []History {
     if historiesToCopy != nil {
         return *historiesToCopy
     }
-    histories := []NoteHistory{}
+    histories := []History{}
     histories = append(histories, NewHistory("", 0, "", 0))
     return histories
 }
 
 // NewHistory creates a history entry for a Note being modified
-func NewHistory(endpointID string, when int64, where string, sequence int32) NoteHistory {
+func NewHistory(endpointID string, when int64, where string, sequence int32) History {
 
-    newHistory := NoteHistory{}
+    newHistory := History{}
     newHistory.EndpointID = endpointID
 
     if when == 0 {
@@ -453,7 +453,7 @@ func NewHistory(endpointID string, when int64, where string, sequence int32) Not
 }
 
 // Determine whether or not a Note's history was subsumed by changes to another
-func (thisHistory *NoteHistory) isHistorySubsumedBy(incomingHistory *NoteHistory) bool {
+func (thisHistory *History) isHistorySubsumedBy(incomingHistory *History) bool {
 
     Subsumed := (thisHistory.EndpointID == incomingHistory.EndpointID) && (incomingHistory.Sequence >= thisHistory.Sequence)
 
