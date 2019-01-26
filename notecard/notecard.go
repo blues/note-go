@@ -339,7 +339,7 @@ func Transaction(req CardRequest) (rsp CardRequest, err error) {
     }
 
     // Perform the transaction
-    rspJSON, err2 := cardTransactionBytes(reqJSON)
+    rspJSON, err2 := TransactionJSON(reqJSON)
     if err2 != nil {
         err = fmt.Errorf("error marshaling request for module: %s", err2)
         return
@@ -357,7 +357,7 @@ func Transaction(req CardRequest) (rsp CardRequest, err error) {
 }
 
 // Perform a card transaction
-func cardTransactionBytes(reqJSON []byte) (rspJSON []byte, err error) {
+func TransactionJSON(reqJSON []byte) (rspJSON []byte, err error) {
 
     fmt.Printf("%s\n", reqJSON)
 
