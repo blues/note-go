@@ -63,7 +63,7 @@ func NotecardPortEnum(interf string) (ports []string) {
 }
 
 // NotecardPortDefaults gets the defaults for the specified port
-func NotecardPortDefaults(interf string) (port string, portConfig int) {
+func PortDefaults(interf string) (port string, portConfig int) {
     if interf == NotecardInterfaceSerial {
         port, portConfig = serialDefault()
     }
@@ -74,7 +74,7 @@ func NotecardPortDefaults(interf string) (port string, portConfig int) {
 }
 
 // Open the card to establish communications
-func NotecardOpen(moduleInterface string, port string, portConfig int) (err error) {
+func Open(moduleInterface string, port string, portConfig int) (err error) {
 
     // Open the interface
     switch moduleInterface {
@@ -116,7 +116,7 @@ func cardResetSerial() (err error) {
         if err != nil {
             err = fmt.Errorf("error transmitting to module: %s", err)
             cardReportError(err)
-            NotecardClose();
+            Close();
             return
         }
         time.Sleep(500*time.Millisecond)
@@ -130,7 +130,7 @@ func cardResetSerial() (err error) {
         if err != nil {
             err = fmt.Errorf("error reading from module: %s", err)
             cardReportError(err)
-            NotecardClose();
+            Close();
             return
         }
         nonCRLFFound := false
@@ -225,7 +225,7 @@ func cardOpenI2C(port string, portConfig int) (err error) {
 }
 
 // Close the port
-func NotecardClose() {
+func Close() {
     switch portOpen {
     case NotecardInterfaceSerial:
         cardCloseSerial()
@@ -287,7 +287,7 @@ func NotecardTrace() (err error) {
 
     err = fmt.Errorf("error reading from module: %s", err)
     cardReportError(err)
-    NotecardClose();
+    Close();
     return
 
 }
@@ -399,7 +399,7 @@ func cardTransactionSerial(reqJSON []byte) (rspJSON []byte, err error) {
     if err != nil {
         err = fmt.Errorf("error transmitting to module: %s", err)
         cardReportError(err)
-        NotecardClose();
+        Close();
         return
     }
 
@@ -428,7 +428,7 @@ func cardTransactionSerial(reqJSON []byte) (rspJSON []byte, err error) {
             }
             err = fmt.Errorf("error reading from module: %s", err)
             cardReportError(err)
-            NotecardClose();
+            Close();
             return
         }
         rspJSON = append(rspJSON, buf[:length]...)
