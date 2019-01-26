@@ -176,7 +176,7 @@ func (note *Note) updateNote(endpointID string, resolveConflicts bool, deleted b
     note.Histories = &newHistories
 
     // Create a new history
-    newHistory := createHistory(endpointID, when, where, sequence)
+    newHistory := NewHistory(endpointID, when, where, sequence)
 
     // Insert newHistory at offset 0, then append the old history
     histories := copyOrCreateBlankHistory(nil)
@@ -424,12 +424,12 @@ func copyOrCreateNonblankHistory(historiesToCopy *[]NoteHistory) []NoteHistory {
         return *historiesToCopy
     }
     histories := []NoteHistory{}
-    histories = append(histories, createHistory("", 0, "", 0))
+    histories = append(histories, NewHistory("", 0, "", 0))
     return histories
 }
 
-// Create a history entry for a Note being modified
-func createHistory(endpointID string, when int64, where string, sequence int32) NoteHistory {
+// NewHistory creates a history entry for a Note being modified
+func NewHistory(endpointID string, when int64, where string, sequence int32) NoteHistory {
 
     newHistory := NoteHistory{}
     newHistory.EndpointID = endpointID
