@@ -250,7 +250,7 @@ func cardCloseI2C() {
 }
 
 // Trace the incoming serial output
-func NotecardTrace() (err error) {
+func Trace() (err error) {
 
     // Turn on tracing
     req := Request(ReqCardIO)
