@@ -147,7 +147,7 @@ func (note *Note) GetModified() (isAvailable bool, endpointID string, when strin
 }
 
 // Perform the bulk of Note Update, Delete, Merge operations
-func (note *Note) updateNote(endpointID string, resolveConflicts bool, deleted bool) {
+func (note *Note) UpdateNote(endpointID string, resolveConflicts bool, deleted bool) {
     var when int64
     var where string
 
