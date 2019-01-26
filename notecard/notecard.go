@@ -52,7 +52,7 @@ func cardReportError(err error) {
 }
 
 // NotecardPortEnum returns the list of all available ports on the specified interface
-func NotecardPortEnum(interf string) (ports []string) {
+func PortEnum(interf string) (ports []string) {
     if interf == NotecardInterfaceSerial {
         ports = serialPortEnum()
     }
