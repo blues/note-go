@@ -11,6 +11,7 @@ import (
     "time"
 	"strconv"
     "io/ioutil"
+    "math/rand"
     "encoding/json"
 	"github.com/rayozzie/note-go/notecard"
 	"github.com/rayozzie/note-go/notehub"
@@ -43,6 +44,11 @@ var Config ConfigSettings
 // configRead reads the current info from config file
 func ConfigRead() error {
 
+    // As a convenience to all tools, generate a new random seed for each iteration
+    rand.Seed(time.Now().UnixNano())
+    rand.Seed(rand.Int63()^time.Now().UnixNano())
+
+	// Read the config file
     contents, err := ioutil.ReadFile(configSettingsPath())
 	if os.IsNotExist(err) {
 		ConfigReset()
@@ -260,4 +266,11 @@ func ConfigFlagsRegister() {
 	// Write the config if asked to do so
     flag.BoolVar(&flagConfigSave, "config-save", false, "save changes to note tool config")
 
+}
+
+// FlagParse is a wrapper around flag.Parse that handles our config flags
+func FlagParse() (err error) {
+	ConfigFlagsRegister()
+    flag.Parse()
+	return ConfigFlagsProcess()
 }
