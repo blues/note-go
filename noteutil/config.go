@@ -35,7 +35,10 @@ type ConfigSettings struct {
 // Config is the active copy of our configuration file, never dirty.
 var flagConfigReset bool
 var flagConfigSave bool
-var Config = ConfigSettings{}
+var flagConfigHTTP bool
+var flagConfigHTTPS bool
+var flagConfig ConfigSettings
+var Config ConfigSettings
 
 // configRead reads the current info from config file
 func ConfigRead() error {
@@ -77,10 +80,15 @@ func ConfigWrite() error {
 
 }
 
-// configReset updates the file with the default info
-func ConfigReset() {
+// Reset the comms to default
+func configResetInterface() {
     Config.Interface = "serial"
     Config.Port, Config.PortConfig = notecard.PortDefaults(Config.Interface)
+}
+
+// ConfigReset updates the file with the default info
+func ConfigReset() {
+	configResetInterface()
     Config.Hub = notehub.DefaultAPIService
     Config.When = time.Now().UTC().Format("2006-01-02T15:04:05Z")
     return
@@ -131,6 +139,7 @@ func ConfigShow() error {
 // ConfigFlagsProcess processes the registered config flags
 func ConfigFlagsProcess() (err error) {
 
+	// Read if not yet read
 	if Config.When == "" {
 		err = ConfigRead()
 		if err != nil {
@@ -138,10 +147,66 @@ func ConfigFlagsProcess() (err error) {
 		}
 	}
 
+	// Reset if requested
 	if flagConfigReset {
 		ConfigReset()
 	}
 
+	// Set the flags as desired
+	if flagConfigHTTP {
+		Config.Secure = false
+	}
+	if flagConfigHTTPS {
+		Config.Secure = true
+	}
+	if flagConfig.Hub == "-" {
+		Config.Hub = notehub.DefaultAPIService
+	} else if flagConfig.Hub != "" {
+		Config.Hub = flagConfig.Hub
+	}
+	if flagConfig.Root == "-" {
+		Config.Root = ""
+	} else if flagConfig.Root != "" {
+		Config.Root = flagConfig.Root
+	}
+	if flagConfig.Key == "-" {
+		Config.Key = ""
+	} else if flagConfig.Key != "" {
+		Config.Key = flagConfig.Key
+	}
+	if flagConfig.Cert == "-" {
+		Config.Cert = ""
+	} else if flagConfig.Cert != "" {
+		Config.Cert = flagConfig.Cert
+	}
+	if flagConfig.App == "-" {
+		Config.App = ""
+	} else if flagConfig.App != "" {
+		Config.App = flagConfig.App
+	}
+	if flagConfig.Device == "-" {
+		Config.Device = ""
+	} else if flagConfig.Device != "" {
+		Config.Device = flagConfig.Device
+	}
+	if flagConfig.Product == "-" {
+		Config.Product = ""
+	} else if flagConfig.Product != "" {
+		Config.Product = flagConfig.Product
+	}
+	if flagConfig.Interface == "-" {
+		configResetInterface()
+	} else if flagConfig.Interface != "" {
+		Config.Interface = flagConfig.Interface
+	}
+	if flagConfig.Port != "" {
+		Config.Port = flagConfig.Port
+	}
+	if flagConfig.PortConfig != -1 {
+		Config.PortConfig = flagConfig.PortConfig
+	}
+
+	// Save if requested
 	if flagConfigSave {
 	    ConfigWrite()
         ConfigShow()
@@ -175,11 +240,20 @@ func ConfigFlagsRegister() {
     flag.BoolVar(&flagConfigReset, "config-reset", false, "reset the note tool config to its defaults")
 
 	// Process the commands
-    flag.StringVar(&Config.Interface, "interface", Config.Interface, "select 'serial' or 'i2c' interface")
-    flag.StringVar(&Config.Port, "port", Config.Port, "select serial or i2c port")
-    flag.IntVar(&Config.PortConfig, "portconfig", Config.PortConfig, "set serial device speed or i2c address")
+    flag.StringVar(&flagConfig.Interface, "interface", "", "select 'serial' or 'i2c' interface")
+    flag.StringVar(&flagConfig.Port, "port", "", "select serial or i2c port")
+    flag.IntVar(&flagConfig.PortConfig, "portconfig", -1, "set serial device speed or i2c address")
+    flag.BoolVar(&flagConfigHTTP, "http", false, "use http instead of https")
+    flag.BoolVar(&flagConfigHTTPS, "https", false, "use https instead of http")
+    flag.StringVar(&flagConfig.Hub, "hub", "", "set notehub command service URL")
+    flag.StringVar(&flagConfig.Device, "device", "", "set DeviceUID")
+    flag.StringVar(&flagConfig.Product, "product", "", "set ProductUID")
+    flag.StringVar(&flagConfig.App, "app", "", "set AppUID (the Project UID)")
+    flag.StringVar(&flagConfig.Root, "root", "", "set path to service's root CA certificate file")
+    flag.StringVar(&flagConfig.Key, "key", "", "set path to local private key file")
+    flag.StringVar(&flagConfig.Cert, "cert", "", "set path to local cert file")
 
 	// Write the config if asked to do so
     flag.BoolVar(&flagConfigSave, "config-save", false, "save changes to note tool config")
-	
+
 }
