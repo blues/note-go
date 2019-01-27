@@ -110,6 +110,9 @@ func ConfigShow() error {
 	if Config.App != "" {
 		fmt.Printf("   -app %s\n", Config.App)
 	}
+	if Config.Product != "" {
+	    fmt.Printf("   -product %s\n", Config.Product)
+	}
 	if Config.Device != "" {
 	    fmt.Printf("   -device %s\n", Config.Device)
 	}
@@ -124,12 +127,13 @@ func ConfigShow() error {
 	}
 	if Config.Interface != "" {
 	    fmt.Printf("  -interface %s\n", Config.Interface)
-		port, portConfig := notecard.PortDefaults(Config.Interface)
-		if port == "" {
-			port = "-"
+		if Config.Port == "" {
+		    fmt.Printf("  -port -\n")
+		    fmt.Printf("  -portconfig -\n")
+		} else {
+		    fmt.Printf("  -port %s\n", Config.Port)
+		    fmt.Printf("  -portconfig %d\n", Config.PortConfig)
 		}
-	    fmt.Printf("  -port %s\n", port)
-	    fmt.Printf("  -portconfig %d\n", portConfig)
 	}
 
     return nil
