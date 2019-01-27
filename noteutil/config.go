@@ -40,26 +40,20 @@ var Config = ConfigSettings{}
 // configRead reads the current info from config file
 func ConfigRead() error {
 
-    // Read the file
     contents, err := ioutil.ReadFile(configSettingsPath())
-
-    // Unmarshal if no error
-    if err == nil {
-        err = json.Unmarshal(contents, &Config)
+	if os.IsNotExist(err) {
+		ConfigReset()
+		err = nil
+	} else if err == nil {
+	    err = json.Unmarshal(contents, &Config)
+	    if err != nil || Config.When == "" {
+	        ConfigReset()
+	        if err != nil {
+	            err = fmt.Errorf("can't read configuration: %s", err)
+	        }
+		}
     }
 
-    // If error reading or unmarshaling, just reinitialize it
-    if err != nil || Config.When == "" {
-
-        // Reset the configuration
-        ConfigReset()
-        if err != nil {
-            err = fmt.Errorf("can't read configuration: %s", err)
-        }
-
-    }
-
-    // Done
     return err
 
 }
