@@ -126,13 +126,13 @@ func ConfigShow() error {
 	    fmt.Printf("   -key %s\n", Config.Key)
 	}
 	if Config.Interface != "" {
-	    fmt.Printf("  -interface %s\n", Config.Interface)
+	    fmt.Printf("   -interface %s\n", Config.Interface)
 		if Config.Port == "" {
-		    fmt.Printf("  -port -\n")
-		    fmt.Printf("  -portconfig -\n")
+		    fmt.Printf("   -port -\n")
+		    fmt.Printf("   -portconfig -\n")
 		} else {
-		    fmt.Printf("  -port %s\n", Config.Port)
-		    fmt.Printf("  -portconfig %d\n", Config.PortConfig)
+		    fmt.Printf("   -port %s\n", Config.Port)
+		    fmt.Printf("   -portconfig %d\n", Config.PortConfig)
 		}
 	}
 
