@@ -1,10 +1,6 @@
 // Copyright 2019 Blues Inc.  All rights reserved.
 // Use of this source code is governed by licenses granted by the
 // copyright holder including that found in the LICENSE file.
-// Derived from the "FeedSync" sample code which was covered
-// by the Microsoft Public License (Ms-Pl) of December 3, 2007.
-// FeedSync itself was derived from the algorithms underlying
-// Lotus Notes replication, developed by Ray Ozzie et al c.1985.
 
 package note
 
@@ -13,6 +9,11 @@ import (
     "time"
     "encoding/json"
 )
+
+// DefaultDeviceEndpointID is the default endpoint name of the edge, chosen for its length in protocol messages
+const DefaultDeviceEndpointID = ""
+// DefaultHubEndpointID is the default endpoint name of the hub, chosen for its length in protocol messages
+const DefaultHubEndpointID = "1"
 
 // Note is the most fundamental data structure, containing
 // user data referred to as its "body" and its "payload".  All
