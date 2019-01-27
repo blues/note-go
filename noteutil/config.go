@@ -20,6 +20,7 @@ type ConfigSettings struct {
     Hub             string      `json:"hub,omitempty"`
     App             string      `json:"app,omitempty"`
     Device          string      `json:"device,omitempty"`
+    Product         string      `json:"product,omitempty"`
     Root            string      `json:"root,omitempty"`
     Cert            string      `json:"cert,omitempty"`
     Key             string      `json:"key,omitempty"`
