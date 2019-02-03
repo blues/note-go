@@ -133,16 +133,18 @@ func cardResetSerial() (err error) {
             Close();
             return
         }
+        somethingFound := false
         nonCRLFFound := false
         for i:=0; i<length && !nonCRLFFound; i++ {
             if (false) {
                 fmt.Printf("chr: 0x%02x '%c'\n", buf[i], buf[i]);
             }
+	        somethingFound = true
             if buf[i] != '\r' && buf[i] != '\n' {
                 nonCRLFFound = true
             }
         }
-        if !nonCRLFFound {
+        if somethingFound && !nonCRLFFound {
             break
         }
     }
