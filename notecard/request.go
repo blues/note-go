@@ -26,6 +26,8 @@ const ReqServiceSync =  "service.sync"
 const ReqNotesGet =     "notes.get"
 // ReqNoteAdd (golint)
 const ReqNoteAdd =      "note.add"
+// ReqNoteFormat (golint)
+const ReqNoteFormat =   "note.format"
 // ReqNoteTemplate (golint)
 const ReqNoteTemplate = "note.template"
 // ReqNoteGet (golint)
