@@ -145,6 +145,7 @@ type CardRequest struct {
 	BodyTemplate string	        `json:"body_template,omitempty"`
     PayloadTemplate int32		`json:"payload_template,omitempty"`
     Allow bool					`json:"allow,omitempty"`
+    Limit bool					`json:"limit,omitempty"`
     Trace string				`json:"trace,omitempty"`
     Usage *[]string				`json:"usage,omitempty"`
     State *[]PinState			`json:"state,omitempty"`
