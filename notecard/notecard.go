@@ -37,7 +37,7 @@ var openSerialPort *serial.Port         // tarm
 
 // NewRequest creates a card request
 func NewRequest(request string) (req Request) {
-    req.Request = request
+    req.Req = request
     return
 }
 

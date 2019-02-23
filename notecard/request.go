@@ -87,8 +87,8 @@ const ReqDFUServiceGet = "dfu.service.get"
 
 // Request is the core API request/response data structure
 type Request struct {
-    Request string				`json:"req,omitempty"`
-    Error string				`json:"err,omitempty"`
+    Req string					`json:"req,omitempty"`
+    Err string					`json:"err,omitempty"`
     RequestID uint32            `json:"id,omitempty"`
     NotefileID string           `json:"file,omitempty"`
     TrackerID string            `json:"tracker,omitempty"`
