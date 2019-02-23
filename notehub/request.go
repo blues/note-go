@@ -31,7 +31,7 @@ const HubAppHandlers	= "hub.app.handlers"
 
 // HubRequest is is the core data structure for notehub-specific requests
 type HubRequest struct {
-	notecard.CardRequest		`json:",omitempty"`
+	notecard.Request			`json:",omitempty"`
 	AppUID string				`json:"app,omitempty"`
 	FleetUID string				`json:"fleet,omitempty"`
 	*DbQuery					`json:",omitempty"`
