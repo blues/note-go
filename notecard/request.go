@@ -85,9 +85,9 @@ const ReqDFUGet =		"dfu.get"
 // ReqDFUServiceGet (golint)
 const ReqDFUServiceGet = "dfu.service.get"
 
-// CardRequest is the core API request/response data structure
-type CardRequest struct {
-    Request string              `json:"req,omitempty"`
+// dRequest is the core API request/response data structure
+type Request struct {
+    Request string				`json:"req,omitempty"`
     Error string				`json:"err,omitempty"`
     RequestID uint32            `json:"id,omitempty"`
     NotefileID string           `json:"file,omitempty"`
