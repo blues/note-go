@@ -35,7 +35,7 @@ const CardI2CMax = 127
 var openSerialPort *serial.Port         // tarm
 //var openSerialPort io.ReadWriteCloser // jacobsa
 
-// Request creates a card request
+// NewRequest creates a card request
 func NewRequest(request string) (req Request) {
     req.Request = request
     return

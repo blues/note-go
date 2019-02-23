@@ -85,7 +85,7 @@ const ReqDFUGet =		"dfu.get"
 // ReqDFUServiceGet (golint)
 const ReqDFUServiceGet = "dfu.service.get"
 
-// dRequest is the core API request/response data structure
+// Request is the core API request/response data structure
 type Request struct {
     Request string				`json:"req,omitempty"`
     Error string				`json:"err,omitempty"`
