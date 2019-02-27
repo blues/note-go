@@ -483,6 +483,7 @@ func cardTransactionI2C(reqJSON []byte) (rspJSON []byte, err error) {
     // Loop, building a reply buffer out of received chunks.  We'll build the reply in the same
     // buffer we used to transmit, and will grow it as necessary.
     jsonbufLen = 0;
+	receivedNewline := false;
     for {
 
         // Issue an "get the next chunk len to read" request
@@ -512,13 +513,13 @@ func cardTransactionI2C(reqJSON []byte) (rspJSON []byte, err error) {
         // because it takes some number of milliseconds or seconds for the card to actually
         // process requests.
         chunklen := lenbuf[0]
-        if chunklen == 0 && jsonbufLen == 0 {
+        if chunklen == 0 {
             time.Sleep(100 * time.Millisecond)
             continue
         }
 
-        // If the length byte is 0 after we've received something, it means that no more is coming.
-        if chunklen == 0 {
+        // If the length byte is 0 *after* we've received \n, it means that we're done
+        if chunklen == 0 && receivedNewline {
             break
         }
 
@@ -547,6 +548,15 @@ func cardTransactionI2C(reqJSON []byte) (rspJSON []byte, err error) {
             err = fmt.Errorf("read of %d-byte chunk actually read %d bytes", chunklen, readlen)
             return
         }
+
+		// If the last byte of the chunk is \n, chances are that we're done.  However, just so
+		// that we pull everything pending from the module, we only exit when we've received
+		// a newline AND there's nothing left available from the module.
+		if readlen > 0 && readbuf[readlen-1] == '\n' {
+			receivedNewline = true
+		}
+
+		// Append to the JSON being accumulated
         rspJSON = append(rspJSON, readbuf...)
         jsonbufLen += readlen
 
