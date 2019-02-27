@@ -508,19 +508,18 @@ func cardTransactionI2C(reqJSON []byte) (rspJSON []byte, err error) {
             return
         }
 
-        // If the length byte is 0 before we've received anything, it means that the module is
+        // If the length byte is 0 before we've received a \n, it means that the module is
         // still processing the command and the reply isn't ready.  This is the NORMAL CASE
         // because it takes some number of milliseconds or seconds for the card to actually
-        // process requests.
+        // process requests, and there may be an occasional delay between chunks just because
+		// of normal task preemption.
         chunklen := lenbuf[0]
         if chunklen == 0 {
+	        if receivedNewline {
+	            break
+	        }
             time.Sleep(100 * time.Millisecond)
             continue
-        }
-
-        // If the length byte is 0 *after* we've received \n, it means that we're done
-        if chunklen == 0 && receivedNewline {
-            break
         }
 
         // Issue a "read the next chunk" request
