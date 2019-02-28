@@ -35,6 +35,10 @@ const CardI2CMax = 127
 var openSerialPort *serial.Port         // tarm
 //var openSerialPort io.ReadWriteCloser // jacobsa
 
+// Context for the port that is open
+type Context struct {
+}
+
 // NewRequest creates a card request
 func NewRequest(request string) (req Request) {
     req.Req = request
@@ -74,7 +78,7 @@ func PortDefaults(interf string) (port string, portConfig int) {
 }
 
 // Open the card to establish communications
-func Open(moduleInterface string, port string, portConfig int) (err error) {
+func Open(moduleInterface string, port string, portConfig int) (context Context, err error) {
 
     // Open the interface
     switch moduleInterface {
