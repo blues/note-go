@@ -89,7 +89,7 @@ func ConfigWrite() error {
 // Reset the comms to default
 func configResetInterface() {
     Config.Interface = "serial"
-    Config.Port, Config.PortConfig = notecard.PortDefaults(Config.Interface)
+    Config.Port, Config.PortConfig = notecard.SerialDefaults()
 }
 
 // ConfigReset updates the file with the default info

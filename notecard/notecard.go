@@ -248,6 +248,16 @@ func cardCloseI2C(context *Context) {
     i2cClose()
 }
 
+// SerialDefaults returns the default serial parameters
+func SerialDefaults () (port string, portConfig int) {
+	return serialDefault()
+}
+
+// I2CDefaults returns the default serial parameters
+func I2CDefaults () (port string, portConfig int) {
+	return i2cDefault()
+}
+
 // Trace the incoming serial output
 func (context *Context) Trace() (err error) {
 
