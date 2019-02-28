@@ -22,7 +22,6 @@ const (
 	NotecardInterfaceI2C = "i2c"
 )
 
-// I2C
 // CardI2CMax controls chunk size that's socially appropriate on the I2C bus.
 // It must be 1-250 bytes as per spec
 const CardI2CMax = 127
@@ -56,8 +55,8 @@ func cardReportError(err error) {
     time.Sleep(10 * time.Second)
 }
 
-// PortEnum returns the list of all available ports on the specified interface
-func (context *Context) PortEnum() (ports []string) {
+// EnumPorts returns the list of all available ports on the specified interface
+func (context *Context) EnumPorts() (ports []string) {
 	return context.PortEnumFn()
 }
 
@@ -141,7 +140,7 @@ func cardResetSerial(context *Context) (err error) {
 
 }
 
-// Open the card on serial
+// OpenSerial opens the card on serial
 func OpenSerial(port string, portConfig int) (context Context, err error) {
 
     fmt.Printf("Using interface %s port %s at %d\n\n", NotecardInterfaceSerial, port, portConfig)
@@ -201,7 +200,7 @@ func cardResetI2C(context *Context) (err error) {
 
 }
 
-// Open the card on I2C
+// OpenI2C opens the card on I2C
 func OpenI2C(port string, portConfig int) (context Context, err error) {
 
     fmt.Printf("Using interface %s\n\n", port)
@@ -256,6 +255,16 @@ func SerialDefaults () (port string, portConfig int) {
 // I2CDefaults returns the default serial parameters
 func I2CDefaults () (port string, portConfig int) {
 	return i2cDefault()
+}
+
+// SerialPorts returns the list of available serial ports
+func SerialPorts () (ports []string) {
+	return serialPortEnum()
+}
+
+// I2CPorts returns the list of available I2C ports
+func I2CPorts () (ports []string) {
+	return i2cPortEnum()
 }
 
 // Trace the incoming serial output
