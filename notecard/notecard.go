@@ -22,27 +22,28 @@ const (
 	NotecardInterfaceI2C = "i2c"
 )
 
-// The module interface which is currently open
-var portOpen string
-
 // I2C
-
 // CardI2CMax controls chunk size that's socially appropriate on the I2C bus.
 // It must be 1-250 bytes as per spec
 const CardI2CMax = 127
 
 // Context for the serial package we're using
-var openSerialPort *serial.Port         // tarm
-//var openSerialPort io.ReadWriteCloser // jacobsa
 
 // Context for the port that is open
 type Context struct {
-}
 
-// NewRequest creates a card request
-func NewRequest(request string) (req Request) {
-    req.Req = request
-    return
+	// Class functions
+	PortEnumFn func () (ports []string)
+	PortDefaultsFn func () (port string, portConfig int)
+	CloseFn func (context *Context) ()
+	ResetFn func (context *Context) (err error)
+	TransactionFn func (context *Context, reqJSON []byte) (rspJSON []byte, err error)
+
+	// Serial instance state
+	isSerial bool
+	openSerialPort *serial.Port			// tarm
+	//openSerialPort io.ReadWriteCloser // jacobsa
+
 }
 
 // Report a critical card error
@@ -56,56 +57,40 @@ func cardReportError(err error) {
 }
 
 // PortEnum returns the list of all available ports on the specified interface
-func PortEnum(interf string) (ports []string) {
-    if interf == NotecardInterfaceSerial {
-        ports = serialPortEnum()
-    }
-    if interf == NotecardInterfaceI2C {
-        ports = i2cPortEnum()
-    }
-	return
+func (context *Context) PortEnum() (ports []string) {
+	return context.PortEnumFn()
 }
 
 // PortDefaults gets the defaults for the specified port
-func PortDefaults(interf string) (port string, portConfig int) {
-    if interf == NotecardInterfaceSerial {
-        port, portConfig = serialDefault()
-    }
-    if interf == NotecardInterfaceI2C {
-        port, portConfig = i2cDefault()
-    }
-    return
+func (context *Context) PortDefaults() (port string, portConfig int) {
+	return context.PortDefaultsFn()
 }
 
 // Open the card to establish communications
 func Open(moduleInterface string, port string, portConfig int) (context Context, err error) {
 
-    // Open the interface
     switch moduleInterface {
     case NotecardInterfaceSerial:
-        err = cardOpenSerial(port, portConfig)
+        context, err = OpenSerial(port, portConfig)
         break
     case NotecardInterfaceI2C:
-        err = cardOpenI2C(port, portConfig)
+        context, err = OpenI2C(port, portConfig)
         break
     default:
         err = fmt.Errorf("unknown interface: %s", moduleInterface)
         break
     }
     if err != nil {
-        portOpen = ""
         err = fmt.Errorf("error opening port: %s", err)
         return
     }
 
-    // Success
-    portOpen = moduleInterface
     return;
 
 }
 
 // Reset serial to a known state
-func cardResetSerial() (err error) {
+func cardResetSerial(context *Context) (err error) {
 
     // In order to ensure that we're not getting the reply to a failed
     // transaction from a prior session, drain any pending input prior
@@ -116,16 +101,15 @@ func cardResetSerial() (err error) {
     var length int
     buf := make([]byte, 2048)
     for {
-        _, err = openSerialPort.Write([]byte("\n\n"))
+        _, err = context.openSerialPort.Write([]byte("\n\n"))
         if err != nil {
             err = fmt.Errorf("error transmitting to module: %s", err)
             cardReportError(err)
-            Close();
             return
         }
         time.Sleep(500*time.Millisecond)
         readBeganMs := int(time.Now().UnixNano() / 1000000)
-        length, err = openSerialPort.Read(buf)
+        length, err = context.openSerialPort.Read(buf)
         readElapsedMs := int(time.Now().UnixNano() / 1000000) - readBeganMs
         if readElapsedMs == 0 && length == 0 && err == io.EOF {
             // On Linux, hardware port failures come back simply as immediate EOF
@@ -134,7 +118,6 @@ func cardResetSerial() (err error) {
         if err != nil {
             err = fmt.Errorf("error reading from module: %s", err)
             cardReportError(err)
-            Close();
             return
         }
         somethingFound := false
@@ -159,10 +142,17 @@ func cardResetSerial() (err error) {
 }
 
 // Open the card on serial
-func cardOpenSerial(port string, portConfig int) (err error) {
+func OpenSerial(port string, portConfig int) (context Context, err error) {
 
-    fmt.Printf("Using interface %s port %s at %d\n\n",
-        NotecardInterfaceSerial, port, portConfig)
+    fmt.Printf("Using interface %s port %s at %d\n\n", NotecardInterfaceSerial, port, portConfig)
+
+	// Set up class functions
+	context.PortEnumFn = serialPortEnum
+	context.PortDefaultsFn = serialDefault
+	context.CloseFn = cardCloseSerial
+	context.ResetFn = cardResetSerial
+	context.TransactionFn = cardTransactionSerial
+	context.isSerial = true
 
     // Open the serial port
     ///*    tarm
@@ -170,7 +160,7 @@ func cardOpenSerial(port string, portConfig int) (err error) {
     c.Name = port
     c.Baud = portConfig
     c.ReadTimeout = time.Millisecond * 500
-    openSerialPort, err = serial.OpenPort(c)
+    context.openSerialPort, err = serial.OpenPort(c)
     //*/
     /* jacobsa
     c := serial.OpenOptions{}
@@ -178,7 +168,7 @@ func cardOpenSerial(port string, portConfig int) (err error) {
     c.BaudRate = portConfig
     c.MinimumReadSize = 0
     c.InterCharacterTimeout = 5000
-    openSerialPort, err = serial.Open(c)
+    context.openSerialPort, err = serial.Open(c)
 */
     if err != nil {
         err = fmt.Errorf("error opening serial port %s at %d: %s", port, portConfig, err)
@@ -186,7 +176,7 @@ func cardOpenSerial(port string, portConfig int) (err error) {
     }
 
     // Reset serial to a known good state
-    err = cardResetSerial()
+    err = cardResetSerial(&context)
 
     // All set
     return
@@ -194,12 +184,12 @@ func cardOpenSerial(port string, portConfig int) (err error) {
 }
 
 // Reset I2C to a known good state
-func cardResetI2C() (err error) {
+func cardResetI2C(context *Context) (err error) {
 
     // For robustness (that is, in case the MCU was rebooted in the middle of receiving a reply, and thus
     // a partial buffer is waiting to be transmitted by the notecard), drain anything pending.
     for i:=0; i<5; i++ {
-        rsp, err2 := cardTransactionI2C([]byte("\n"))
+        rsp, err2 := cardTransactionI2C(context, []byte("\n"))
         if err2 == nil && string(rsp) == "\r\n" {
             break
         }
@@ -212,67 +202,75 @@ func cardResetI2C() (err error) {
 }
 
 // Open the card on I2C
-func cardOpenI2C(port string, portConfig int) (err error) {
+func OpenI2C(port string, portConfig int) (context Context, err error) {
 
     fmt.Printf("Using interface %s\n\n", port)
+
+	// Set up class functions
+	context.PortEnumFn = i2cPortEnum
+	context.PortDefaultsFn = i2cDefault
+	context.CloseFn = cardCloseI2C
+	context.ResetFn = cardResetI2C
+	context.TransactionFn = cardTransactionI2C
 
     // Open the I2C port
     err = i2cOpen(uint8(portConfig), port)
     if err != nil {
-        return fmt.Errorf("i2c init error: %s", err)
+		err = fmt.Errorf("i2c init error: %s", err)
+        return
     }
 
     // Reset it to a known good state
-    err = cardResetI2C()
+    err = cardResetI2C(&context)
 
     // Done
     return
 
 }
 
+// Reset the port
+func (context *Context) Reset() (err error) {
+	return context.ResetFn(context)
+}
+
 // Close the port
-func Close() {
-    switch portOpen {
-    case NotecardInterfaceSerial:
-        cardCloseSerial()
-        break
-    case NotecardInterfaceI2C:
-        cardCloseI2C()
-        break
-    default:
-        break
-    }
-    portOpen = ""
+func (context *Context) Close() {
+	context.CloseFn(context)
 }
 
 // Close serial
-func cardCloseSerial() {
-    openSerialPort.Close()
+func cardCloseSerial(context *Context) {
+    context.openSerialPort.Close()
 }
 
 // Close I2C
-func cardCloseI2C() {
+func cardCloseI2C(context *Context) {
     i2cClose()
 }
 
 // Trace the incoming serial output
-func Trace() (err error) {
+func (context *Context) Trace() (err error) {
+
+	// Tracing only works for USB and AUX ports
+	if (!context.isSerial) {
+		return fmt.Errorf("tracing is only available on USB and AUX ports")
+	}
 
     // Turn on tracing
-    req := NewRequest(ReqCardIO)
+    req := Request{Req:ReqCardIO}
     req.Mode = "trace"
     req.Trace = "+usb"
-    Transaction(req)
+    context.Transaction(req)
 
     // Spawn the input handler
-    go inputHandler()
+    go inputHandler(context)
 
     // Loop, echoing to the console
     for {
         var length int
         buf := make([]byte, 2048)
         readBeganMs := int(time.Now().UnixNano() / 1000000)
-        length, err = openSerialPort.Read(buf)
+        length, err = context.openSerialPort.Read(buf)
         readElapsedMs := int(time.Now().UnixNano() / 1000000) - readBeganMs
         if (false) {
             fmt.Printf("mon: elapsed:%d len:%d err:%s '%s'\n", readElapsedMs, length, err, string(buf[:length]));
@@ -293,13 +291,12 @@ func Trace() (err error) {
 
     err = fmt.Errorf("error reading from module: %s", err)
     cardReportError(err)
-    Close();
     return
 
 }
 
 // Watch for console input
-func inputHandler() {
+func inputHandler(context *Context) {
 
     // Create a scanner to watch stdin
     scanner := bufio.NewScanner(os.Stdin)
@@ -318,24 +315,24 @@ func inputHandler() {
                 case 97 <= r && r <= 122:
                     ba := make([]byte, 1)
                     ba[0] = byte(r - 96)
-                    openSerialPort.Write(ba)
+                    context.openSerialPort.Write(ba)
                     // 'A' - 'Z'
                 case 65 <= r && r <= 90:
                     ba := make([]byte, 1)
                     ba[0] = byte(r - 64)
-                    openSerialPort.Write(ba)
+                    context.openSerialPort.Write(ba)
                 }
             }
         } else {
-            openSerialPort.Write([]byte(message))
-            openSerialPort.Write([]byte("\n"))
+            context.openSerialPort.Write([]byte(message))
+            context.openSerialPort.Write([]byte("\n"))
         }
     }
 
 }
 
 // Transaction performs a card transaction
-func Transaction(req Request) (rsp Request, err error) {
+func (context *Context) Transaction(req Request) (rsp Request, err error) {
 
     // Marshal the request to JSON
     reqJSON, err2 := json.Marshal(req)
@@ -345,7 +342,7 @@ func Transaction(req Request) (rsp Request, err error) {
     }
 
     // Perform the transaction
-    rspJSON, err2 := TransactionJSON(reqJSON)
+    rspJSON, err2 := context.TransactionJSON(reqJSON)
     if err2 != nil {
         err = fmt.Errorf("error marshaling request for module: %s", err2)
         return
@@ -363,7 +360,7 @@ func Transaction(req Request) (rsp Request, err error) {
 }
 
 // TransactionJSON performs a card transaction using raw JSON []bytes
-func TransactionJSON(reqJSON []byte) (rspJSON []byte, err error) {
+func (context *Context) TransactionJSON(reqJSON []byte) (rspJSON []byte, err error) {
 
     fmt.Printf("%s\n", reqJSON)
 
@@ -371,25 +368,9 @@ func TransactionJSON(reqJSON []byte) (rspJSON []byte, err error) {
     reqJSON = []byte(string(reqJSON) + "\n")
 
     // Perform the transaction
-    switch portOpen {
-    case NotecardInterfaceSerial:
-        rspJSON, err = cardTransactionSerial(reqJSON)
-        if err != nil {
-            cardResetSerial()
-        }
-        break
-    case NotecardInterfaceI2C:
-        rspJSON, err = cardTransactionI2C(reqJSON)
-        if err != nil {
-            cardResetI2C()
-        }
-        break
-    default:
-        err = fmt.Errorf("unrecognized interface")
-        return
-    }
+    rspJSON, err = context.TransactionFn(context, reqJSON)
     if err != nil {
-        return
+        context.ResetFn(context)
     }
 
     fmt.Printf("%s\n", string(rspJSON))
@@ -398,14 +379,13 @@ func TransactionJSON(reqJSON []byte) (rspJSON []byte, err error) {
 }
 
 // Perform a card transaction over serial under the assumption that request already has '\n' terminator
-func cardTransactionSerial(reqJSON []byte) (rspJSON []byte, err error) {
+func cardTransactionSerial(context *Context, reqJSON []byte) (rspJSON []byte, err error) {
 
     // Transmit the request
-    _, err = openSerialPort.Write(reqJSON)
+    _, err = context.openSerialPort.Write(reqJSON)
     if err != nil {
         err = fmt.Errorf("error transmitting to module: %s", err)
         cardReportError(err)
-        Close();
         return
     }
 
@@ -414,7 +394,7 @@ func cardTransactionSerial(reqJSON []byte) (rspJSON []byte, err error) {
         var length int
         buf := make([]byte, 2048)
         readBeganMs := int(time.Now().UnixNano() / 1000000)
-        length, err = openSerialPort.Read(buf)
+        length, err = context.openSerialPort.Read(buf)
         readElapsedMs := int(time.Now().UnixNano() / 1000000) - readBeganMs
         if (false) {
             err2 := err
@@ -434,7 +414,6 @@ func cardTransactionSerial(reqJSON []byte) (rspJSON []byte, err error) {
             }
             err = fmt.Errorf("error reading from module: %s", err)
             cardReportError(err)
-            Close();
             return
         }
         rspJSON = append(rspJSON, buf[:length]...)
@@ -449,7 +428,7 @@ func cardTransactionSerial(reqJSON []byte) (rspJSON []byte, err error) {
 }
 
 // Perform a card transaction over I2C under the assumption that request already has '\n' terminator
-func cardTransactionI2C(reqJSON []byte) (rspJSON []byte, err error) {
+func cardTransactionI2C(context *Context, reqJSON []byte) (rspJSON []byte, err error) {
 
     var writelen, lenlen, readlen int
     lenbuf := make([]byte, 1)
