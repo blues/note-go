@@ -48,9 +48,7 @@ type Context struct {
 // Report a critical card error
 func cardReportError(err error) {
     fmt.Printf("***\n");
-    fmt.Printf("***\n");
     fmt.Printf("*** %s\n", err);
-    fmt.Printf("***\n");
     fmt.Printf("***\n");
     time.Sleep(10 * time.Second)
 }
@@ -511,7 +509,6 @@ func cardTransactionI2C(context *Context, reqJSON []byte) (rspJSON []byte, err e
 		if readlen > 0 && readbuf[readlen-1] == '\n' {
 			receivedNewline = true
 		}
-		fmt.Printf("OZZIE readlen:%d newline:%t %t '%s'\n", readlen, receivedNewline, readbuf[readlen-1] == '\n', string(readbuf))
 
 		// For the next iteration, reaad the min of what's available and what we're permitted to read
 		chunklen = available;
