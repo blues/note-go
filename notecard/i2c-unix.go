@@ -73,7 +73,7 @@ func i2cWriteBytes(buf []byte) (err error) {
 	reg := make([]byte, 1)
 	reg[0] = byte(len(buf))
 	reg = append(reg, buf...)
-	openI2CPort.device.Tx(reg, nil)
+	return openI2CPort.device.Tx(reg, nil)
 }
 
 // ReadBytes reads a buffer from I2C and returns how many are still pending
