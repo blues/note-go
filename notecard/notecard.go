@@ -220,7 +220,7 @@ func cardResetI2C(context *Context) (err error) {
 // OpenI2C opens the card on I2C
 func OpenI2C(port string, portConfig int) (context Context, err error) {
 
-    fmt.Printf("Using interface %s\n\n", port)
+    fmt.Printf("Using port %s\n\n", port)
 
 	// Set up class functions
 	context.PortEnumFn = i2cPortEnum
@@ -232,6 +232,10 @@ func OpenI2C(port string, portConfig int) (context Context, err error) {
     // Open the I2C port
     err = i2cOpen(uint8(portConfig), port, portConfig)
     if err != nil {
+		if (true) {
+			ports := I2CPorts()
+			fmt.Printf("Available ports: %v\n", ports)
+		}
 		err = fmt.Errorf("i2c init error: %s", err)
         return
     }
