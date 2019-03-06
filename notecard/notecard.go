@@ -23,8 +23,8 @@ const (
 )
 
 // CardI2CMax controls chunk size that's socially appropriate on the I2C bus.
-// It must be 1-250 bytes as per spec
-const CardI2CMax = 127
+// It must be 1-255 bytes as per spec
+const CardI2CMax = 255
 
 // Context for the serial package we're using
 
@@ -191,10 +191,9 @@ func cardResetI2C(context *Context) (err error) {
     for {
 
         // Read the next chunk of available data
-		var available int
-        readbuf, available, err = i2cReadBytes(chunklen)
-        if err != nil {
-            err = fmt.Errorf("error reading chunk: %s", err)
+        _, available, err2 := i2cReadBytes(chunklen)
+        if err2 != nil {
+            err = fmt.Errorf("error reading chunk: %s", err2)
             return
         }
 
@@ -495,10 +494,9 @@ func cardTransactionI2C(context *Context, reqJSON []byte) (rspJSON []byte, err e
     for {
 
         // Read the next chunk
-		var available int
-        readbuf, available, err = i2cReadBytes(chunklen)
-        if err != nil {
-            err = fmt.Errorf("error reading chunk: %s", err)
+        readbuf, available, err2 := i2cReadBytes(chunklen)
+        if err2 != nil {
+            err = fmt.Errorf("error reading chunk: %s", err2)
             return
         }
 
@@ -513,6 +511,7 @@ func cardTransactionI2C(context *Context, reqJSON []byte) (rspJSON []byte, err e
 		if readlen > 0 && readbuf[readlen-1] == '\n' {
 			receivedNewline = true
 		}
+		fmt.Printf("OZZIE readlen:%d newline:%t %t '%s'\n", readlen, receivedNewline, readbuf[readlen-1] == '\n', string(readbuf))
 
 		// For the next iteration, reaad the min of what's available and what we're permitted to read
 		chunklen = available;

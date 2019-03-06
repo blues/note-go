@@ -78,7 +78,6 @@ func i2cWriteBytes(buf []byte) (err error) {
 
 // ReadBytes reads a buffer from I2C and returns how many are still pending
 func i2cReadBytes(datalen int) (outbuf []byte, available int, err error) {
-	buf := make([]byte, datalen)
 	readbuf := make([]byte, datalen+2)
 	reg := make([]byte, 2)
 	reg[0] = byte(0)
