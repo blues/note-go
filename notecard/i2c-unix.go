@@ -10,12 +10,18 @@
 // Each i2c bus can address 127 independent i2c devices, and most
 // linux systems contain several buses.
 
+// Note: I2C Device Interface is accessed through periph.io library
+// Example: https://github.com/google/periph/blob/master/devices/bmxx80/bmx280.go
+
+
 package notecard
 
 import (
-	"os"
 	"fmt"
-	"syscall"
+    "periph.io/x/periph"
+    "periph.io/x/periph/host"
+	"periph.io/x/periph/conn/i2c"
+	"periph.io/x/periph/conn/i2c/i2creg"
 )
 
 const (
@@ -25,7 +31,9 @@ const (
 
 // I2C is the handle to the I2C subsystem
 type I2C struct {
-	rc *os.File
+	host *periph.State
+	bus i2c.BusCloser
+	device *i2c.Dev
 }
 
 // The open I2C port
@@ -33,73 +41,70 @@ var openI2CPort *I2C
 
 // Get the default i2c device
 func i2cDefault() (port string, portConfig int) {
-	// The I2C port on Raspberry Pi is i2c-1 because it is "bus 1" as in I2C1
-	port = "/dev/i2c-1"
+	port = ""	// Null string opens first available bus
 	portConfig = 0x17
 	return
 }
 
 // Open the i2c port
-func i2cOpen(addr uint8, port string) (error) {
-	f, err := os.OpenFile(port, os.O_RDWR, 0600)
+func i2cOpen(addr uint8, port string, portConfig int) (err error) {
+
+	// Open the periph.io host
+	openI2CPort = &I2C{}
+	openI2CPort.host, err = host.Init()
 	if err != nil {
-		return fmt.Errorf("error on os.OpenFile: %s", err)
+		return
 	}
-	if err = ioctl(f.Fd(), I2CSlave, uintptr(addr)); err != nil {
-		return fmt.Errorf("error on ioctl in i2cOpen: %s", err)
-	}
-	openI2CPort = &I2C{rc: f}
+
+	// Open the I2C instance
+    openI2CPort.bus, err = i2creg.Open(port)
+    if err != nil {
+        return
+    }
+
+	// Instantiate the device
+	openI2CPort.device = &i2c.Dev{Bus: openI2CPort.bus, Addr: uint16(portConfig)}
+
 	return nil
 }
 
-// WriteBytes writes a buffer to I2C and return how many written
-func i2cWriteBytes(buf []byte) (n int, err error) {
-	return openI2CPort.write(buf)
+// WriteBytes writes a buffer to I2C
+func i2cWriteBytes(buf []byte) (err error) {
+	reg := make([]byte, 1)
+	reg[0] = byte(len(buf))
+	return openI2CPort.device.Tx(reg, buf)
 }
 
-// WriteByte writes a single byte to I2C
-func i2cWriteByte(b byte) (n int, err error) {
- 	return openI2CPort.write([]byte{b})
-}
-
-// ReadBytes reads a buffer from I2C and return how many written
-func i2cReadBytes(buf []byte) (n int, err error) {
-	return openI2CPort.read(buf)
+// ReadBytes reads a buffer from I2C and returns how many are still pending
+func i2cReadBytes(buf []byte) (available int, err error) {
+	datalen := len(buf)
+	readbuf := make([]byte, datalen+2)
+	reg := make([]byte, 2)
+	reg[0] = byte(0)
+	reg[1] = byte(datalen)
+	err = openI2CPort.device.Tx(reg, readbuf)
+	if err != nil {
+		return
+	}
+	available = int(readbuf[0])
+	good := readbuf[1]; _ = good
+	buf = readbuf[2:]
+	return
 }
 
 // Close I2C
 func i2cClose() error {
-	return openI2CPort.rc.Close()
-}
-
-// Write a buffer to I2C
-func (v *I2C) write(buf []byte) (n int, err error) {
-	n, err = v.rc.Write(buf)
-	if err != nil {
-		err = fmt.Errorf("i2c write error: %s", err)
-	}
-	return
-}
-
-// Read a buffer from I2C
-func (v *I2C) read(buf []byte) (n int, err error) {
-	n, err = v.rc.Read(buf)
-	if err != nil {
-		err = fmt.Errorf("i2c read error: %s", err)
-	}
-	return
-}
-
-// Lowest level IO
-func ioctl(fd, cmd, arg uintptr) (err error) {
-	_, _, errnum := syscall.Syscall6(syscall.SYS_IOCTL, fd, cmd, arg, 0, 0, 0)
-	if errnum != 0 {
-		err = fmt.Errorf("i2c syscall error: %d", errnum)
-	}
-	return nil
+	return openI2CPort.bus.Close()
 }
 
 // Enum I2C ports
 func i2cPortEnum() (names []string) {
+	for _, ref := range i2creg.All() {
+		port := ref.Name
+		if ref.Number != -1 {
+			port = fmt.Sprintf("%s #d", ref.Name, ref.Number)
+		}
+		names = append(names, port)
+	}
 	return
 }

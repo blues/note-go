@@ -185,31 +185,14 @@ func OpenSerial(port string, portConfig int) (context Context, err error) {
 // Reset I2C to a known good state
 func cardResetI2C(context *Context) (err error) {
 
-    // Synchronize by guaranteeing not only that I2C works, but that we drain the remainder of any
-    // pending partial reply from a previously-aborted session.
-	chunklen := 0
-    for {
-
-        // Read the next chunk of available data
-		var available int
-        readbuf := make([]byte, chunklen)
-        available, err = i2cReadBytes(readbuf)
-        if err != nil {
-            err = fmt.Errorf("error reading chunk: %s", err)
-            return
+    // For robustness (that is, in case the MCU was rebooted in the middle of receiving a reply, and thus
+    // a partial buffer is waiting to be transmitted by the notecard), drain anything pending.
+    for i:=0; i<5; i++ {
+        rsp, err2 := cardTransactionI2C(context, []byte("\n"))
+        if err2 == nil && string(rsp) == "\r\n" {
+            break
         }
-
-		// If nothing left, we're ready to transmit a command to receive the data
-		if available == 0 {
-			break
-		}
-
-		// For the next iteration, reaad the min of what's available and what we're permitted to read
-		chunklen = available;
-        if chunklen > CardI2CMax {
-            chunklen = CardI2CMax
-        }
-
+        err = err2
     }
 
     // Done
@@ -230,7 +213,7 @@ func OpenI2C(port string, portConfig int) (context Context, err error) {
 	context.TransactionFn = cardTransactionI2C
 
     // Open the I2C port
-    err = i2cOpen(uint8(portConfig), port, portConfig)
+    err = i2cOpen(uint8(portConfig), port)
     if err != nil {
 		err = fmt.Errorf("i2c init error: %s", err)
         return
@@ -466,6 +449,9 @@ func cardTransactionSerial(context *Context, reqJSON []byte) (rspJSON []byte, er
 // Perform a card transaction over I2C under the assumption that request already has '\n' terminator
 func cardTransactionI2C(context *Context, reqJSON []byte) (rspJSON []byte, err error) {
 
+    var writelen, lenlen, readlen int
+    lenbuf := make([]byte, 1)
+
     // Send the transaction on the bus
     chunkoffset := 0
     jsonbufLen := len(reqJSON)
@@ -474,9 +460,22 @@ func cardTransactionI2C(context *Context, reqJSON []byte) (rspJSON []byte, err e
         if jsonbufLen < chunklen {
             chunklen = jsonbufLen
         }
-        err = i2cWriteBytes(reqJSON[chunkoffset:chunkoffset+chunklen])
+        writelen, err = i2cWriteByte(byte(chunklen))
+        if err != nil {
+            err = fmt.Errorf("chunklen write error: %s", err)
+            return
+        }
+        if writelen != 1 {
+            err = fmt.Errorf("write of 1-byte chunklen actually wrote %d bytes", writelen)
+            return
+        }
+        writelen, err = i2cWriteBytes(reqJSON[chunkoffset:chunkoffset+chunklen])
         if err != nil {
             err = fmt.Errorf("chunk write error: %s", err)
+            return
+        }
+        if writelen != chunklen {
+            err = fmt.Errorf("write of %d-byte chunk actually wrote %d bytes", chunklen, writelen)
             return
         }
         chunkoffset += chunklen;
@@ -487,55 +486,80 @@ func cardTransactionI2C(context *Context, reqJSON []byte) (rspJSON []byte, err e
     // buffer we used to transmit, and will grow it as necessary.
     jsonbufLen = 0;
 	receivedNewline := false;
-	chunklen := 0
-	expires := time.Now().Add(time.Duration(10 * time.Second))
     for {
 
+        // Issue an "get the next chunk len to read" request
+        writelen, err = i2cWriteByte(0x80)
+        if err != nil {
+            err = fmt.Errorf("error writing get-next-chunklen command: %s", err)
+            return
+        }
+        if writelen != 1 {
+            err = fmt.Errorf("write of get-next-chunklen command actually wrote %d bytes", writelen)
+            return
+        }
+
+        // Get the length byte, which always precedes anything else
+        lenlen, err = i2cReadBytes(lenbuf)
+        if err != nil {
+            err = fmt.Errorf("error reading response length: %s", err)
+            return
+        }
+        if lenlen != 1 {
+            err = fmt.Errorf("read of 1-byte chunklen command actually wrote %d bytes", lenlen)
+            return
+        }
+
+        // If the length byte is 0 before we've received a \n, it means that the module is
+        // still processing the command and the reply isn't ready.  This is the NORMAL CASE
+        // because it takes some number of milliseconds or seconds for the card to actually
+        // process requests, and there may be an occasional delay between chunks just because
+		// of normal task preemption.
+        chunklen := lenbuf[0]
+        if chunklen == 0 {
+	        if receivedNewline {
+	            break
+	        }
+            time.Sleep(100 * time.Millisecond)
+            continue
+        }
+
+        // Issue a "read the next chunk" request
+        if chunklen > CardI2CMax {
+            chunklen = CardI2CMax
+        }
+        writelen, err = i2cWriteByte(0x80+chunklen)
+        if err != nil {
+            err = fmt.Errorf("error writing read-next-chunk command: %s", err)
+            return
+        }
+        if writelen != 1 {
+            err = fmt.Errorf("write of read-next-chunk command actually wrote %d bytes", writelen)
+            return
+        }
+
         // Read the next chunk
-		var available int
         readbuf := make([]byte, chunklen)
-        available, err = i2cReadBytes(readbuf)
+        readlen, err = i2cReadBytes(readbuf)
         if err != nil {
             err = fmt.Errorf("error reading chunk: %s", err)
             return
         }
-
-		// Append to the JSON being accumulated
-        rspJSON = append(rspJSON, readbuf...)
-		readlen := len(readbuf)
-        jsonbufLen += readlen
+        if readlen != int(chunklen) {
+            err = fmt.Errorf("read of %d-byte chunk actually read %d bytes", chunklen, readlen)
+            return
+        }
 
 		// If the last byte of the chunk is \n, chances are that we're done.  However, just so
 		// that we pull everything pending from the module, we only exit when we've received
 		// a newline AND there's nothing left available from the module.
-		if readlen > 0 && readbuf[readlen-1] == '\n' {
+		if readbuf[readlen-1] == '\n' {
 			receivedNewline = true
 		}
 
-		// For the next iteration, reaad the min of what's available and what we're permitted to read
-		chunklen = available;
-        if chunklen > CardI2CMax {
-            chunklen = CardI2CMax
-        }
-
-		// If there's something available on the notecard for us to receive, do it
-		if chunklen > 0 {
-			continue
-		}
-
-		// If there's nothing available and we received a newline, we're done
-		if receivedNewline {
-			break
-		}
-
-		// If we've timed out and nothing's available, exit
-		if time.Now().After(expires) {
-			err = fmt.Errorf("transaction timeout")
-			return
-		}
-		
-		// Delay, simply waiting for the Notecard to process the request
-        time.Sleep(50 * time.Millisecond)
+		// Append to the JSON being accumulated
+        rspJSON = append(rspJSON, readbuf...)
+        jsonbufLen += readlen
 
     }
 
