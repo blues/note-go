@@ -72,7 +72,8 @@ func i2cOpen(addr uint8, port string, portConfig int) (err error) {
 func i2cWriteBytes(buf []byte) (err error) {
 	reg := make([]byte, 1)
 	reg[0] = byte(len(buf))
-	return openI2CPort.device.Tx(reg, buf)
+	reg = append(reg, buf...)
+	openI2CPort.device.Tx(reg, nil)
 }
 
 // ReadBytes reads a buffer from I2C and returns how many are still pending
@@ -102,7 +103,7 @@ func i2cPortEnum() (names []string) {
 	for _, ref := range i2creg.All() {
 		port := ref.Name
 		if ref.Number != -1 {
-			port = fmt.Sprintf("%s #d", ref.Name, ref.Number)
+			port = fmt.Sprintf("%s #%d", ref.Name, ref.Number)
 		}
 		names = append(names, port)
 	}
