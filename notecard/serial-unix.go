@@ -16,7 +16,7 @@ import (
 // and also to /dev/ttyAMA0 (the serial port on the RPi CM3)
 func serialDefault() (port string, portConfig int) {
 	port = "/dev/serial0"
-	portConfig = 115200
+	portConfig = 9600
 	return
 }
 
