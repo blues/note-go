@@ -192,8 +192,7 @@ func cardResetI2C(context *Context) (err error) {
 
         // Read the next chunk of available data
 		var available int
-        readbuf := make([]byte, chunklen)
-        available, err = i2cReadBytes(readbuf)
+        readbuf, available, err = i2cReadBytes(chunklen)
         if err != nil {
             err = fmt.Errorf("error reading chunk: %s", err)
             return
@@ -497,8 +496,7 @@ func cardTransactionI2C(context *Context, reqJSON []byte) (rspJSON []byte, err e
 
         // Read the next chunk
 		var available int
-        readbuf := make([]byte, chunklen)
-        available, err = i2cReadBytes(readbuf)
+        readbuf, available, err = i2cReadBytes(chunklen)
         if err != nil {
             err = fmt.Errorf("error reading chunk: %s", err)
             return

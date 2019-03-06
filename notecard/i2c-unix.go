@@ -77,8 +77,8 @@ func i2cWriteBytes(buf []byte) (err error) {
 }
 
 // ReadBytes reads a buffer from I2C and returns how many are still pending
-func i2cReadBytes(buf []byte) (available int, err error) {
-	datalen := len(buf)
+func i2cReadBytes(datalen int) (outbuf []byte, available int, err error) {
+	buf := make([]byte, datalen)
 	readbuf := make([]byte, datalen+2)
 	reg := make([]byte, 2)
 	reg[0] = byte(0)
@@ -89,7 +89,7 @@ func i2cReadBytes(buf []byte) (available int, err error) {
 	}
 	available = int(readbuf[0])
 	good := readbuf[1]; _ = good
-	buf = readbuf[2:]
+	outbuf = readbuf[2:2+good]
 	return
 }
 
@@ -103,7 +103,7 @@ func i2cPortEnum() (names []string) {
 	for _, ref := range i2creg.All() {
 		port := ref.Name
 		if ref.Number != -1 {
-			port = fmt.Sprintf("%s #%d", ref.Name, ref.Number)
+			port = fmt.Sprintf("%s", ref.Name)
 		}
 		names = append(names, port)
 	}
