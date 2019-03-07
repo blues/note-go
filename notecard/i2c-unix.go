@@ -70,6 +70,7 @@ func i2cOpen(addr uint8, port string, portConfig int) (err error) {
 
 // WriteBytes writes a buffer to I2C
 func i2cWriteBytes(buf []byte) (err error) {
+    time.Sleep(1 * time.Millisecond)		// By design, must not send more than once every 1Ms
 	reg := make([]byte, 1)
 	reg[0] = byte(len(buf))
 	reg = append(reg, buf...)
@@ -78,6 +79,7 @@ func i2cWriteBytes(buf []byte) (err error) {
 
 // ReadBytes reads a buffer from I2C and returns how many are still pending
 func i2cReadBytes(datalen int) (outbuf []byte, available int, err error) {
+    time.Sleep(1 * time.Millisecond)		// By design, must not send more than once every 1Ms
 	readbuf := make([]byte, datalen+2)
 	reg := make([]byte, 2)
 	reg[0] = byte(0)
