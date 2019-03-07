@@ -18,6 +18,7 @@ package notecard
 
 import (
 	"fmt"
+	"time"
     "periph.io/x/periph"
     "periph.io/x/periph/host"
 	"periph.io/x/periph/conn/i2c"
