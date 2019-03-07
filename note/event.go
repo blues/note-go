@@ -46,5 +46,14 @@ type Event struct {
     Updates int32               `json:"updates,omitempty"`
     Body *interface{}			`json:"body,omitempty"`
     Payload []byte              `json:"payload,omitempty"`
+	// Used only for event logs
+	LogAttn bool				`json:"logattn,omitempty"`
+	Log map[string]EventLogEntry `json:"log,omitempty"`
 }
 
+// EventLogEntry is the log entry used by notification processing
+type EventLogEntry struct {
+	Attn bool					`json:"attn,omitempty"`
+    Status string				`json:"status,omitempty"`
+    Text string					`json:"text,omitempty"`
+}
