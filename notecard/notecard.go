@@ -368,7 +368,8 @@ func inputHandler(context *Context) {
 }
 
 // Transaction performs a card transaction
-func (context *Context) Transaction(req Request) (rsp Request, err error) {
+//func (context *Context) Transaction(req Request) (rsp Request, err error) {
+func (context *Context) Transaction(req interface{}) (rsp interface{}, err error) {
 
     // Marshal the request to JSON
     reqJSON, err2 := json.Marshal(req)
