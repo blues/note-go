@@ -296,7 +296,7 @@ func (context *Context) Trace() (err error) {
     req := Request{Req:ReqCardIO}
     req.Mode = "trace"
     req.Trace = "+usb"
-    context.Transaction(req)
+    context.TransactionRequest(req)
 
     // Spawn the input handler
     go inputHandler(context)
@@ -367,9 +367,37 @@ func inputHandler(context *Context) {
 
 }
 
-// Transaction performs a card transaction
-//func (context *Context) Transaction(req Request) (rsp Request, err error) {
-func (context *Context) Transaction(req interface{}) (rsp interface{}, err error) {
+// Transaction performs a card transaction with a Req structure
+func (context *Context) TransactionRequest(req Request) (rsp Request, err error) {
+
+    // Marshal the request to JSON
+    reqJSON, err2 := json.Marshal(req)
+    if err2 != nil {
+        err = fmt.Errorf("error marshaling request for module: %s", err2)
+        return
+    }
+
+    // Perform the transaction
+    rspJSON, err2 := context.TransactionJSON(reqJSON)
+    if err2 != nil {
+        err = fmt.Errorf("error marshaling request for module: %s", err2)
+        return
+    }
+
+    // Unmarshal for convenience of the caller
+    err = json.Unmarshal(rspJSON, &rsp)
+    if err != nil {
+        err = fmt.Errorf("error unmarshaling reply from module: %s", err)
+        return
+    }
+
+    // Done
+    return
+
+}
+
+// Transaction performs a card transaction with a JSON structure
+func (context *Context) Transaction(req map[string]interface{}) (rsp map[string]interface{}, err error) {
 
     // Marshal the request to JSON
     reqJSON, err2 := json.Marshal(req)
