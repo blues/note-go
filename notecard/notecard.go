@@ -295,7 +295,7 @@ func (context *Context) Trace() (err error) {
     // Turn on tracing
     req := Request{Req:ReqCardIO}
     req.Mode = "trace"
-    req.Trace = "+usb"
+//    req.Trace = "+usb"
     context.TransactionRequest(req)
 
     // Spawn the input handler
