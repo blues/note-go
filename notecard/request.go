@@ -56,6 +56,8 @@ const ReqCardLocationMode =	"card.location.mode"
 const ReqCardTemp =		"card.temp"
 // ReqCardIO (golint)
 const ReqCardIO =		"card.io"
+// ReqCardAUX (golint)
+const ReqCardAUX =		"card.aux"
 // ReqCardUsageGet (golint)
 const ReqCardUsageGet =	"card.usage.get"
 // ReqCardUsageTest (golint)
