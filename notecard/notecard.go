@@ -292,9 +292,9 @@ func (context *Context) Trace() (err error) {
 		return fmt.Errorf("tracing is only available on USB and AUX ports")
 	}
 
-    // Turn on tracing
+    // Turn on tracing on the current port
     req := Request{Req:ReqCardIO}
-    req.Mode = "trace"
+    req.Mode = "trace-on"
     context.TransactionRequest(req)
 
     // Spawn the input handler
