@@ -30,7 +30,7 @@ const CardI2CMax = 255
 // at it far, far faster than it can process it, therefore we push it in segments with a pause
 // between each segment.
 const CardRequestSegmentMaxLen = 1000
-const CardRequestSegmentDelayMs = 250
+const CardRequestSegmentDelayMs = 100
 
 // Context for the port that is open
 type Context struct {
