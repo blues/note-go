@@ -26,7 +26,11 @@ const (
 // It must be 1-255 bytes as per spec
 const CardI2CMax = 255
 
-// Context for the serial package we're using
+// The notecard is a real-time device that has a fixed size interrupt buffer.  We can push data
+// at it far, far faster than it can process it, therefore we push it in segments with a pause
+// between each segment.
+const CardRequestSegmentMaxLen = 1000
+const CardRequestSegmentDelayMs = 250
 
 // Context for the port that is open
 type Context struct {
@@ -445,12 +449,26 @@ func (context *Context) TransactionJSON(reqJSON []byte) (rspJSON []byte, err err
 // Perform a card transaction over serial under the assumption that request already has '\n' terminator
 func cardTransactionSerial(context *Context, reqJSON []byte) (rspJSON []byte, err error) {
 
-    // Transmit the request
-    _, err = context.openSerialPort.Write(reqJSON)
-    if err != nil {
-        err = fmt.Errorf("error transmitting to module: %s", err)
-        cardReportError(err)
-        return
+    // Transmit the request in segments
+	segOff := 0
+	segLeft := len(reqJSON)
+	for {
+		segLen := segLeft
+		if segLen > CardRequestSegmentMaxLen {
+			segLen = CardRequestSegmentMaxLen
+		}
+	    _, err = context.openSerialPort.Write(reqJSON[segOff:segOff+segLen])
+	    if err != nil {
+	        err = fmt.Errorf("error transmitting to module: %s", err)
+	        cardReportError(err)
+	        return
+		}
+		segOff += segLen
+		segLeft -= segLen
+		if segLeft == 0 {
+			break
+		}
+        time.Sleep(CardRequestSegmentDelayMs * time.Millisecond)
     }
 
     // Read the reply until we get '\n' at the end
@@ -497,6 +515,7 @@ func cardTransactionI2C(context *Context, reqJSON []byte) (rspJSON []byte, err e
     // Send the transaction on the bus
     chunkoffset := 0
     jsonbufLen := len(reqJSON)
+	sentInSegment := 0
     for jsonbufLen > 0 {
         chunklen := CardI2CMax
         if jsonbufLen < chunklen {
@@ -509,6 +528,11 @@ func cardTransactionI2C(context *Context, reqJSON []byte) (rspJSON []byte, err e
         }
         chunkoffset += chunklen;
         jsonbufLen -= chunklen;
+		sentInSegment += chunklen
+		if sentInSegment > CardRequestSegmentMaxLen {
+			sentInSegment -= CardRequestSegmentMaxLen
+	        time.Sleep(CardRequestSegmentDelayMs * time.Millisecond)
+		}
     }
 
     // Loop, building a reply buffer out of received chunks.  We'll build the reply in the same
