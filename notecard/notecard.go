@@ -468,7 +468,6 @@ func cardTransactionSerial(context *Context, reqJSON []byte) (rspJSON []byte, er
 		if segLeft == 0 {
 			break
 		}
-		fmt.Printf("delay\n") // OZZIE
         time.Sleep(CardRequestSegmentDelayMs * time.Millisecond)
     }
 
