@@ -449,7 +449,7 @@ func (context *Context) TransactionJSON(reqJSON []byte) (rspJSON []byte, err err
 // Perform a card transaction over serial under the assumption that request already has '\n' terminator
 func cardTransactionSerial(context *Context, reqJSON []byte) (rspJSON []byte, err error) {
 
-    // Transmit the request in segments
+    // Transmit the request in segments so as not to overwhelm the notecard's interrupt buffers
 	segOff := 0
 	segLeft := len(reqJSON)
 	for {
@@ -468,6 +468,7 @@ func cardTransactionSerial(context *Context, reqJSON []byte) (rspJSON []byte, er
 		if segLeft == 0 {
 			break
 		}
+		fmt.Printf("delay\n") // OZZIE
         time.Sleep(CardRequestSegmentDelayMs * time.Millisecond)
     }
 
@@ -512,7 +513,7 @@ func cardTransactionSerial(context *Context, reqJSON []byte) (rspJSON []byte, er
 // Perform a card transaction over I2C under the assumption that request already has '\n' terminator
 func cardTransactionI2C(context *Context, reqJSON []byte) (rspJSON []byte, err error) {
 
-    // Send the transaction on the bus
+    // Transmit the request in chunks, but also in segments so as not to overwhelm the notecard's interrupt buffers
     chunkoffset := 0
     jsonbufLen := len(reqJSON)
 	sentInSegment := 0
