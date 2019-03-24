@@ -29,6 +29,8 @@ type Note struct {
     Deleted bool                `json:"d,omitempty"`
     Sent bool                   `json:"s,omitempty"`
     Bulk bool                   `json:"k,omitempty"`
+    XPOff uint32				`json:"O,omitempty"`
+    XPLen uint32				`json:"L,omitempty"`
 }
 
 // History records the update history, optimized so that if the most recent entry
