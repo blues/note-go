@@ -13,8 +13,8 @@ import (
     "io/ioutil"
     "math/rand"
     "encoding/json"
-	"github.com/rayozzie/note-go/notecard"
-	"github.com/rayozzie/note-go/notehub"
+	"github.com/blues/note-go/notecard"
+	"github.com/blues/note-go/notehub"
 )
 
 // ConfigSettings defines the config file that maintains the command processor's state

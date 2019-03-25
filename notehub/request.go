@@ -5,7 +5,7 @@
 package notehub
 
 import (
-	"github.com/rayozzie/note-go/notecard"
+	"github.com/blues/note-go/notecard"
 )
 
 // Supported requests

@@ -5,7 +5,7 @@
 package notecard
 
 import (
-	"github.com/rayozzie/note-go/note"
+	"github.com/blues/note-go/note"
 )
 
 // Request Types

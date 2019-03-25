@@ -8,7 +8,7 @@ package noteutil
 
 import (
 	"os/user"
-	"github.com/rayozzie/note-go/notecard"
+	"github.com/blues/note-go/notecard"
 )
 
 // Get the default directory
