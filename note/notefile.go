@@ -27,8 +27,6 @@ type NotefileInfo struct {
     SyncHubEndpointID string    `json:"sync_hub_endpoint,omitempty"`
     // Relative positive/negative priority of data, with 0 being normal
     SyncPriority int            `json:"sync_priority,omitempty"`
-    // True if this notefile should immediately sync upon any change
-    SyncOnChange bool			`json:"sync_on_change,omitempty"`
     // Timed: Target for sync period, if modified and if the value hasn't been synced sooner
     SyncPeriodSecs int          `json:"sync_secs,omitempty"`
 	// ReqTime is specified if notes stored in this notefile must have a valid time associated with them
