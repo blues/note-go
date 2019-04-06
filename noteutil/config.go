@@ -39,9 +39,11 @@ var flagConfigSave bool
 var flagConfigHTTP bool
 var flagConfigHTTPS bool
 var flagConfig ConfigSettings
+
+// Config are the master config settings
 var Config ConfigSettings
 
-// configRead reads the current info from config file
+// ConfigRead reads the current info from config file
 func ConfigRead() error {
 
     // As a convenience to all tools, generate a new random seed for each iteration
@@ -67,7 +69,7 @@ func ConfigRead() error {
 
 }
 
-// configWrite updates the file with the current config info
+// ConfigWrite updates the file with the current config info
 func ConfigWrite() error {
 
     // Marshal it
@@ -100,7 +102,7 @@ func ConfigReset() {
     return
 }
 
-// configShow displays all current config parameters
+// ConfigShow displays all current config parameters
 func ConfigShow() error {
 
     fmt.Printf("\nCurrently saved values:\n")

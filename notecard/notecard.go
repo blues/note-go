@@ -29,7 +29,10 @@ const CardI2CMax = 255
 // The notecard is a real-time device that has a fixed size interrupt buffer.  We can push data
 // at it far, far faster than it can process it, therefore we push it in segments with a pause
 // between each segment.
+
+// CardRequestSegmentMaxLen (golint)
 const CardRequestSegmentMaxLen = 1000
+// CardRequestSegmentDelayMs (golint)
 const CardRequestSegmentDelayMs = 250
 
 // Context for the port that is open
@@ -370,7 +373,7 @@ func inputHandler(context *Context) {
 
 }
 
-// Transaction performs a card transaction with a Req structure
+// TransactionRequest performs a card transaction with a Req structure
 func (context *Context) TransactionRequest(req Request) (rsp Request, err error) {
 
     // Marshal the request to JSON
