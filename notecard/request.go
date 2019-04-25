@@ -147,6 +147,7 @@ type Request struct {
 	BodyTemplate string	        `json:"body_template,omitempty"`
     PayloadTemplate int32		`json:"payload_template,omitempty"`
     Allow bool					`json:"allow,omitempty"`
+    Align bool					`json:"align,omitempty"`
     Limit bool					`json:"limit,omitempty"`
     Trace string				`json:"trace,omitempty"`
     Usage *[]string				`json:"usage,omitempty"`
