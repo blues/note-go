@@ -6,6 +6,8 @@ package note
 
 // DeviceSession is the basic unit of recorded device usage history
 type DeviceSession struct {
+	// Session ID that can be mapped to the events created during that session
+	SessionUID string					`json:"session,omitempty"`
 	// Info from the device structure
     DeviceUID string                    `json:"device,omitempty"`
     DeviceSN string						`json:"sn,omitempty"`

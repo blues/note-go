@@ -47,6 +47,7 @@ type Event struct {
     Updates int32               `json:"updates,omitempty"`
     Body *interface{}			`json:"body,omitempty"`
     Payload []byte              `json:"payload,omitempty"`
+	SessionUID string			`json:"session,omitempty"`
 	// Used only for event logs
 	LogAttn bool				`json:"logattn,omitempty"`
 	Log map[string]EventLogEntry `json:"log,omitempty"`
