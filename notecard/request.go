@@ -54,6 +54,8 @@ const ReqCardLocation =	"card.location"
 const ReqCardLocationMode =	"card.location.mode"
 // ReqCardTemp (golint)
 const ReqCardTemp =		"card.temp"
+// ReqCardVoltage (golint)
+const ReqCardVoltage =	"card.voltage"
 // ReqCardIO (golint)
 const ReqCardIO =		"card.io"
 // ReqCardAUX (golint)
