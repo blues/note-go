@@ -114,6 +114,9 @@ type Request struct {
     Port int32					`json:"port,omitempty"`
     Status string				`json:"status,omitempty"`
     Name string 				`json:"name,omitempty"`
+    Area string 				`json:"area,omitempty"`
+    Country string 				`json:"country,omitempty"`
+    Zone string 				`json:"zone,omitempty"`
     Mode string					`json:"mode,omitempty"`
     Host string					`json:"host,omitempty"`
     Target string				`json:"target,omitempty"`
