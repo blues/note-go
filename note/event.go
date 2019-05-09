@@ -43,6 +43,9 @@ type Event struct {
 	Where string				`json:"where,omitempty"`
 	WhereLat float64			`json:"where_lat,omitempty"`
 	WhereLon float64			`json:"where_lon,omitempty"`
+	WhereLocation string		`json:"where_location,omitempty"`
+	WhereCountry string			`json:"where_location,omitempty"`
+	WhereTimeZone string		`json:"where_timezone,omitempty"`
 	Routed int64				`json:"routed,omitempty"`
     Updates int32               `json:"updates,omitempty"`
     Body *interface{}			`json:"body,omitempty"`
