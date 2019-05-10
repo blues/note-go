@@ -159,6 +159,9 @@ type Request struct {
     State *[]PinState			`json:"state,omitempty"`
 	Serial string				`json:"serial,omitempty"`
     Time uint32					`json:"time,omitempty"`
+    VMin float64				`json:"vmin,omitempty"`
+    VMax float64				`json:"vmax,omitempty"`
+    VAvg float64				`json:"vavg,omitempty"`
 }
 
 // PinState describes the state of an AUX pin for hardware-related Notecard requests
