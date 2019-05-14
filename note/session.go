@@ -38,4 +38,8 @@ type TowerLocation struct {
 	Lat				float64		`json:"lat,omitempty"`		// latitude
 	Lon				float64		`json:"lon,omitempty"`		// longitude
     TimeZone	    string		`json:"zone,omitempty"`		// timezone name
+    MCC				int			`json:"mcc,omitempty"`
+    MNC				int			`json:"mnc,omitempty"`
+    LAC				int			`json:"lac,omitempty"`
+    CID				int			`json:"cid,omitempty"`
 }
