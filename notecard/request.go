@@ -162,6 +162,9 @@ type Request struct {
     VMin float64				`json:"vmin,omitempty"`
     VMax float64				`json:"vmax,omitempty"`
     VAvg float64				`json:"vavg,omitempty"`
+    Daily float64				`json:"daily,omitempty"`
+    Weekly float64				`json:"weekly,omitempty"`
+    Montly float64				`json:"monthly,omitempty"`
 }
 
 // PinState describes the state of an AUX pin for hardware-related Notecard requests
