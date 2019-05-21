@@ -17,7 +17,7 @@ func ConfigDir() string {
     if err != nil {
 		return "."
     }
-	path := usr.HomeDir + "\note"
+	path := usr.HomeDir + "\\note"
     os.MkdirAll(path, 0777)
 	return path
 }
