@@ -12,6 +12,8 @@ import (
 
 // HubDeviceMonitor (golint)
 const HubDeviceMonitor  = "hub.device.monitor"
+// HubDeviceSignal (golint)
+const HubDeviceSignal  = "hub.device.signal"
 // HubQuery (golint)
 const HubQuery          = "hub.app.data.query"
 // HubAppUpload (golint)
