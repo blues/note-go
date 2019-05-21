@@ -7,8 +7,8 @@
 package noteutil
 
 import (
+	"os"
 	"os/user"
-	"github.com/blues/note-go/notecard"
 )
 
 // Get the default directory
@@ -24,5 +24,5 @@ func ConfigDir() string {
 
 // Get the pathname of config settings
 func configSettingsPath() string {
-	return ConfigDir() + "\config.json"
+	return ConfigDir() + "\\config.json"
 }
