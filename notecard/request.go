@@ -74,6 +74,8 @@ const ReqServiceSet =	"service.set"
 const ReqServiceGet =	"service.get"
 // ReqServiceStatus (golint)
 const ReqServiceStatus = "service.status"
+// ReqServiceSignal (golint)
+const ReqServiceSignal = "service.signal"
 // ReqServiceSyncStatus (golint)
 const ReqServiceSyncStatus = "service.sync.status"
 // ReqWebGet (golint)
