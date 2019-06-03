@@ -67,21 +67,21 @@ type EventLogEntry struct {
 
 // Contact info for this app
 type EventContact struct {
-	Name string				`json:"name"`
-	Affiliation string		`json:"org"`
-	Role string				`json:"role"`
-	Email string			`json:"email"`
+	Name string					`json:"name,omitempty"`
+	Affiliation string			`json:"org,omitempty"`
+	Role string					`json:"role,omitempty"`
+	Email string				`json:"email,omitempty"`
 }
 
 // Contact info for this app
 type EventContacts struct {
-	Admin *EventContact		`json:"admin"`
-	Tech *EventContact		`json:"tech"`
+	Admin *EventContact			`json:"admin,omitempty"`
+	Tech *EventContact			`json:"tech,omitempty"`
 }
 
 // App information
 type EventApp struct {
-	AppUID string			`json:"uid,omitempty"`
-	AppLabel string			`json:"label,omitempty"`
-	Contacts EventContacts	`json:"contacts,omitempty"`
+	AppUID string				`json:"uid,omitempty"`
+	AppLabel string				`json:"label,omitempty"`
+	Contacts EventContacts		`json:"contacts,omitempty"`
 }
