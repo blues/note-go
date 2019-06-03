@@ -32,7 +32,6 @@ type Event struct {
     NotefileID string           `json:"file,omitempty"`
     DeviceUID string            `json:"device,omitempty"`
 	DeviceSN string				`json:"sn,omitempty"`
-	AppUID string				`json:"app,omitempty"`
 	ProductUID string			`json:"product,omitempty"`
 	EndpointID string			`json:"endpoint,omitempty"`
 	TowerCountry string			`json:"tower_country,omitempty"`
@@ -55,6 +54,8 @@ type Event struct {
 	// Used only for event logs
 	LogAttn bool				`json:"logattn,omitempty"`
 	Log map[string]EventLogEntry `json:"log,omitempty"`
+	// Provenance of the event
+	App EventApp				`json:"project,omitempty"`
 }
 
 // EventLogEntry is the log entry used by notification processing
@@ -62,4 +63,25 @@ type EventLogEntry struct {
 	Attn bool					`json:"attn,omitempty"`
     Status string				`json:"status,omitempty"`
     Text string					`json:"text,omitempty"`
+}
+
+// Contact info for this app
+type EventContact struct {
+	Name string				`json:"name"`
+	Affiliation string		`json:"org"`
+	Role string				`json:"role"`
+	Email string			`json:"email"`
+}
+
+// Contact info for this app
+type EventContacts struct {
+	Admin *EventContact		`json:"admin"`
+	Tech *EventContact		`json:"tech"`
+}
+
+// App information
+type EventApp struct {
+	AppUID string			`json:"uid,omitempty"`
+	AppLabel string			`json:"label,omitempty"`
+	Contacts EventContacts	`json:"contacts,omitempty"`
 }
