@@ -81,7 +81,7 @@ type EventContacts struct {
 
 // App information
 type EventApp struct {
-	AppUID string				`json:"project_uid,omitempty"`
-	AppLabel string				`json:"project_name,omitempty"`
-	Contacts EventContacts		`json:"project_contacts,omitempty"`
+	AppUID string				`json:"id,omitempty"`
+	AppLabel string				`json:"name,omitempty"`
+	Contacts EventContacts		`json:"contacts,omitempty"`
 }
