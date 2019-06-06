@@ -5,6 +5,6 @@
 package notehub
 
 // DefaultAPIService (golint)
-const DefaultAPIService = "notebox.net"
+const DefaultAPIService = "notefile.net"
 // DefaultAPITopicReq (golint)
 const DefaultAPITopicReq = "/req"

@@ -52,5 +52,6 @@ type HubRequestFile struct {
 	Source string				`json:"source,omitempty"`
 	Contains string				`json:"contains,omitempty"`
 	Found string				`json:"found,omitempty"`
+	Card bool					`json:"card,omitempty"`
     Info *interface{}           `json:"info,omitempty"`
 }
