@@ -402,6 +402,19 @@ func (context *Context) TransactionRequest(req Request) (rsp Request, err error)
 
 }
 
+// Request performs a card transaction with a JSON structure and doesn't return a response
+// (This is for semantic compatibility with other languages.)
+func (context *Context) Request(req map[string]interface{}) (err error) {
+	_, err = context.Transaction(req)
+	return
+}
+
+// RequestResponse performs a card transaction with a JSON structure and doesn't return a response
+// (This is for semantic compatibility with other languages.)
+func (context *Context) RequestResponse(req map[string]interface{}) (rsp map[string]interface{}, err error) {
+	return context.Transaction(req)
+}
+
 // Transaction performs a card transaction with a JSON structure
 func (context *Context) Transaction(req map[string]interface{}) (rsp map[string]interface{}, err error) {
 
