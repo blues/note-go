@@ -67,7 +67,7 @@ type HubRequestFile struct {
 	Contains string				`json:"contains,omitempty"`
 	Found string				`json:"found,omitempty"`
 	FileType string				`json:"type,omitempty"`
-    Firmware HubRequestFileFirmware `json:"firmware,omitempty"`
+    Firmware *HubRequestFileFirmware `json:"firmware,omitempty"`
 	// Arbitrary metadata that the user may define - we don't interpret the schema at all
     Info *interface{}           `json:"info,omitempty"`
 }
