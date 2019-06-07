@@ -40,7 +40,7 @@ type HubRequest struct {
 	Uploads *[]HubRequestFile	`json:"uploads,omitempty"`
 	Contains string				`json:"contains,omitempty"`
 	Handlers *[]string			`json:"handlers,omitempty"`
-    Card bool					`json:"card,omitempty"`
+    FileType string				`json:"type,omitempty"`
 }
 
 // File Types
