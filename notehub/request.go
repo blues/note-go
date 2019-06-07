@@ -43,6 +43,19 @@ type HubRequest struct {
     Card bool					`json:"card,omitempty"`
 }
 
+// File Types
+
+// HubFileTypeUnknown (golint)
+const HubFileTypeUnknown  = ""
+// HubFileTypeUserFirmware (golint)
+const HubFileTypeUserFirmware  = "firmware"
+// HubFileTypeCardFirmware (golint)
+const HubFileTypeCardFirmware  = "notecard"
+
+// HubRequestFileFirmware is firmware-specific metadata
+type HubRequestFileFirmware struct {
+}
+
 // HubRequestFile is is the body of the object uploaded for each file
 type HubRequestFile struct {
 	Name string					`json:"name,omitempty"`
@@ -53,6 +66,8 @@ type HubRequestFile struct {
 	Source string				`json:"source,omitempty"`
 	Contains string				`json:"contains,omitempty"`
 	Found string				`json:"found,omitempty"`
-	Card bool					`json:"card,omitempty"`
+	FileType string				`json:"type,omitempty"`
+    Firmware HubRequestFileFirmware `json:"firmware,omitempty"`
+	// Arbitrary metadata that the user may define - we don't interpret the schema at all
     Info *interface{}           `json:"info,omitempty"`
 }
