@@ -54,11 +54,9 @@ const HubFileTypeCardFirmware  = "notecard"
 
 // HubRequestFileFirmware is firmware-specific metadata
 type HubRequestFileFirmware struct {
-	Provisioned int64      `json:"created"`
-	Modified int64         `json:"modified"`
-	Version string         `json:"string"`
-	Description string     `json:"description"`
-	Creator string         `json:"creator"`
+	Version string         `json:"string,omitempty"`
+	Description string     `json:"description,omitempty"`
+	Creator string         `json:"creator,omitempty"`
 }
 
 // HubRequestFile is is the body of the object uploaded for each file
@@ -68,6 +66,7 @@ type HubRequestFile struct {
 	MD5 string					`json:"md5,omitempty"`
 	CRC32 uint32				`json:"crc32,omitempty"`
 	Created int64				`json:"created,omitempty"`
+	Modified int64               `json:"modified,omitempty"`
 	Source string				`json:"source,omitempty"`
 	Contains string				`json:"contains,omitempty"`
 	Found string				`json:"found,omitempty"`
