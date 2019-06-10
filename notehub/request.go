@@ -63,7 +63,6 @@ type HubRequestFileFirmware struct {
 
 // HubRequestFile is is the body of the object uploaded for each file
 type HubRequestFile struct {
-	UID string					`json:"uid,omitempty"`
 	Name string					`json:"name,omitempty"`
 	Length int					`json:"length,omitempty"`
 	MD5 string					`json:"md5,omitempty"`
