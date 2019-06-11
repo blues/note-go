@@ -1,0 +1,74 @@
+notehub '{"req":"hub.app.get"}'
+
+notehub '{"req":"hub.device.get"}'
+
+notehub '{"req":"hub.app.data.query","columns":".modified;.payload;.body","limit":25,"format":"json"}'
+
+notehub -out test.csv '{"req":"hub.app.data.query","columns":".serial;device_uid:.device;.file;.note;body:q(.body::text);.payload","format":"csv"}'
+
+notehub '{"req":"hub.app.data.query","columns":".serial;.modified;.when;.where;.payload;.body","limit":25}'
+
+notehub '{"req":"hub.app.data.query","columns":".modified;.body;.payload","limit":25,"where":".body.cpm::float < 30"}'
+
+notehub '{"req":"hub.app.data.query","columns":".modified;.payload;.body","limit":25,"where":".body.class::text <> '\''comms'\''"}'
+
+notehub '{"req":"hub.app.data.query","columns":".modified;.body;.payload","limit":25,"where":".modified>=now()-interval '\''1 day'\''"}'
+
+notehub '{"req":"hub.app.data.query","columns":".body.severity;.modified,.body;.payload","limit":10,"where":".body.severity::int < 2"}'
+
+notehub '{"req":"hub.app.data.query","count":true,"where":".body.severity::int < 2"}'
+
+notehub '{"req":"hub.app.data.query","columns":"device_uid:.device;when_captured:q(.when::text);loc_olc:q(.where::text);.body.lnd_7318u;.body.lnd_7128ec;.body.env_temp;.body.env_humid;.body.env_press;.body.bat_voltage;.body.bat_current;.body.bat_charge;.body.opc_pm01_0;.body.opc_pm02_5;.body.opc_pm10_0","limit":100}'
+
+notehub '{"req":"hub.app.data.query","columns":"device_uid:.device;when_captured:q(to_char(.when, '\''YYYY-MM-DD\"T\"HH24:MI:SSZ'\''));loc_olc:q(.where::text)","limit":100}'
+
+notehub '{"req":"hub.app.data.query","columns":".serial;.modified;.body","limit":25,"order":".serial"}'
+
+notehub '{"req":"note.add","file":"geiger.q","body":{"testfield":"testvalue"}}'
+
+notehub '{"req":"hub.app.data.query","columns":".modified;.when;.body;.payload","order":".modified","where":".body.test::text = '\''iccid:89011703278123166574:1522628156'\''"}'
+
+notehub '{"req":"hub.app.data.query","columns":".modified;.where;.file;.payload;.body;.device","limit":5000,"order":".modified","descending":true,"format":"json"}'
+
+notehub '{"req":"note.update","file":"hub.db","note":"testnote","body":{"testfield":"testvalue"}}'
+notehub '{"req":"note.get","file":"hub.db","note":"testnote"}'
+
+notehub -in testapp.json
+notehub -in testrpt.json
+notehub -in testweb1.json
+notehub -in testweb2.json
+notehub -in testmqtt.json
+notehub -in testm2x.json
+
+
+notehub -upload test.bin
+
+notehub '{"req":"hub.app.upload.query"}'
+
+notehub '{"req":"hub.app.upload.delete","name":"test-20181002225319.bin"}'
+
+notehub '{"req":"hub.app.upload.get","name":"test-20181002225319.bin","offset":0,"length":10}'
+
+notehub '{"req":"hub.app.upload.set","name":"test-20181002225319.bin","body":{"testing":123},"contains":"Generate Python"}'
+
+notehub '{"req":"hub.app.upload.get","name":"test-20181002225319.bin"}'
+
+notehub '{"req":"hub.app.data.query","columns":".serial;.device;.modified;.when;.body;.payload","order":".modified","where":".device::text='\''imei:866425030050464'\'' or .device::text='\''imei:866425030050464:1543271941'\'' "}'
+
+// For a DFU of Notecard
+notehub -upload ~/desktop/notecard.bin
+notehub -type firmware -upload ~/desktop/notecard.bin
+notehub -type firmware -upload ~/desktop/test.txt
+notehub -type notecard -upload ~/desktop/notecard.bin
+notehub -type notecard -upload ~/desktop/test.txt
+notehub '{"req":"hub.app.upload.query","type":"firmware"}'
+notehub '{"req":"hub.app.upload.query","type":"notecard"}'
+// Or for a DFU of an app
+notehub -upload ~/dev/tmp/arduino/airnote.ino.bin
+// ...then, optionaly, using the output from that command, substitute the "name" below and verify the contents build number, upload custom metadata, etc
+notehub '{"req":"hub.app.upload.set","name":"notecard-20181008172411.bin","body":{"your":"metadata"},"contains":"Blues Wireless Notecard"}'
+// ...or...
+notehub '{"req":"hub.app.upload.set","name":"airnote-20190407201549.ino.bin","body":{"your":"metadata"},"contains":"Airnote version"}'
+// ...then, modify the server's HubEnvVarCardFirmwareName (_fwc) with the "name" above.  That's it.
+// ...and if it fails for some reason, modify HubEnvVarCardFirmwareRetry (_fwc_retry) to bump it up by one, which will force a client retry
+// ...and all the while the device status should be being uploaded and viewable on the service.
