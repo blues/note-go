@@ -24,6 +24,7 @@ type Event struct {
     Body *interface{}			`json:"body,omitempty"`
     Req string                  `json:"req,omitempty"`
     Rsp string					`json:"rsp,omitempty"`
+    Error string                `json:"err,omitempty"`
 	When int64					`json:"when,omitempty"`
 	Where string				`json:"where,omitempty"`
 	WhereLat float64			`json:"where_lat,omitempty"`
@@ -32,27 +33,26 @@ type Event struct {
 	WhereCountry string			`json:"where_country,omitempty"`
 	WhereTimeZone string		`json:"where_timezone,omitempty"`
 	Routed int64				`json:"routed,omitempty"`
-	EventUID string				`json:"event,omitempty"`
-    Error string                `json:"err,omitempty"`
 	NoteID string				`json:"note,omitempty"`
+    NotefileID string           `json:"file,omitempty"`
     Updates int32               `json:"updates,omitempty"`
     Deleted bool                `json:"deleted,omitempty"`
     Sent bool					`json:"queued,omitempty"`
     Bulk bool                   `json:"bulk,omitempty"`
-    NotefileID string           `json:"file,omitempty"`
-    DeviceUID string            `json:"device,omitempty"`
-	DeviceSN string				`json:"sn,omitempty"`
-	ProductUID string			`json:"product,omitempty"`
-	EndpointID string			`json:"endpoint,omitempty"`
 	TowerCountry string			`json:"tower_country,omitempty"`
 	TowerLocation string		`json:"tower_location,omitempty"`
 	TowerTimeZone string		`json:"tower_timezone,omitempty"`
 	TowerLat float64			`json:"tower_lat,omitempty"`
 	TowerLon float64			`json:"tower_lon,omitempty"`
-	SessionUID string			`json:"session,omitempty"`
 	LogAttn bool				`json:"logattn,omitempty"`
 	Log map[string]EventLogEntry `json:"log,omitempty"`
 	App *EventApp				`json:"project,omitempty"`
+	EndpointID string			`json:"endpoint,omitempty"`
+	DeviceSN string				`json:"sn,omitempty"`
+    DeviceUID string            `json:"device,omitempty"`
+	ProductUID string			`json:"product,omitempty"`
+	SessionUID string			`json:"session,omitempty"`
+	EventUID string				`json:"event,omitempty"`
     Payload []byte              `json:"payload,omitempty"`
 }
 
