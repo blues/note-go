@@ -55,7 +55,7 @@ type Event struct {
 	LogAttn bool				`json:"logattn,omitempty"`
 	Log map[string]EventLogEntry `json:"log,omitempty"`
 	// Provenance of the event
-	App EventApp				`json:"project,omitempty"`
+	App *EventApp				`json:"project,omitempty"`
 }
 
 // EventLogEntry is the log entry used by notification processing
