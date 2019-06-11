@@ -21,11 +21,22 @@ const EventNoAction =			""
 
 // Event is the request structure passed to the Notification proc
 type Event struct {
-	EventUID string				`json:"event,omitempty"`
+    Body *interface{}			`json:"body,omitempty"`
+    Payload []byte              `json:"payload,omitempty"`
     Req string                  `json:"req,omitempty"`
     Rsp string					`json:"rsp,omitempty"`
+	When int64					`json:"when,omitempty"`
+	Where string				`json:"where,omitempty"`
+	WhereLat float64			`json:"where_lat,omitempty"`
+	WhereLon float64			`json:"where_lon,omitempty"`
+	WhereLocation string		`json:"where_location,omitempty"`
+	WhereCountry string			`json:"where_country,omitempty"`
+	WhereTimeZone string		`json:"where_timezone,omitempty"`
+	Routed int64				`json:"routed,omitempty"`
+	EventUID string				`json:"event,omitempty"`
     Error string                `json:"err,omitempty"`
 	NoteID string				`json:"note,omitempty"`
+    Updates int32               `json:"updates,omitempty"`
     Deleted bool                `json:"deleted,omitempty"`
     Sent bool					`json:"queued,omitempty"`
     Bulk bool                   `json:"bulk,omitempty"`
@@ -39,17 +50,6 @@ type Event struct {
 	TowerTimeZone string		`json:"tower_timezone,omitempty"`
 	TowerLat float64			`json:"tower_lat,omitempty"`
 	TowerLon float64			`json:"tower_lon,omitempty"`
-	When int64					`json:"when,omitempty"`
-	Where string				`json:"where,omitempty"`
-	WhereLat float64			`json:"where_lat,omitempty"`
-	WhereLon float64			`json:"where_lon,omitempty"`
-	WhereLocation string		`json:"where_location,omitempty"`
-	WhereCountry string			`json:"where_country,omitempty"`
-	WhereTimeZone string		`json:"where_timezone,omitempty"`
-	Routed int64				`json:"routed,omitempty"`
-    Updates int32               `json:"updates,omitempty"`
-    Body *interface{}			`json:"body,omitempty"`
-    Payload []byte              `json:"payload,omitempty"`
 	SessionUID string			`json:"session,omitempty"`
 	// Used only for event logs
 	LogAttn bool				`json:"logattn,omitempty"`
