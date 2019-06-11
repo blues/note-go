@@ -36,7 +36,7 @@ type HubRequest struct {
 	notecard.Request			`json:",omitempty"`
 	AppUID string				`json:"app,omitempty"`
 	FleetUID string				`json:"fleet,omitempty"`
-	*DbQuery					`json:",omitempty"`
+	Query *DbQuery				`json:"query,omitempty"`
 	Uploads *[]HubRequestFile	`json:"uploads,omitempty"`
 	Contains string				`json:"contains,omitempty"`
 	Handlers *[]string			`json:"handlers,omitempty"`
