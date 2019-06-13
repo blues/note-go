@@ -107,6 +107,7 @@ type Request struct {
     Delete bool                 `json:"delete,omitempty"`
     USB bool					`json:"usb,omitempty"`
     Connected bool				`json:"connected,omitempty"`
+    Secure bool					`json:"secure,omitempty"`
     Signals int32				`json:"signals,omitempty"`
     Max int32					`json:"max,omitempty"`
     Changes int32				`json:"changes,omitempty"`
