@@ -160,6 +160,8 @@ type Request struct {
     Allow bool					`json:"allow,omitempty"`
     Align bool					`json:"align,omitempty"`
     Limit bool					`json:"limit,omitempty"`
+    ReqTime bool				`json:"reqtime,omitempty"`
+    ReqLoc bool					`json:"reqloc,omitempty"`
     Trace string				`json:"trace,omitempty"`
     Usage *[]string				`json:"usage,omitempty"`
     State *[]PinState			`json:"state,omitempty"`
