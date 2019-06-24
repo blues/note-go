@@ -26,8 +26,8 @@ type DeviceSession struct {
 	// Usage during the period - initially estimated, but then corrected when we get to the next period
 	Period DeviceUsage					`json:"period,omitempty"`
 	// Physical device info
-	Voltage DeviceUsage					`json:"voltage,omitempty"`
-	Temp DeviceUsage					`json:"temp,omitempty"`
+	Voltage float64 					`json:"voltage,omitempty"`
+	Temp float64						`json:"temp,omitempty"`
 	// For keeping track of when the last work was done for a session
 	LastWorkDone int64
 }
