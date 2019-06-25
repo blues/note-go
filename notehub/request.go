@@ -54,9 +54,22 @@ const HubFileTypeCardFirmware  = "notecard"
 
 // HubRequestFileFirmware is firmware-specific metadata
 type HubRequestFileFirmware struct {
-	Version string         `json:"string,omitempty"`
-	Description string     `json:"description,omitempty"`
-	Creator string         `json:"creator,omitempty"`
+	// The organization accountable for the firmware - a display string
+	Organization string			`json:"org,omitempty"`
+	// A description of the firmware - a display string
+	Description string			`json:"desc,omitempty"`
+	// The name and model number of the product containing the firmware - a display string
+	Product string				`json:"product,omitempty"`
+	// The identifier of the only firmware that will be acceptable and downloaded to this device
+	Firmware string				`json:"firmware,omitempty"`
+	// The version number of the firmware, generally major.minor as a string
+	Version string				`json:"version,omitempty"`
+	// The build number of the firmware, generally just a build number as a string
+	Build string				`json:"build,omitempty"`
+	// The build number of the firmware, generally just a date and time
+	Built string				`json:"built,omitempty"`
+	// The entity who built or is responsible for the firmware - a display string
+	Builder string				`json:"builder,omitempty"`
 }
 
 // HubRequestFile is is the body of the object uploaded for each file
