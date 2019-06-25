@@ -57,7 +57,7 @@ type HubRequestFileFirmware struct {
 	// The organization accountable for the firmware - a display string
 	Organization string			`json:"org,omitempty"`
 	// A description of the firmware - a display string
-	Description string			`json:"desc,omitempty"`
+	Description string			`json:"description,omitempty"`
 	// The name and model number of the product containing the firmware - a display string
 	Product string				`json:"product,omitempty"`
 	// The identifier of the only firmware that will be acceptable and downloaded to this device
