@@ -38,6 +38,8 @@ const ReqNoteUpdate =   "note.update"
 const ReqNoteDelete =   "note.delete"
 // ReqCardTime (golint)
 const ReqCardTime =		"card.time"
+// ReqCardContact (golint)
+const ReqCardContact =	"card.contact"
 // ReqCardAttn (golint)
 const ReqCardAttn =		"card.attn"
 // ReqCardVersion (golint)
@@ -120,6 +122,9 @@ type Request struct {
     Status string				`json:"status,omitempty"`
     Version string				`json:"version,omitempty"`
     Name string 				`json:"name,omitempty"`
+	Org string					`json:"org,omitempty"`
+	Role string					`json:"role,omitempty"`
+	Email string				`json:"email,omitempty"`
     Area string 				`json:"area,omitempty"`
     Country string 				`json:"country,omitempty"`
     Zone string 				`json:"zone,omitempty"`

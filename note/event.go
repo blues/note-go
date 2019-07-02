@@ -47,6 +47,7 @@ type Event struct {
 	LogAttn bool				`json:"logattn,omitempty"`
 	Log map[string]EventLogEntry `json:"log,omitempty"`
 	App *EventApp				`json:"project,omitempty"`
+	DeviceContact *EventContact `json:"device_contact,omitempty"`
 	EndpointID string			`json:"endpoint,omitempty"`
 	DeviceSN string				`json:"sn,omitempty"`
     DeviceUID string            `json:"device,omitempty"`
@@ -63,7 +64,7 @@ type EventLogEntry struct {
     Text string					`json:"text,omitempty"`
 }
 
-// Contact info for this app
+// EventContact has the basic contact info structure
 type EventContact struct {
 	Name string					`json:"name,omitempty"`
 	Affiliation string			`json:"org,omitempty"`
@@ -71,13 +72,13 @@ type EventContact struct {
 	Email string				`json:"email,omitempty"`
 }
 
-// Contact info for this app
+// EventContacts has contact info for this app
 type EventContacts struct {
 	Admin *EventContact			`json:"admin,omitempty"`
 	Tech *EventContact			`json:"tech,omitempty"`
 }
 
-// App information
+// EventApp has information about the app
 type EventApp struct {
 	AppUID string				`json:"id,omitempty"`
 	AppLabel string				`json:"name,omitempty"`
