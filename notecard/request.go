@@ -20,6 +20,8 @@ const ReqFilesDelete =  "files.delete"
 const ReqFilesGet =     "files.get"
 // ReqFilesSync (golint)
 const ReqFilesSync =    "files.sync"
+// ReqFilesStats (golint)
+const ReqFilesStats =   "files.stats"
 // ReqServiceSync (golint)
 const ReqServiceSync =  "service.sync"
 // ReqNotesGet (golint)
@@ -110,6 +112,7 @@ type Request struct {
     USB bool					`json:"usb,omitempty"`
     Connected bool				`json:"connected,omitempty"`
     Secure bool					`json:"secure,omitempty"`
+    Retry bool					`json:"retry,omitempty"`
     Signals int32				`json:"signals,omitempty"`
     Max int32					`json:"max,omitempty"`
     Changes int32				`json:"changes,omitempty"`
