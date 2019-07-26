@@ -182,6 +182,7 @@ type Request struct {
     Weekly float64				`json:"weekly,omitempty"`
     Montly float64				`json:"monthly,omitempty"`
     Verify bool					`json:"verify,omitempty"`
+	Calibration float64			`json:"calibration,omitempty"`
 }
 
 // PinState describes the state of an AUX pin for hardware-related Notecard requests
