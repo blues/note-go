@@ -182,6 +182,7 @@ type Request struct {
     Weekly float64				`json:"weekly,omitempty"`
     Montly float64				`json:"monthly,omitempty"`
     Verify bool					`json:"verify,omitempty"`
+    Set bool					`json:"set,omitempty"`
 	Calibration float64			`json:"calibration,omitempty"`
 }
 
