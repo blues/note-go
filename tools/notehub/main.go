@@ -5,67 +5,71 @@
 package main
 
 import (
-    "flag"
-    "os"
-    "os/signal"
-    "syscall"
-	"strings"
-    "fmt"
+	"flag"
+	"fmt"
+	"github.com/blues/note-go/notehub"
+	"github.com/blues/note-go/noteutil"
 	"io/ioutil"
-    "github.com/blues/note-go/notehub"
-    "github.com/blues/note-go/noteutil"
+	"os"
+	"os/signal"
+	"strings"
+	"syscall"
 )
 
 // Exit codes
-const exitOk =		0
-const exitFail =	1
+const exitOk = 0
+const exitFail = 1
 
 // Main entry point
 func main() {
 
-    // Spawn our signal handler
-    go signalHandler()
+	// Spawn our signal handler
+	go signalHandler()
 
-    // Process command line
-    var flagReq string
-    flag.StringVar(&flagReq, "req", "", "{json for device-like request}")
-    var flagMonitorJq bool
-    flag.BoolVar(&flagMonitorJq, "jq", false, "strip all // lines from monitor output so that jq can be used")
-    var flagMonitorApp bool
-    flag.BoolVar(&flagMonitorApp, "appmon", false, "monitor an app's device output in real-time")
-    var flagMonitorDevice bool
-    flag.BoolVar(&flagMonitorDevice, "monitor", false, "monitor device output in real-time")
-    var flagIn string
-    flag.StringVar(&flagIn, "in", "", "input filename, enabling request to be contained in a file")
-    var flagUpload string
-    flag.StringVar(&flagUpload, "upload", "", "filename to upload")
-    var flagType string
-    flag.StringVar(&flagType, "type", "", "indicate file type of image such as 'firmware'")
-    var flagOverwrite bool
-    flag.BoolVar(&flagOverwrite, "overwrite", false, "use exact filename in upload and overwrite it on service")
-    var flagOut string
-    flag.StringVar(&flagOut, "out", "", "output filename")
+	// Process command line
+	var flagReq string
+	flag.StringVar(&flagReq, "req", "", "{json for device-like request}")
+	var flagMonitorJq bool
+	flag.BoolVar(&flagMonitorJq, "jq", false, "strip all // lines from monitor output so that jq can be used")
+	var flagMonitorApp bool
+	flag.BoolVar(&flagMonitorApp, "appmon", false, "monitor an app's device output in real-time")
+	var flagMonitorDevice bool
+	flag.BoolVar(&flagMonitorDevice, "monitor", false, "monitor device output in real-time")
+	var flagIn string
+	flag.StringVar(&flagIn, "in", "", "input filename, enabling request to be contained in a file")
+	var flagUpload string
+	flag.StringVar(&flagUpload, "upload", "", "filename to upload")
+	var flagType string
+	flag.StringVar(&flagType, "type", "", "indicate file type of image such as 'firmware'")
+	var flagOverwrite bool
+	flag.BoolVar(&flagOverwrite, "overwrite", false, "use exact filename in upload and overwrite it on service")
+	var flagOut string
+	flag.StringVar(&flagOut, "out", "", "output filename")
 
 	// Parse these flags and also the note tool config flags
 	err := noteutil.FlagParse()
-    if err != nil {
-        fmt.Printf("%s\n", err)
-        os.Exit(exitFail)
-    }
+	if err != nil {
+		fmt.Printf("%s\n", err)
+		os.Exit(exitFail)
+	}
 
 	// If no commands found, just show the config
-    if len(os.Args) == 1 {
+	if len(os.Args) == 1 {
 		fmt.Printf("\nCommand options:\n")
 		flag.PrintDefaults()
 		fmt.Printf("\nCurrent settings:\n")
-        noteutil.ConfigShow()
-        os.Exit(exitOk)
+		noteutil.ConfigShow()
+		os.Exit(exitOk)
 	}
 
 	// Misc state flags
 	outq := make(chan string)
-	go func() { for { fmt.Printf("%s", <-outq) } }()
-	
+	go func() {
+		for {
+			fmt.Printf("%s", <-outq)
+		}
+	}()
+
 	// Process the main part of the command line as a -req
 	argsLeft := len(flag.Args())
 	if argsLeft == 1 {
@@ -98,8 +102,8 @@ func main() {
 		}
 		req := notehub.HubRequest{}
 		req.Req = notehub.HubDeviceMonitor
-        reqHub(noteutil.Config.Hub, req, "", req.FileType, false, noteutil.Config.Secure, flagMonitorJq, outq)
-    }
+		reqHub(noteutil.Config.Hub, req, "", req.FileType, false, noteutil.Config.Secure, flagMonitorJq, outq)
+	}
 
 	// Process app monitor commands
 	if flagMonitorApp {
@@ -109,45 +113,45 @@ func main() {
 		}
 		req := notehub.HubRequest{}
 		req.Req = notehub.HubAppHandlers
-        rsp, err := reqHub(noteutil.Config.Hub, req, "", req.FileType, false, noteutil.Config.Secure, flagMonitorJq, nil)
-        if err != nil {
-            fmt.Printf("%s\n", err)
-            os.Exit(exitFail)
-        }
-		if rsp.Err != "" {
-            os.Exit(exitFail)
-        }
-		if rsp.Handlers == nil || len(*rsp.Handlers) == 0 {
-			fmt.Printf("no handlers\n");
+		rsp, err := reqHub(noteutil.Config.Hub, req, "", req.FileType, false, noteutil.Config.Secure, flagMonitorJq, nil)
+		if err != nil {
+			fmt.Printf("%s\n", err)
 			os.Exit(exitFail)
 		}
-		for i, handler := range(*rsp.Handlers) {
+		if rsp.Err != "" {
+			os.Exit(exitFail)
+		}
+		if rsp.Handlers == nil || len(*rsp.Handlers) == 0 {
+			fmt.Printf("no handlers\n")
+			os.Exit(exitFail)
+		}
+		for i, handler := range *rsp.Handlers {
 			req := notehub.HubRequest{}
 			req.Req = notehub.HubAppMonitor
-			req.FleetUID = ""		// Monitor all fleets in the app
-			noteutil.Config.Device = ""		// DeviceUID must be "" to prevent http-req.go from redirecting to handler
+			req.FleetUID = ""           // Monitor all fleets in the app
+			noteutil.Config.Device = "" // DeviceUID must be "" to prevent http-req.go from redirecting to handler
 			if i+1 == len(*rsp.Handlers) {
-		        reqHub(handler, req, "", req.FileType, false, noteutil.Config.Secure, flagMonitorJq, outq)
+				reqHub(handler, req, "", req.FileType, false, noteutil.Config.Secure, flagMonitorJq, outq)
 			} else {
-		        go reqHub(handler, req, "", req.FileType, false, noteutil.Config.Secure, flagMonitorJq, outq)
+				go reqHub(handler, req, "", req.FileType, false, noteutil.Config.Secure, flagMonitorJq, outq)
 			}
-        }
-    }
+		}
+	}
 
 	// Process requests
 	if flagReq != "" || flagUpload != "" {
-        rsp, err := reqHubJSON(noteutil.Config.Hub, []byte(flagReq), flagUpload, flagType, flagOverwrite, noteutil.Config.Secure, flagMonitorJq, nil)
-        if err != nil {
-            fmt.Printf("Error processing request: %s\n", err)
-            os.Exit(exitFail)
-        }
+		rsp, err := reqHubJSON(noteutil.Config.Hub, []byte(flagReq), flagUpload, flagType, flagOverwrite, noteutil.Config.Secure, flagMonitorJq, nil)
+		if err != nil {
+			fmt.Printf("Error processing request: %s\n", err)
+			os.Exit(exitFail)
+		}
 		if flagOut == "" {
 			fmt.Printf("%s", rsp)
 		} else {
 			outfile, err2 := os.Create(flagOut)
 			if err2 != nil {
-	            fmt.Printf("Can't create output file: %s\n", err)
-	            os.Exit(exitFail)
+				fmt.Printf("Can't create output file: %s\n", err)
+				os.Exit(exitFail)
 			}
 			outfile.Write(rsp)
 			outfile.Close()
@@ -155,7 +159,7 @@ func main() {
 	}
 
 	// Success
-    os.Exit(exitOk)
+	os.Exit(exitOk)
 
 }
 
@@ -172,22 +176,22 @@ func stringOrReset(str string) string {
 	}
 
 	return str
-	
+
 }
 
 // Our app's signal handler
 func signalHandler() {
-    ch := make(chan os.Signal)
-    signal.Notify(ch, syscall.SIGTERM)
-    signal.Notify(ch, syscall.SIGINT)
-    signal.Notify(ch, syscall.SIGSEGV)
-    for {
-        switch <-ch {
-        case syscall.SIGINT:
-            fmt.Printf(" (interrupted)\n")
-            os.Exit(exitFail)
-        case syscall.SIGTERM:
-            break
-        }
-    }
+	ch := make(chan os.Signal)
+	signal.Notify(ch, syscall.SIGTERM)
+	signal.Notify(ch, syscall.SIGINT)
+	signal.Notify(ch, syscall.SIGSEGV)
+	for {
+		switch <-ch {
+		case syscall.SIGINT:
+			fmt.Printf(" (interrupted)\n")
+			os.Exit(exitFail)
+		case syscall.SIGTERM:
+			break
+		}
+	}
 }

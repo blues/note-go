@@ -1,4 +1,4 @@
-// Copyright 2017 Inca Roads LLC.  All rights reserved. 
+// Copyright 2017 Inca Roads LLC.  All rights reserved.
 // Use of this source code is governed by licenses granted by the
 // copyright holder including that found in the LICENSE file.
 
@@ -13,8 +13,7 @@
 
 package notecard
 
-import (
-)
+import ()
 
 // Get the default serial device
 func serialDefault() (device string, speed int) {
@@ -25,5 +24,5 @@ func serialDefault() (device string, speed int) {
 
 // Set or display the serial port
 func serialPortEnum() (names []string) {
-    return
+	return
 }

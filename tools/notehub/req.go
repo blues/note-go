@@ -5,40 +5,40 @@
 package main
 
 import (
-	"io"
-    "fmt"
-    "bytes"
-	"strings"
-    "io/ioutil"
-    "net/http"
+	"bytes"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
-    "crypto/tls"
-    "crypto/x509"
-    "github.com/blues/note-go/notehub"
-    "github.com/blues/note-go/noteutil"
+	"fmt"
+	"github.com/blues/note-go/notehub"
+	"github.com/blues/note-go/noteutil"
+	"io"
+	"io/ioutil"
+	"net/http"
+	"strings"
 )
 
 // Add an arg to an URL query string
 func addQuery(in string, key string, value string) (out string) {
-    out = in
-    if value != "" {
-        if out == "" {
-            out += "?"
-        } else {
-            out += "&"
-        }
-        out += key
-        out += "=\""
-        out += value
-        out += "\""
-    }
-    return
+	out = in
+	if value != "" {
+		if out == "" {
+			out += "?"
+		} else {
+			out += "&"
+		}
+		out += key
+		out += "=\""
+		out += value
+		out += "\""
+	}
+	return
 }
 
 // Perform an HTTP requet, but do so using structs rather than bytes
 func reqHub(hub string, request notehub.HubRequest, requestFile string, filetype string, overwrite bool, secure bool, dropNonJSON bool, outq chan string) (response notehub.HubRequest, err error) {
 
-    reqJSON, err2 := json.Marshal(request)
+	reqJSON, err2 := json.Marshal(request)
 	if err2 != nil {
 		err = err2
 		return
@@ -51,25 +51,25 @@ func reqHub(hub string, request notehub.HubRequest, requestFile string, filetype
 	}
 
 	err = json.Unmarshal(rspJSON, &response)
-	return	
+	return
 
 }
 
 // Perform an HTTP request
 func reqHubJSON(hub string, request []byte, requestFile string, filetype string, overwrite bool, secure bool, dropNonJSON bool, outq chan string) (response []byte, err error) {
 
-    scheme := "http"
-    if secure {
-        scheme = "https"
-    }
+	scheme := "http"
+	if secure {
+		scheme = "https"
+	}
 
 	fn := ""
 	path := strings.Split(requestFile, "/")
 	if len(path) > 0 {
 		fn = path[len(path)-1]
 	}
-	
-    url := fmt.Sprintf("%s://%s%s", scheme, hub, notehub.DefaultAPITopicReq)
+
+	url := fmt.Sprintf("%s://%s%s", scheme, hub, notehub.DefaultAPITopicReq)
 	query := addQuery("", "app", noteutil.Config.App)
 	query = addQuery(query, "device", noteutil.Config.Device)
 	query = addQuery(query, "upload", fn)
@@ -92,88 +92,87 @@ func reqHubJSON(hub string, request []byte, requestFile string, filetype string,
 		fileLength = len(fileContents)
 		buffer = bytes.NewBuffer(fileContents)
 	}
-	
-    httpReq, err := http.NewRequest("POST", url, buffer)
+
+	httpReq, err := http.NewRequest("POST", url, buffer)
 	if err != nil {
 		return
 	}
-    httpReq.Header.Set("User-Agent", "notehub-client")
+	httpReq.Header.Set("User-Agent", "notehub-client")
 	if requestFile != "" {
 		httpReq.Header.Set("Content-Length", fmt.Sprintf("%d", fileLength))
 		httpReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	} else {
-	    httpReq.Header.Set("Content-Type", "application/json")
+		httpReq.Header.Set("Content-Type", "application/json")
 	}
 
-    httpClient := &http.Client{
-    }
+	httpClient := &http.Client{}
 
-    if secure {
+	if secure {
 
-        if noteutil.Config.Cert == "" || noteutil.Config.Key == "" {
-            err = fmt.Errorf("HTTPS client cert (-cert) and key (-key) are required for secure API access")
-            return
-        }
+		if noteutil.Config.Cert == "" || noteutil.Config.Key == "" {
+			err = fmt.Errorf("HTTPS client cert (-cert) and key (-key) are required for secure API access")
+			return
+		}
 
-        clientCert, err2 := tls.LoadX509KeyPair(noteutil.Config.Cert, noteutil.Config.Key)
-        if err2 != nil {
-            err = err2
-            return
-        }
+		clientCert, err2 := tls.LoadX509KeyPair(noteutil.Config.Cert, noteutil.Config.Key)
+		if err2 != nil {
+			err = err2
+			return
+		}
 
-        tlsConfig := &tls.Config {
-            Certificates: []tls.Certificate{clientCert},
-            InsecureSkipVerify: true,
-        }
+		tlsConfig := &tls.Config{
+			Certificates:       []tls.Certificate{clientCert},
+			InsecureSkipVerify: true,
+		}
 
-        if noteutil.Config.Root != "" {
+		if noteutil.Config.Root != "" {
 
-            caCert, err2 := ioutil.ReadFile(noteutil.Config.Root)
-            if err2 != nil {
-                err = err2
-                return
-            }
+			caCert, err2 := ioutil.ReadFile(noteutil.Config.Root)
+			if err2 != nil {
+				err = err2
+				return
+			}
 
-            caCertPool := x509.NewCertPool()
-            caCertPool.AppendCertsFromPEM(caCert)
+			caCertPool := x509.NewCertPool()
+			caCertPool.AppendCertsFromPEM(caCert)
 
-            tlsConfig = &tls.Config {
-                Certificates: []tls.Certificate{clientCert},
-                RootCAs:      caCertPool,
-            }
+			tlsConfig = &tls.Config{
+				Certificates: []tls.Certificate{clientCert},
+				RootCAs:      caCertPool,
+			}
 
-        }
+		}
 
-        tlsConfig.BuildNameToCertificate()
+		tlsConfig.BuildNameToCertificate()
 
-        transport := &http.Transport {
-            TLSClientConfig: tlsConfig,
-        }
+		transport := &http.Transport{
+			TLSClientConfig: tlsConfig,
+		}
 
-        httpClient = &http.Client{
-            Transport: transport,
-        }
+		httpClient = &http.Client{
+			Transport: transport,
+		}
 
-    }
+	}
 
-    httpRsp, err2 := httpClient.Do(httpReq)
-    if err2 != nil {
-        err = err2
-        return
-    }
+	httpRsp, err2 := httpClient.Do(httpReq)
+	if err2 != nil {
+		err = err2
+		return
+	}
 
-    // Note that we must do this with no timeout specified on
-    // the httpClient, else monitor mode would time out.
-    b := make([]byte, 2048)
+	// Note that we must do this with no timeout specified on
+	// the httpClient, else monitor mode would time out.
+	b := make([]byte, 2048)
 	linebuf := []byte{}
-    for {
-        n, err2 := httpRsp.Body.Read(b)
-        if n > 0 {
+	for {
+		n, err2 := httpRsp.Body.Read(b)
+		if n > 0 {
 
 			// Append to result buffer if no outq is specified
 			if outq == nil {
 
-	            response = append(response, b[:n]...)
+				response = append(response, b[:n]...)
 
 			} else {
 
@@ -186,7 +185,7 @@ func reqHubJSON(hub string, request []byte, requestFile string, filetype string,
 					if i == -1 {
 						break
 					}
-					line := linebuf[0:i+1]
+					line := linebuf[0 : i+1]
 					linebuf = linebuf[i+1:]
 					if !dropNonJSON {
 						outq <- string(line)
@@ -198,22 +197,21 @@ func reqHubJSON(hub string, request []byte, requestFile string, filetype string,
 
 					// Remember the very last line as the response, in case it
 					// was an error and we're about to get an io.EOF
-		            response = line
-	            }
-
+					response = line
+				}
 
 			}
 
-        }
-        if err2 != nil {
+		}
+		if err2 != nil {
 			if err2 != io.EOF {
 				err = err2
 				return
 			}
-            break
-        }
-    }
+			break
+		}
+	}
 
-    return
+	return
 
 }

@@ -1,4 +1,4 @@
-// Copyright 2019 Blues Inc.  All rights reserved. 
+// Copyright 2019 Blues Inc.  All rights reserved.
 // Use of this source code is governed by licenses granted by the
 // copyright holder including that found in the LICENSE file.
 
@@ -17,12 +17,12 @@ import (
 
 // ConfigDir returns the config directory
 func ConfigDir() string {
-    usr, err := user.Current()
-    if err != nil {
+	usr, err := user.Current()
+	if err != nil {
 		return "."
-    }
+	}
 	path := usr.HomeDir + "/note"
-    os.MkdirAll(path, 0777)
+	os.MkdirAll(path, 0777)
 	return path
 }
 
