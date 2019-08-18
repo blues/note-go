@@ -6,7 +6,7 @@ This library allows you to control a Notecard by coding in Go.
 Your program may configure Notecard and send Notes to [Notehub.io][notehub].
 
 See also:
-* [note-c][note-python] for C bindings
+* [note-c][note-c] for C bindings
 * [note-python][note-python] for Python bindings
 
 [blues]: https://blues.com
