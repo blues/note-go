@@ -15,8 +15,11 @@ type DeviceSession struct {
 	FleetUID   string `json:"fleet,omitempty"`
 	// IP address of the session
 	Addr string `json:"addr,omitempty"`
-	// Cell ID where the session originated ("mcc,mnc,lac,cellid" all in base 10)
+	// Cell ID where the session originated and quality ("mcc,mnc,lac,cellid")
 	CellID string `json:"cell,omitempty"`
+	// Signal strength/quality of the cell
+	Rssi int `json:"rssi,omitempty"`
+	Sinr int `json:"sinr,omitempty"`
 	// Last known tower location where device pinged
 	Where TowerLocation `json:"tower,omitempty"`
 	// Total device usage at the beginning of the period
