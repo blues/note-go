@@ -50,6 +50,7 @@ type Event struct {
 	TowerTimeZone string                   `json:"tower_timezone,omitempty"`
 	TowerLat      float64                  `json:"tower_lat,omitempty"`
 	TowerLon      float64                  `json:"tower_lon,omitempty"`
+	TowerID       string                   `json:"tower_id,omitempty"`
 	LogAttn       bool                     `json:"logattn,omitempty"`
 	Log           map[string]EventLogEntry `json:"log,omitempty"`
 	App           *EventApp                `json:"project,omitempty"`
