@@ -167,11 +167,11 @@ func ConfigFlagsProcess() (err error) {
 
 	// Set the flags as desired
 	if flagConfigHTTP {
-		ConfigFlags.Secure = false;
+		ConfigFlags.Secure = false
 		Config.Secure = false
 	}
 	if flagConfigHTTPS {
-		ConfigFlags.Secure = true;
+		ConfigFlags.Secure = true
 		Config.Secure = true
 	}
 	if ConfigFlags.Hub == "-" {

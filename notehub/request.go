@@ -97,5 +97,5 @@ type HubRequestFile struct {
 	FileType string                  `json:"type,omitempty"`
 	Firmware *HubRequestFileFirmware `json:"firmware,omitempty"`
 	// Arbitrary metadata that the user may define - we don't interpret the schema at all
-	Info *interface{} `json:"info,omitempty"`
+	Info *map[string]interface{} `json:"info,omitempty"`
 }

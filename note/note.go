@@ -6,7 +6,6 @@ package note
 
 import (
 	"encoding/json"
-	"fmt"
 	"time"
 )
 
@@ -21,17 +20,17 @@ const DefaultHubEndpointID = "1"
 // access to these fields, and changes to these fields, must
 // be done indirectly through the note API.
 type Note struct {
-	Body      interface{} `json:"b,omitempty"`
-	Payload   []byte      `json:"p,omitempty"`
-	Change    int64       `json:"c,omitempty"`
-	Histories *[]History  `json:"h,omitempty"`
-	Conflicts *[]Note     `json:"x,omitempty"`
-	Updates   int32       `json:"u,omitempty"`
-	Deleted   bool        `json:"d,omitempty"`
-	Sent      bool        `json:"s,omitempty"`
-	Bulk      bool        `json:"k,omitempty"`
-	XPOff     uint32      `json:"O,omitempty"`
-	XPLen     uint32      `json:"L,omitempty"`
+	Body      map[string]interface{} `json:"b,omitempty"`
+	Payload   []byte                 `json:"p,omitempty"`
+	Change    int64                  `json:"c,omitempty"`
+	Histories *[]History             `json:"h,omitempty"`
+	Conflicts *[]Note                `json:"x,omitempty"`
+	Updates   int32                  `json:"u,omitempty"`
+	Deleted   bool                   `json:"d,omitempty"`
+	Sent      bool                   `json:"s,omitempty"`
+	Bulk      bool                   `json:"k,omitempty"`
+	XPOff     uint32                 `json:"O,omitempty"`
+	XPLen     uint32                 `json:"L,omitempty"`
 }
 
 // History records the update history, optimized so that if the most recent entry
@@ -45,30 +44,51 @@ type History struct {
 	Sequence   int32  `json:"s,omitempty"`
 }
 
-// Info is the info returned on a per-note basis on requests
+// Info is a general "content" structure
 type Info struct {
-	Body    *interface{} `json:"body,omitempty"`
-	Payload *[]byte      `json:"payload,omitempty"`
-	Deleted bool         `json:"deleted,omitempty"`
+	Body    *map[string]interface{} `json:"body,omitempty"`
+	Payload *[]byte                 `json:"payload,omitempty"`
+	Deleted bool                    `json:"deleted,omitempty"`
 }
 
-// CreateNote creates the core data structure for an object
+// CreateNote creates the core data structure for an object, given a JSON body
 func CreateNote(body []byte, payload []byte) (newNote Note, err error) {
 	newNote.Payload = payload
 	err = newNote.SetBody(body)
 	return
 }
 
-// SetBody sets the application-supplied Body field of a given Note
+// SetBody sets the application-supplied Body field of a given Note given some JSON
 func (note *Note) SetBody(body []byte) (err error) {
 	if body == nil {
 		note.Body = nil
 	} else {
-		err := json.Unmarshal(body, &note.Body)
+		err = json.Unmarshal(body, &note.Body)
 		if err != nil {
-			note.Body = nil
-			return fmt.Errorf("cannot set body: invalid JSON: %s", err)
+			return
 		}
+	}
+	return
+}
+
+// BodyFromJSON unmarshals the specify object and returns it as a map[string]interface{}
+func JSONToBody(bodyJSON []byte) (body map[string]interface{}, err error) {
+	err = json.Unmarshal(bodyJSON, &body)
+	return
+}
+
+// ObjectToJSON Marshals the specify object and returns it as a []byte
+func ObjectToJSON(object interface{}) (bodyJSON []byte, err error) {
+	bodyJSON, err = json.Marshal(object)
+	return
+}
+
+// ObjectToJSON Marshals the specify object and returns it as a []byte
+func ObjectToBody(object interface{}) (body map[string]interface{}, err error) {
+	var bodyJSON []byte
+	bodyJSON, err = json.Marshal(object)
+	if err == nil {
+		err = json.Unmarshal(bodyJSON, &body)
 	}
 	return
 }
