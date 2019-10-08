@@ -1,6 +1,6 @@
 # jetbrains IDEs config files
 **/.idea
-**/build
+build
 
 # Binaries for programs and plugins
 *.exe
