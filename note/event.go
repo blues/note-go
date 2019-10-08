@@ -27,7 +27,7 @@ const EventNoAction = ""
 
 // Event is the request structure passed to the Notification proc
 type Event struct {
-	Body          *interface{}             `json:"body,omitempty"`
+	Body          *map[string]interface{}  `json:"body,omitempty"`
 	Req           string                   `json:"req,omitempty"`
 	Rsp           string                   `json:"rsp,omitempty"`
 	Error         string                   `json:"err,omitempty"`

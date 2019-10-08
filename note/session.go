@@ -23,11 +23,11 @@ type DeviceSession struct {
 	// Last known tower location where device pinged
 	Where TowerLocation `json:"tower,omitempty"`
 	// Last known GPS location
-	WhereLat float64 `json:"where_lat,omitempty"`
-	WhereLon float64 `json:"where_lon,omitempty"`
-	WhereLocation string `json:"where_location,omitempty"`
-	WhereCountry string `json:"where_country,omitempty"`
-	WhereTimeZone string `json:"where_timezone,omitempty"`
+	WhereLat      float64 `json:"where_lat,omitempty"`
+	WhereLon      float64 `json:"where_lon,omitempty"`
+	WhereLocation string  `json:"where_location,omitempty"`
+	WhereCountry  string  `json:"where_country,omitempty"`
+	WhereTimeZone string  `json:"where_timezone,omitempty"`
 	// Total device usage at the beginning of the period
 	This DeviceUsage `json:"this,omitempty"`
 	// Total device usage at the beginning of the next period, whenever it happens to occur
