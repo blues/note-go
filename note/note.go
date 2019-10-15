@@ -71,7 +71,7 @@ func (note *Note) SetBody(body []byte) (err error) {
 	return
 }
 
-// BodyFromJSON unmarshals the specify object and returns it as a map[string]interface{}
+// JSONToBody unmarshals the specify object and returns it as a map[string]interface{}
 func JSONToBody(bodyJSON []byte) (body map[string]interface{}, err error) {
 	err = json.Unmarshal(bodyJSON, &body)
 	return
@@ -83,7 +83,7 @@ func ObjectToJSON(object interface{}) (bodyJSON []byte, err error) {
 	return
 }
 
-// ObjectToJSON Marshals the specify object and returns it as a []byte
+// ObjectToBody Marshals the specify object and returns it as map
 func ObjectToBody(object interface{}) (body map[string]interface{}, err error) {
 	var bodyJSON []byte
 	bodyJSON, err = json.Marshal(object)

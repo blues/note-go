@@ -21,8 +21,10 @@ type DeviceSession struct {
 	Rssi int `json:"rssi,omitempty"`
 	Sinr int `json:"sinr,omitempty"`
 	// Last known tower location where device pinged
-	Where TowerLocation `json:"tower,omitempty"`
+	Tower TowerLocation `json:"tower,omitempty"`
 	// Last known GPS location
+	WhereWhen	  int64   `json:"where_when,omitempty"`
+	WhereOLC	  string  `json:"where,omitempty"`
 	WhereLat      float64 `json:"where_lat,omitempty"`
 	WhereLon      float64 `json:"where_lon,omitempty"`
 	WhereLocation string  `json:"where_location,omitempty"`
