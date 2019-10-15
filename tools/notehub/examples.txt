@@ -55,6 +55,9 @@ notehub '{"req":"hub.app.upload.get","name":"test-20181002225319.bin"}'
 
 notehub '{"req":"hub.app.data.query",query:{"columns":".serial;.device;.modified;.when;.body;.payload","order":".modified","where":".device::text='\''imei:866425030050464'\'' or .device::text='\''imei:866425030050464:1543271941'\'' "}}'
 
+// To see what version of firmware is running on a notecard
+notehub  '{"req":"note.get","file":"_env.dbs","note":"device_vars"}'
+
 // For a DFU of Notecard
 notehub -upload ~/desktop/notecard.bin
 notehub -type firmware -upload ~/desktop/notecard.bin
