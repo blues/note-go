@@ -20,9 +20,9 @@ type DeviceSession struct {
 	// Signal strength/quality of the cell
 	Rssi int `json:"rssi,omitempty"`
 	Sinr int `json:"sinr,omitempty"`
-	// Last known tower location where device pinged
+	// Last known tower location at beginning of session
 	Tower TowerLocation `json:"tower,omitempty"`
-	// Last known GPS location
+	// Last known GPS location extracted from data flowing through session
 	WhereWhen	  int64   `json:"where_when,omitempty"`
 	WhereOLC	  string  `json:"where,omitempty"`
 	WhereLat      float64 `json:"where_lat,omitempty"`
