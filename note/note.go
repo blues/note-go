@@ -63,6 +63,7 @@ func (note *Note) SetBody(body []byte) (err error) {
 	if body == nil {
 		note.Body = nil
 	} else {
+		note.Body = map[string]interface{}{}
 		err = json.Unmarshal(body, &note.Body)
 		if err != nil {
 			return
