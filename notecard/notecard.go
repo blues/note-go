@@ -403,6 +403,21 @@ func (context *Context) TransactionRequest(req Request) (rsp Request, err error)
 
 }
 
+// NewRequest creates a new request.  Note that this method is provided
+// merely as syntactic sugar, as of the form
+// req := note.NewRequest("note.add")
+func NewRequest(reqType string) (req map[string]interface{}) {
+	req["req"] = reqType
+	return
+}
+
+// NewBody creates a new body.  Note that this method is provided
+// merely as syntactic sugar, as of the form
+// body := note.NewBody()
+func NewBody() (body map[string]interface{}) {
+	return
+}
+
 // Request performs a card transaction with a JSON structure and doesn't return a response
 // (This is for semantic compatibility with other languages.)
 func (context *Context) Request(req map[string]interface{}) (err error) {
