@@ -113,10 +113,11 @@ func (note *Note) Dup() Note {
 // GetBody retrieves the application-specific Body of a given Note
 func (note *Note) GetBody() []byte {
 	if note.Body == nil {
-		return []byte{"{}"}
+		return []byte("{}")
+	}
 	data, err := json.Marshal(note.Body)
 	if err != nil {
-		return []byte{"{}"}
+		return []byte("{}")
 	}
 	return data
 }

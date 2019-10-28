@@ -23,8 +23,8 @@ type DeviceSession struct {
 	// Last known tower location at beginning of session
 	Tower TowerLocation `json:"tower,omitempty"`
 	// Last known GPS location extracted from data flowing through session
-	WhereWhen	  int64   `json:"where_when,omitempty"`
-	WhereOLC	  string  `json:"where,omitempty"`
+	WhereWhen     int64   `json:"where_when,omitempty"`
+	WhereOLC      string  `json:"where,omitempty"`
 	WhereLat      float64 `json:"where_lat,omitempty"`
 	WhereLon      float64 `json:"where_lon,omitempty"`
 	WhereLocation string  `json:"where_location,omitempty"`
