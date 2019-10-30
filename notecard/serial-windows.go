@@ -23,6 +23,6 @@ func serialDefault() (device string, speed int) {
 }
 
 // Set or display the serial port
-func serialPortEnum() (names []string) {
+func serialPortEnum() (names []string, err error) {
 	return
 }

@@ -7,7 +7,6 @@
 package notecard
 
 import (
-	"fmt"
 	"io/ioutil"
 	"strings"
 )
@@ -21,10 +20,10 @@ func serialDefault() (port string, portConfig int) {
 }
 
 // Set or display the serial port
-func serialPortEnum() (names []string) {
-	files, err := ioutil.ReadDir("/dev/")
-	if err != nil {
-		fmt.Printf("%s\n", err)
+func serialPortEnum() (names []string, err error) {
+	files, err2 := ioutil.ReadDir("/dev/")
+	if err2 != nil {
+		err = err2
 		return
 	}
 	for _, f := range files {

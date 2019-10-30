@@ -39,6 +39,6 @@ func i2cClose() error {
 }
 
 // Enum I2C ports
-func i2cPortEnum() (names []string) {
+func i2cPortEnum() (names []string, err error) {
 	return
 }

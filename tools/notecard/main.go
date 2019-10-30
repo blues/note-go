@@ -56,10 +56,10 @@ func main() {
 		fmt.Printf("\n")
 		var ports []string
 		if noteutil.Config.Interface == notecard.NotecardInterfaceSerial {
-			ports = notecard.SerialPorts()
+			ports, _ = notecard.SerialPorts()
 		}
 		if noteutil.Config.Interface == notecard.NotecardInterfaceI2C {
-			ports = notecard.I2CPorts()
+			ports, _ = notecard.I2CPorts()
 		}
 		if len(ports) != 0 {
 			fmt.Printf("Ports on '%s':\n", noteutil.Config.Interface)
@@ -91,6 +91,9 @@ func main() {
 		os.Exit(exitFail)
 
 	}
+
+	// Turn on Notecard library debug output
+	card.DebugOutput(true)
 
 	// Process non-config commands
 

@@ -13,13 +13,13 @@ import (
 	"os"
 	"strings"
 	"time"
-	//  "github.com/jacobsa/go-serial/serial"
+	//	"github.com/jacobsa/go-serial/serial"
 )
 
 // Module communication interfaces
 const (
 	NotecardInterfaceSerial = "serial"
-	NotecardInterfaceI2C    = "i2c"
+	NotecardInterfaceI2C	= "i2c"
 )
 
 // CardI2CMax controls chunk size that's socially appropriate on the I2C bus.
@@ -39,30 +39,40 @@ const CardRequestSegmentDelayMs = 250
 // Context for the port that is open
 type Context struct {
 
+	// True to emit trace output
+	Debug			bool
+
 	// Class functions
-	PortEnumFn     func() (ports []string)
+	PortEnumFn	   func() (ports []string, err error)
 	PortDefaultsFn func() (port string, portConfig int)
-	CloseFn        func(context *Context)
-	ResetFn        func(context *Context) (err error)
+	CloseFn		   func(context *Context)
+	ResetFn		   func(context *Context) (err error)
 	TransactionFn  func(context *Context, reqJSON []byte) (rspJSON []byte, err error)
 
 	// Serial instance state
-	isSerial       bool
+	isSerial	   bool
 	openSerialPort *serial.Port // tarm
 	//openSerialPort io.ReadWriteCloser // jacobsa
 
 }
 
 // Report a critical card error
-func cardReportError(err error) {
-	fmt.Printf("***\n")
-	fmt.Printf("*** %s\n", err)
-	fmt.Printf("***\n")
-	time.Sleep(10 * time.Second)
+func cardReportError(context *Context, err error) {
+	if context.Debug {
+		fmt.Printf("***\n")
+		fmt.Printf("*** %s\n", err)
+		fmt.Printf("***\n")
+		time.Sleep(10 * time.Second)
+	}
+}
+
+// DebugOutput enables/disables debug output
+func (context *Context) DebugOutput(enabled bool) {
+	context.Debug = enabled
 }
 
 // EnumPorts returns the list of all available ports on the specified interface
-func (context *Context) EnumPorts() (ports []string) {
+func (context *Context) EnumPorts() (ports []string, err error) {
 	return context.PortEnumFn()
 }
 
@@ -109,7 +119,7 @@ func cardResetSerial(context *Context) (err error) {
 		_, err = context.openSerialPort.Write([]byte("\n\n"))
 		if err != nil {
 			err = fmt.Errorf("error transmitting to module: %s", err)
-			cardReportError(err)
+			cardReportError(context, err)
 			return
 		}
 		time.Sleep(500 * time.Millisecond)
@@ -122,7 +132,7 @@ func cardResetSerial(context *Context) (err error) {
 		}
 		if err != nil {
 			err = fmt.Errorf("error reading from module: %s", err)
-			cardReportError(err)
+			cardReportError(context, err)
 			return
 		}
 		somethingFound := false
@@ -149,8 +159,6 @@ func cardResetSerial(context *Context) (err error) {
 // OpenSerial opens the card on serial
 func OpenSerial(port string, portConfig int) (context Context, err error) {
 
-	fmt.Printf("Using interface %s port %s at %d\n\n", NotecardInterfaceSerial, port, portConfig)
-
 	// Set up class functions
 	context.PortEnumFn = serialPortEnum
 	context.PortDefaultsFn = serialDefault
@@ -160,7 +168,7 @@ func OpenSerial(port string, portConfig int) (context Context, err error) {
 	context.isSerial = true
 
 	// Open the serial port
-	///*    tarm
+	///*	tarm
 	c := &serial.Config{}
 	c.Name = port
 	c.Baud = portConfig
@@ -224,8 +232,6 @@ func cardResetI2C(context *Context) (err error) {
 // OpenI2C opens the card on I2C
 func OpenI2C(port string, portConfig int) (context Context, err error) {
 
-	fmt.Printf("Using port %s\n\n", port)
-
 	// Set up class functions
 	context.PortEnumFn = i2cPortEnum
 	context.PortDefaultsFn = i2cDefault
@@ -236,8 +242,8 @@ func OpenI2C(port string, portConfig int) (context Context, err error) {
 	// Open the I2C port
 	err = i2cOpen(uint8(portConfig), port, portConfig)
 	if err != nil {
-		if true {
-			ports := I2CPorts()
+		if false {
+			ports, _ := I2CPorts()
 			fmt.Printf("Available ports: %v\n", ports)
 		}
 		err = fmt.Errorf("i2c init error: %s", err)
@@ -283,16 +289,73 @@ func I2CDefaults() (port string, portConfig int) {
 }
 
 // SerialPorts returns the list of available serial ports
-func SerialPorts() (ports []string) {
+func SerialPorts() (ports []string, err error) {
 	return serialPortEnum()
 }
 
 // I2CPorts returns the list of available I2C ports
-func I2CPorts() (ports []string) {
+func I2CPorts() (ports []string, err error) {
 	return i2cPortEnum()
 }
 
-// Trace the incoming serial output
+// TraceOutput monitors the trace output for a certain period of time
+// quiescentSecs says "if nonzero, return after N secs of no output activity"
+// maximumSecs says "if nonzero, return after N secs even if output activity is continuing"
+func (context *Context) TraceOutput(quiescentSecs int, maximumSecs int) (err error) {
+
+	// Tracing only works for USB and AUX ports
+	if !context.isSerial {
+		return fmt.Errorf("tracing is only available on USB and AUX ports")
+	}
+
+	// Turn on tracing on the current port
+	req := Request{Req: ReqCardIO}
+	req.Mode = "trace-on"
+	context.TransactionRequest(req)
+
+	// Loop, echoing to the console
+	timeStarted := time.Now().Unix()
+	timeOutput := time.Now().Unix()
+	for {
+
+		now := time.Now().Unix()
+		if quiescentSecs > 0 && now >= timeOutput + int64(quiescentSecs) {
+			return nil
+		}
+		if maximumSecs > 0 && now >= timeStarted + int64(maximumSecs) {
+			return nil
+		}
+
+		var length int
+		buf := make([]byte, 2048)
+		readBeganMs := int(time.Now().UnixNano() / 1000000)
+		length, err = context.openSerialPort.Read(buf)
+		readElapsedMs := int(time.Now().UnixNano()/1000000) - readBeganMs
+		if false {
+			fmt.Printf("mon: elapsed:%d len:%d err:%s '%s'\n", readElapsedMs, length, err, string(buf[:length]))
+		}
+		if readElapsedMs == 0 && length == 0 && err == io.EOF {
+			// On Linux, hardware port failures come back simply as immediate EOF
+			err = fmt.Errorf("hardware failure")
+		}
+		if err != nil {
+			if err == io.EOF {
+				// Just a read timeout
+				continue
+			}
+			break
+		}
+		fmt.Printf("%s", buf[:length])
+		timeOutput = time.Now().Unix()
+	}
+
+	err = fmt.Errorf("error reading from module: %s", err)
+	cardReportError(context, err)
+	return
+
+}
+
+// Trace the incoming serial output AND connect the input handler
 func (context *Context) Trace() (err error) {
 
 	// Tracing only works for USB and AUX ports
@@ -333,7 +396,7 @@ func (context *Context) Trace() (err error) {
 	}
 
 	err = fmt.Errorf("error reading from module: %s", err)
-	cardReportError(err)
+	cardReportError(context, err)
 	return
 
 }
@@ -354,7 +417,7 @@ func inputHandler(context *Context) {
 
 			for _, r := range message[1:] {
 				switch {
-				// 'a' - 'z'
+					// 'a' - 'z'
 				case 97 <= r && r <= 122:
 					ba := make([]byte, 1)
 					ba[0] = byte(r - 96)
@@ -411,7 +474,7 @@ func NewRequest(reqType string) (req map[string]interface{}) {
 	return
 }
 
-// NewBody creates a new body.  Note that this method is provided
+// NewBody creates a new body.	Note that this method is provided
 // merely as syntactic sugar, as of the form
 // body := note.NewBody()
 func NewBody() (body map[string]interface{}) {
@@ -462,7 +525,9 @@ func (context *Context) Transaction(req map[string]interface{}) (rsp map[string]
 // TransactionJSON performs a card transaction using raw JSON []bytes
 func (context *Context) TransactionJSON(reqJSON []byte) (rspJSON []byte, err error) {
 
-	fmt.Printf("%s\n", reqJSON)
+	if context.Debug {
+		fmt.Printf("%s\n", reqJSON)
+	}
 
 	// Make sure that the JSON has a terminator
 	reqJSON = []byte(string(reqJSON) + "\n")
@@ -473,7 +538,9 @@ func (context *Context) TransactionJSON(reqJSON []byte) (rspJSON []byte, err err
 		context.ResetFn(context)
 	}
 
-	fmt.Printf("%s\n", string(rspJSON))
+	if context.Debug {
+		fmt.Printf("%s", string(rspJSON))
+	}
 	return
 
 }
@@ -492,7 +559,7 @@ func cardTransactionSerial(context *Context, reqJSON []byte) (rspJSON []byte, er
 		_, err = context.openSerialPort.Write(reqJSON[segOff : segOff+segLen])
 		if err != nil {
 			err = fmt.Errorf("error transmitting to module: %s", err)
-			cardReportError(err)
+			cardReportError(context, err)
 			return
 		}
 		segOff += segLen
@@ -527,7 +594,7 @@ func cardTransactionSerial(context *Context, reqJSON []byte) (rspJSON []byte, er
 				continue
 			}
 			err = fmt.Errorf("error reading from module: %s", err)
-			cardReportError(err)
+			cardReportError(context, err)
 			return
 		}
 		rspJSON = append(rspJSON, buf[:length]...)
