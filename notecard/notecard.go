@@ -8,7 +8,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"github.com/tarm/serial"
+	"github.com/blues/serial"
 	"io"
 	"os"
 	"strings"
@@ -53,7 +53,7 @@ type Context struct {
 	isSerial	   bool
 	openSerialPort *serial.Port // tarm
 	//openSerialPort io.ReadWriteCloser // jacobsa
-
+	PortName       string
 }
 
 // Report a critical card error
@@ -100,6 +100,7 @@ func Open(moduleInterface string, port string, portConfig int) (context Context,
 		return
 	}
 
+	context.PortName = port
 	return
 
 }
@@ -326,11 +327,18 @@ func (context *Context) TraceOutput(quiescentSecs int, maximumSecs int) (err err
 			return nil
 		}
 
-		var length int
 		buf := make([]byte, 2048)
 		readBeganMs := int(time.Now().UnixNano() / 1000000)
-		length, err = context.openSerialPort.Read(buf)
+		length, err := context.openSerialPort.Read(buf)
 		readElapsedMs := int(time.Now().UnixNano()/1000000) - readBeganMs
+
+		if err == nil && length == 0 {
+			// Nothing to read yet
+			// Sleep briefly to be polite yet responsive
+			time.Sleep(1 * time.Millisecond)
+			continue
+		}
+
 		if false {
 			fmt.Printf("mon: elapsed:%d len:%d err:%s '%s'\n", readElapsedMs, length, err, string(buf[:length]))
 		}
