@@ -8,31 +8,37 @@ import (
 	"github.com/blues/note-go/note"
 )
 
-// Request Types
+// Request Types (L suffix means Legacy as of 2019-11-18, and can be removed after we ship)
 
-// ReqFilesAdd (golint)
-const ReqFilesAdd = "files.add"
+// ReqFileAdd (golint)
+const ReqFileAdd = "file.add"
 
-// ReqFilesSet (golint)
-const ReqFilesSet = "files.set"
+// ReqFileSet (golint)
+const ReqFileSet = "file.set"
 
-// ReqFilesDelete (golint)
-const ReqFilesDelete = "files.delete"
+// ReqFileDelete (golint)
+const ReqFileDelete = "file.delete"
 
-// ReqFilesGet (golint)
-const ReqFilesGet = "files.get"
+// ReqFileChanges (golint)
+const ReqFileChanges = "file.changes"
 
-// ReqFilesSync (golint)
-const ReqFilesSync = "files.sync"
+// ReqFileGetL (golint)
+const ReqFileGetL = "file.get"
 
-// ReqFilesStats (golint)
-const ReqFilesStats = "files.stats"
+// ReqFileSync (golint)
+const ReqFileSync = "file.sync"
+
+// ReqFileStats (golint)
+const ReqFileStats = "file.stats"
 
 // ReqServiceSync (golint)
 const ReqServiceSync = "service.sync"
 
-// ReqNotesGet (golint)
-const ReqNotesGet = "notes.get"
+// ReqNotesGetL (golint)
+const ReqNotesGetL = "notes.get"
+
+// ReqNoteChanges (golint)
+const ReqNoteChanges = "note.changes"
 
 // ReqNoteAdd (golint)
 const ReqNoteAdd = "note.add"
@@ -100,8 +106,8 @@ const ReqCardUsageTest = "card.usage.test"
 // ReqCardUsageRate (golint)
 const ReqCardUsageRate = "card.usage.rate"
 
-// ReqServiceEnv (golint)
-const ReqServiceEnv = "service.env"
+// ReqServiceEnvL (golint)
+const ReqServiceEnvL = "service.env"
 
 // ReqServiceSet (golint)
 const ReqServiceSet = "service.set"
@@ -117,6 +123,15 @@ const ReqServiceSignal = "service.signal"
 
 // ReqServiceSyncStatus (golint)
 const ReqServiceSyncStatus = "service.sync.status"
+
+// ReqEnvGet (golint)
+const ReqEnvGet = "env.get"
+
+// ReqEnvTime (golint)
+const ReqEnvTime = "env.time"
+
+// ReqEnvLocation (golint)
+const ReqEnvLocation = "env.location"
 
 // ReqWebGet (golint)
 const ReqWebGet = "web.get"
