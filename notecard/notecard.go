@@ -18,7 +18,7 @@ import (
 // Module communication interfaces
 const (
 	NotecardInterfaceSerial = "serial"
-	NotecardInterfaceI2C	= "i2c"
+	NotecardInterfaceI2C    = "i2c"
 )
 
 // CardI2CMax controls chunk size that's socially appropriate on the I2C bus.
@@ -39,22 +39,22 @@ const CardRequestSegmentDelayMs = 250
 type Context struct {
 
 	// True to emit trace output
-	Debug			bool
+	Debug bool
 
 	// Class functions
-	PortEnumFn	   func() (ports []string, err error)
+	PortEnumFn     func() (ports []string, err error)
 	PortDefaultsFn func() (port string, portConfig int)
-	CloseFn		   func(context *Context)
-	ReopenFn	   func(context *Context) (err error)
-	ResetFn		   func(context *Context) (err error)
+	CloseFn        func(context *Context)
+	ReopenFn       func(context *Context) (err error)
+	ResetFn        func(context *Context) (err error)
 	TransactionFn  func(context *Context, reqJSON []byte) (rspJSON []byte, err error)
 
 	// Serial instance state
-	isSerial	   bool
+	isSerial       bool
 	openSerialPort *serial.Port
-	serialConfig 	serial.Config
-	i2cName		string
-	i2cAddress	int
+	serialConfig   serial.Config
+	i2cName        string
+	i2cAddress     int
 }
 
 // Report a critical card error
@@ -86,9 +86,8 @@ func (context *Context) PortDefaults() (port string, portConfig int) {
 func (context *Context) Identify() (protocol string, port string, portConfig int) {
 	if context.isSerial {
 		return "serial", context.serialConfig.Name, context.serialConfig.Baud
-	} else {
-		return "I2C", context.i2cName, context.i2cAddress
 	}
+	return "I2C", context.i2cName, context.i2cAddress
 }
 
 // Open the card to establish communications
@@ -190,9 +189,6 @@ func OpenSerial(port string, portConfig int) (context Context, err error) {
 		return
 	}
 
-	// Reset serial to a known good state
-	err = cardResetSerial(&context)
-
 	// All set
 	return
 
@@ -289,8 +285,6 @@ func cardCloseI2C(context *Context) {
 	i2cClose()
 }
 
-
-
 // Reopen the port
 func (context *Context) Reopen() (err error) {
 	return context.ReopenFn(context)
@@ -358,10 +352,10 @@ func (context *Context) TraceOutput(quiescentSecs int, maximumSecs int) (err err
 	for {
 
 		now := time.Now().Unix()
-		if quiescentSecs > 0 && now >= timeOutput + int64(quiescentSecs) {
+		if quiescentSecs > 0 && now >= timeOutput+int64(quiescentSecs) {
 			return nil
 		}
-		if maximumSecs > 0 && now >= timeStarted + int64(maximumSecs) {
+		if maximumSecs > 0 && now >= timeStarted+int64(maximumSecs) {
 			return nil
 		}
 
@@ -463,7 +457,7 @@ func inputHandler(context *Context) {
 
 			for _, r := range message[1:] {
 				switch {
-					// 'a' - 'z'
+				// 'a' - 'z'
 				case 97 <= r && r <= 122:
 					ba := make([]byte, 1)
 					ba[0] = byte(r - 96)
