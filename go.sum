@@ -2,6 +2,8 @@ github.com/blues/serial v0.0.0-20191118053426-80711edc8e79 h1:KaURBH9Och5lZfZqez
 github.com/blues/serial v0.0.0-20191118053426-80711edc8e79/go.mod h1:13uJ52/kyfTSrgpZk+YiuYdNBK7LHItK1GXbMbIWYgg=
 github.com/blues/serial v0.0.0-20191120181041-c737793b12bb h1:rsDeNjNeLDyG/0tsoY10eHNujShP/lYYiJJTrjGWpZM=
 github.com/blues/serial v0.0.0-20191120181041-c737793b12bb/go.mod h1:soVC10e7izB7QFxbCPRWim12eVNmoyrTCgIFeKcL0ss=
+github.com/blues/serial v1.0.0 h1:5e+lEAHetgivBgBoVzpYypDK/eSskjWL8fG0JChRu/o=
+github.com/blues/serial v1.0.0/go.mod h1:soVC10e7izB7QFxbCPRWim12eVNmoyrTCgIFeKcL0ss=
 golang.org/x/sys v0.0.0-20190813064441-fde4db37ae7a h1:aYOabOQFp6Vj6W1F80affTUvO9UxmJRx8K0gsfABByQ=
 golang.org/x/sys v0.0.0-20190813064441-fde4db37ae7a/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 periph.io/x/periph v3.4.0+incompatible h1:5gzxE4ryPq52cdqSw0mErR6pyJK8cBF2qdUAcOWh0bo=
