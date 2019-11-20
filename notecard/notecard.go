@@ -13,13 +13,12 @@ import (
 	"os"
 	"strings"
 	"time"
-	//	"github.com/jacobsa/go-serial/serial"
 )
 
 // Module communication interfaces
 const (
 	NotecardInterfaceSerial = "serial"
-	NotecardInterfaceI2C	= "i2c"
+	NotecardInterfaceI2C    = "i2c"
 )
 
 // CardI2CMax controls chunk size that's socially appropriate on the I2C bus.
@@ -40,20 +39,22 @@ const CardRequestSegmentDelayMs = 250
 type Context struct {
 
 	// True to emit trace output
-	Debug			bool
+	Debug bool
 
 	// Class functions
-	PortEnumFn	   func() (ports []string, err error)
+	PortEnumFn     func() (ports []string, err error)
 	PortDefaultsFn func() (port string, portConfig int)
-	CloseFn		   func(context *Context)
-	ResetFn		   func(context *Context) (err error)
+	CloseFn        func(context *Context)
+	ReopenFn       func(context *Context) (err error)
+	ResetFn        func(context *Context) (err error)
 	TransactionFn  func(context *Context, reqJSON []byte) (rspJSON []byte, err error)
 
 	// Serial instance state
-	isSerial	   bool
-	openSerialPort *serial.Port // tarm
-	//openSerialPort io.ReadWriteCloser // jacobsa
-	PortName       string
+	isSerial       bool
+	openSerialPort *serial.Port
+	serialConfig   serial.Config
+	i2cName        string
+	i2cAddress     int
 }
 
 // Report a critical card error
@@ -81,6 +82,14 @@ func (context *Context) PortDefaults() (port string, portConfig int) {
 	return context.PortDefaultsFn()
 }
 
+// Identify this Notecard connection
+func (context *Context) Identify() (protocol string, port string, portConfig int) {
+	if context.isSerial {
+		return "serial", context.serialConfig.Name, context.serialConfig.Baud
+	}
+	return "I2C", context.i2cName, context.i2cAddress
+}
+
 // Open the card to establish communications
 func Open(moduleInterface string, port string, portConfig int) (context Context, err error) {
 
@@ -100,7 +109,6 @@ func Open(moduleInterface string, port string, portConfig int) (context Context,
 		return
 	}
 
-	context.PortName = port
 	return
 
 }
@@ -164,33 +172,22 @@ func OpenSerial(port string, portConfig int) (context Context, err error) {
 	context.PortEnumFn = serialPortEnum
 	context.PortDefaultsFn = serialDefault
 	context.CloseFn = cardCloseSerial
+	context.ReopenFn = cardReopenSerial
 	context.ResetFn = cardResetSerial
 	context.TransactionFn = cardTransactionSerial
+
+	// Record serial configuration
 	context.isSerial = true
+	context.serialConfig.Name = port
+	context.serialConfig.Baud = portConfig
+	context.serialConfig.ReadTimeout = time.Millisecond * 500
 
 	// Open the serial port
-	///*	tarm
-	c := &serial.Config{}
-	c.Name = port
-	c.Baud = portConfig
-	c.ReadTimeout = time.Millisecond * 500
-	context.openSerialPort, err = serial.OpenPort(c)
-	//*/
-	/* jacobsa
-	   c := serial.OpenOptions{}
-	   c.PortName = port
-	   c.BaudRate = portConfig
-	   c.MinimumReadSize = 0
-	   c.InterCharacterTimeout = 5000
-	   context.openSerialPort, err = serial.Open(c)
-	*/
+	err = cardReopenSerial(&context)
 	if err != nil {
 		err = fmt.Errorf("error opening serial port %s at %d: %s", port, portConfig, err)
 		return
 	}
-
-	// Reset serial to a known good state
-	err = cardResetSerial(&context)
 
 	// All set
 	return
@@ -237,8 +234,14 @@ func OpenI2C(port string, portConfig int) (context Context, err error) {
 	context.PortEnumFn = i2cPortEnum
 	context.PortDefaultsFn = i2cDefault
 	context.CloseFn = cardCloseI2C
+	context.ReopenFn = cardReopenI2C
 	context.ResetFn = cardResetI2C
 	context.TransactionFn = cardTransactionI2C
+
+	// Record I2C configuration
+	context.isSerial = false
+	context.i2cName = port
+	context.i2cAddress = portConfig
 
 	// Open the I2C port
 	err = i2cOpen(uint8(portConfig), port, portConfig)
@@ -271,12 +274,41 @@ func (context *Context) Close() {
 
 // Close serial
 func cardCloseSerial(context *Context) {
-	context.openSerialPort.Close()
+	if context.openSerialPort != nil {
+		context.openSerialPort.Close()
+		context.openSerialPort = nil
+	}
 }
 
 // Close I2C
 func cardCloseI2C(context *Context) {
 	i2cClose()
+}
+
+// Reopen the port
+func (context *Context) Reopen() (err error) {
+	return context.ReopenFn(context)
+}
+
+// Reopen serial
+func cardReopenSerial(context *Context) (err error) {
+	if context.openSerialPort != nil {
+		return fmt.Errorf("error serial port is already open")
+	}
+
+	// Open the serial port
+	context.openSerialPort, err = serial.OpenPort(&context.serialConfig)
+	if err != nil {
+		return fmt.Errorf("error opening serial port %s at %d: %s", context.serialConfig.Name, context.serialConfig.Baud, err)
+	}
+
+	// Reset serial to a known good state
+	return cardResetSerial(context)
+}
+
+// Reopen I2C
+func cardReopenI2C(context *Context) (err error) {
+	return fmt.Errorf("error i2c reopen not yet supported since I can't test it yet")
 }
 
 // SerialDefaults returns the default serial parameters
@@ -320,10 +352,10 @@ func (context *Context) TraceOutput(quiescentSecs int, maximumSecs int) (err err
 	for {
 
 		now := time.Now().Unix()
-		if quiescentSecs > 0 && now >= timeOutput + int64(quiescentSecs) {
+		if quiescentSecs > 0 && now >= timeOutput+int64(quiescentSecs) {
 			return nil
 		}
-		if maximumSecs > 0 && now >= timeStarted + int64(maximumSecs) {
+		if maximumSecs > 0 && now >= timeStarted+int64(maximumSecs) {
 			return nil
 		}
 
@@ -425,7 +457,7 @@ func inputHandler(context *Context) {
 
 			for _, r := range message[1:] {
 				switch {
-					// 'a' - 'z'
+				// 'a' - 'z'
 				case 97 <= r && r <= 122:
 					ba := make([]byte, 1)
 					ba[0] = byte(r - 96)
