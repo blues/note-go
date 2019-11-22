@@ -73,10 +73,13 @@ type HubRequestFileFirmware struct {
 	Product string `json:"product,omitempty"`
 	// The identifier of the only firmware that will be acceptable and downloaded to this device
 	Firmware string `json:"firmware,omitempty"`
-	// The version number of the firmware, generally major.minor as a string
+	// The composite version number of the firmware, generally major.minor as a string
 	Version string `json:"version,omitempty"`
-	// The build number of the firmware, generally just a build number as a string
-	Build string `json:"build,omitempty"`
+	// The build number of the firmware, for numeric comparison
+	Major uint16 `json:"ver_major,omitempty"`
+	Minor uint16 `json:"ver_minor,omitempty"`
+	Patch uint16 `json:"ver_patch,omitempty"`
+	Build uint16 `json:"ver_build,omitempty"`
 	// The build number of the firmware, generally just a date and time
 	Built string `json:"built,omitempty"`
 	// The entity who built or is responsible for the firmware - a display string
@@ -95,7 +98,13 @@ type HubRequestFile struct {
 	Contains string                  `json:"contains,omitempty"`
 	Found    string                  `json:"found,omitempty"`
 	FileType string                  `json:"type,omitempty"`
+	Tags	string				     `json:"tags,omitempty"`	// comma-separated, no spaces, case-insensitive
+	Notes	string					 `json:"notes,omitempty"`	// markdown
 	Firmware *HubRequestFileFirmware `json:"firmware,omitempty"`
 	// Arbitrary metadata that the user may define - we don't interpret the schema at all
 	Info *map[string]interface{} `json:"info,omitempty"`
 }
+
+// HubRequestFileTagPublish indicates that this should be published in the UI
+const HubRequestFileTagPublish = "publish"
+
