@@ -243,6 +243,8 @@ type Request struct {
 	Heartbeat        bool                          `json:"heartbeat,omitempty"`
 	Threshold        int32                         `json:"threshold,omitempty"`
 	Count            uint32                        `json:"count,omitempty"`
+	Sync             bool                          `json:"sync,omitempty"`
+	Live             bool                          `json:"live,omitempty"`
 }
 
 // PinState describes the state of an AUX pin for hardware-related Notecard requests
