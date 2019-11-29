@@ -575,7 +575,7 @@ func (context *Context) TransactionJSON(reqJSON []byte) (rspJSON []byte, err err
 			var req Request
 			e := json.Unmarshal(requestJSON, &req)
 			if e == nil {
-				prettyJSON, e := json.MarshalIndent(req, "", "\t")
+				prettyJSON, e := json.MarshalIndent(req, "", "    ")
 				if e == nil {
 					requestJSON = prettyJSON
 				}
@@ -599,9 +599,9 @@ func (context *Context) TransactionJSON(reqJSON []byte) (rspJSON []byte, err err
 			var rsp Request
 			e := json.Unmarshal(responseJSON, &rsp)
 			if e == nil {
-				prettyJSON, e := json.MarshalIndent(rsp, "\t", "\t")
+				prettyJSON, e := json.MarshalIndent(rsp, "    ", "    ")
 				if e == nil {
-					fmt.Printf("==>\t")
+					fmt.Printf("==> ")
 					responseJSON = append(prettyJSON, byte('\n'))
 				}
 			}
