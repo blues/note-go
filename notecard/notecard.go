@@ -41,6 +41,9 @@ type Context struct {
 	// True to emit trace output
 	Debug bool
 
+	// Pretty-print trace output JSON
+	Pretty bool
+
 	// Class functions
 	PortEnumFn     func() (ports []string, err error)
 	PortDefaultsFn func() (port string, portConfig int)
@@ -68,8 +71,9 @@ func cardReportError(context *Context, err error) {
 }
 
 // DebugOutput enables/disables debug output
-func (context *Context) DebugOutput(enabled bool) {
+func (context *Context) DebugOutput(enabled bool, pretty bool) {
 	context.Debug = enabled
+	context.Pretty = pretty
 }
 
 // EnumPorts returns the list of all available ports on the specified interface
@@ -566,7 +570,18 @@ func (context *Context) Transaction(req map[string]interface{}) (rsp map[string]
 func (context *Context) TransactionJSON(reqJSON []byte) (rspJSON []byte, err error) {
 
 	if context.Debug {
-		fmt.Printf("%s\n", reqJSON)
+		requestJSON := reqJSON
+		if context.Pretty {
+			var req Request
+			e := json.Unmarshal(requestJSON, &req)
+			if e == nil {
+				prettyJSON, e := json.MarshalIndent(req, "", "\t")
+				if e == nil {
+					requestJSON = prettyJSON
+				}
+			}
+		}
+		fmt.Printf("%s\n", string(requestJSON))
 	}
 
 	// Make sure that the JSON has a terminator
@@ -579,7 +594,19 @@ func (context *Context) TransactionJSON(reqJSON []byte) (rspJSON []byte, err err
 	}
 
 	if context.Debug {
-		fmt.Printf("%s", string(rspJSON))
+		responseJSON := rspJSON
+		if context.Pretty {
+			var rsp Request
+			e := json.Unmarshal(responseJSON, &rsp)
+			if e == nil {
+				prettyJSON, e := json.MarshalIndent(rsp, "\t", "\t")
+				if e == nil {
+					fmt.Printf("==>\t")
+					responseJSON = append(prettyJSON, byte('\n'))
+				}
+			}
+		}
+		fmt.Printf("%s", string(responseJSON))
 	}
 	return
 
@@ -587,7 +614,6 @@ func (context *Context) TransactionJSON(reqJSON []byte) (rspJSON []byte, err err
 
 // Perform a card transaction over serial under the assumption that request already has '\n' terminator
 func cardTransactionSerial(context *Context, reqJSON []byte) (rspJSON []byte, err error) {
-
 	// Transmit the request in segments so as not to overwhelm the notecard's interrupt buffers
 	segOff := 0
 	segLeft := len(reqJSON)
