@@ -74,6 +74,7 @@ func (context *Context) TraceCapture(toSend string, toEnd string, quiescentSecs 
 		fragment := string(buf[:length])
 		captured += fragment
 		if (toEnd != "" && strings.Contains(fragment, toEnd)) {
+			captured += "\n"
 			break
 		}
 		timeOutput = time.Now().Unix()
