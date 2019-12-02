@@ -53,11 +53,12 @@ type Context struct {
 	TransactionFn  func(context *Context, reqJSON []byte) (rspJSON []byte, err error)
 
 	// Serial instance state
-	isSerial       bool
-	openSerialPort *serial.Port
-	serialConfig   serial.Config
-	i2cName        string
-	i2cAddress     int
+	isSerial                    bool
+	openSerialPort              *serial.Port
+	serialConfig                serial.Config
+	i2cName                     string
+	i2cAddress                  int
+	cardTransactionSerialSuffix string
 }
 
 // Report a critical card error
@@ -185,6 +186,7 @@ func OpenSerial(port string, portConfig int) (context Context, err error) {
 	context.serialConfig.Name = port
 	context.serialConfig.Baud = portConfig
 	context.serialConfig.ReadTimeout = time.Millisecond * 500
+	context.cardTransactionSerialSuffix = defaultCardTransactionSerialSuffix
 
 	// Open the serial port
 	err = cardReopenSerial(&context)
@@ -612,6 +614,20 @@ func (context *Context) TransactionJSON(reqJSON []byte) (rspJSON []byte, err err
 
 }
 
+// The default suffix which terminates normal serial transactions.
+// Can be overridden by calling SetCardTransactionSerialSuffix().
+const defaultCardTransactionSerialSuffix = "\n"
+
+// SetCardTransactionSerialSuffix sets the value of cardTransactionSerialSuffix,
+// which is used by cardTransactionSerial().
+func (context *Context) SetCardTransactionSerialSuffix(suffix string) {
+	if suffix == "" {
+		context.cardTransactionSerialSuffix = defaultCardTransactionSerialSuffix
+	} else {
+		context.cardTransactionSerialSuffix = suffix
+	}
+}
+
 // Perform a card transaction over serial under the assumption that request already has '\n' terminator
 func cardTransactionSerial(context *Context, reqJSON []byte) (rspJSON []byte, err error) {
 	// Transmit the request in segments so as not to overwhelm the notecard's interrupt buffers
@@ -636,7 +652,7 @@ func cardTransactionSerial(context *Context, reqJSON []byte) (rspJSON []byte, er
 		time.Sleep(CardRequestSegmentDelayMs * time.Millisecond)
 	}
 
-	// Read the reply until we get '\n' at the end
+	// Read the reply until we get context.cardTransactionSerialSuffix at the end
 	for {
 		var length int
 		buf := make([]byte, 2048)
@@ -664,7 +680,7 @@ func cardTransactionSerial(context *Context, reqJSON []byte) (rspJSON []byte, er
 			return
 		}
 		rspJSON = append(rspJSON, buf[:length]...)
-		if strings.HasSuffix(string(rspJSON), "\n") {
+		if strings.HasSuffix(string(rspJSON), context.cardTransactionSerialSuffix) {
 			break
 		}
 	}
