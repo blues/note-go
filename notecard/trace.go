@@ -17,7 +17,7 @@ import (
 // quiescentSecs says "if nonzero, return after N secs of no output activity"
 // maximumSecs says "if nonzero, return after N secs even if output activity is continuing"
 // It then returns the received output to the caller.
-func (context *Context) TraceCapture(toSend []byte, quiescentSecs int, maximumSecs int) (captured []byte, err error) {
+func (context *Context) TraceCapture(toSend string, quiescentSecs int, maximumSecs int) (captured string, err error) {
 
 	// Tracing only works for USB and AUX ports
 	if !context.isSerial {
@@ -27,7 +27,7 @@ func (context *Context) TraceCapture(toSend []byte, quiescentSecs int, maximumSe
 
 	// Send the string, if supplied
 	if len(toSend) > 0 {
-		_, err = context.openSerialPort.Write(append(toSend, []byte("\n")...))
+		_, err = context.openSerialPort.Write(append([]byte(toSend), []byte("\n")...))
 		if err != nil {
 			return
 		}
@@ -70,7 +70,7 @@ func (context *Context) TraceCapture(toSend []byte, quiescentSecs int, maximumSe
 			}
 			break
 		}
-		captured = append(captured, buf[:length]...)
+		captured += string(buf[:length])
 		timeOutput = time.Now().Unix()
 	}
 
