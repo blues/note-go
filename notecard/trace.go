@@ -66,6 +66,7 @@ func (context *Context) TraceCapture(toSend string, quiescentSecs int, maximumSe
 		if err != nil {
 			if err == io.EOF {
 				// Just a read timeout
+				err = nil
 				continue
 			}
 			break
