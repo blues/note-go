@@ -93,7 +93,7 @@ func main() {
 	}
 
 	// Turn on Notecard library debug output
-	card.DebugOutput(true)
+	card.DebugOutput(true, false)
 
 	// Process non-config commands
 
