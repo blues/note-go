@@ -22,5 +22,5 @@ func serialDefault() (device string, speed int) {
 
 // Set or display the serial port
 func serialPortEnum(knownNotecardsOnly bool) (names []string, err error) {
-	return defaultSerialPortEnum(knownNotecardsOnly bool)
+	return defaultSerialPortEnum(knownNotecardsOnly)
 }
