@@ -105,7 +105,7 @@ func Defaults() (moduleInterface string, port string, portConfig int) {
 func Open(moduleInterface string, port string, portConfig int) (context Context, err error) {
 
 	if moduleInterface == "" {
-		moduleInterface, port, portConfig = Defaults()
+		moduleInterface, _, _ = Defaults()
 	}
 
 	switch moduleInterface {
