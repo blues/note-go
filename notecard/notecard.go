@@ -183,6 +183,11 @@ func cardResetSerial(context *Context) (err error) {
 // OpenSerial opens the card on serial
 func OpenSerial(port string, portConfig int) (context Context, err error) {
 
+	// Use default if not specified
+	if port == "" {
+		port, portConfig = serialDefault()
+	}
+
 	// Set up class functions
 	context.PortEnumFn = serialPortEnum
 	context.PortDefaultsFn = serialDefault
@@ -243,6 +248,11 @@ func cardResetI2C(context *Context) (err error) {
 
 // OpenI2C opens the card on I2C
 func OpenI2C(port string, portConfig int) (context Context, err error) {
+
+	// Use default if not specified
+	if port == "" {
+		port, portConfig = i2cDefault()
+	}
 
 	// Set up class functions
 	context.PortEnumFn = i2cPortEnum
