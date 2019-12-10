@@ -54,17 +54,22 @@ func main() {
 		flag.PrintDefaults()
 		noteutil.ConfigShow()
 		fmt.Printf("\n")
-		var ports []string
-		if noteutil.Config.Interface == notecard.NotecardInterfaceSerial {
-			ports, _ = notecard.SerialPorts()
+		nInterface, nPort, _ := notecard.Defaults()
+		if noteutil.Config.Interface != "" {
+			nInterface = noteutil.Config.Interface
+			nPort = noteutil.Config.Port
 		}
-		if noteutil.Config.Interface == notecard.NotecardInterfaceI2C {
-			ports, _ = notecard.I2CPorts()
+		var ports []string
+		if nInterface == notecard.NotecardInterfaceSerial {
+			ports, _ = notecard.SerialPorts(false)
+		}
+		if nInterface == notecard.NotecardInterfaceI2C {
+			ports, _ = notecard.I2CPorts(false)
 		}
 		if len(ports) != 0 {
-			fmt.Printf("Ports on '%s':\n", noteutil.Config.Interface)
+			fmt.Printf("Ports on '%s':\n", nInterface)
 			for _, port := range ports {
-				if port == noteutil.Config.Port {
+				if port == nPort {
 					fmt.Printf("   %s ***\n", port)
 				} else {
 					fmt.Printf("   %s\n", port)

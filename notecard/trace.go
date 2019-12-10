@@ -13,11 +13,9 @@ import (
 	"time"
 )
 
-// TraceCapture monitors the trace output for a certain period of time
-// quiescentSecs says "if nonzero, return after N secs of no output activity"
-// maximumSecs says "if nonzero, return after N secs even if output activity is continuing"
+// TraceCapture monitors the trace output until a delimiter is reached
 // It then returns the received output to the caller.
-func (context *Context) TraceCapture(toSend string, toEnd string, quiescentSecs int, maximumSecs int) (captured string, err error) {
+func (context *Context) TraceCapture(toSend string, toEnd string) (captured string, err error) {
 
 	// Tracing only works for USB and AUX ports
 	if !context.isSerial {
@@ -34,17 +32,7 @@ func (context *Context) TraceCapture(toSend string, toEnd string, quiescentSecs 
 	}
 
 	// Loop, echoing to the console
-	timeStarted := time.Now().Unix()
-	timeOutput := time.Now().Unix()
 	for {
-
-		now := time.Now().Unix()
-		if quiescentSecs > 0 && now >= timeOutput+int64(quiescentSecs) {
-			return 
-		}
-		if maximumSecs > 0 && now >= timeStarted+int64(maximumSecs) {
-			return 
-		}
 
 		buf := make([]byte, 2048)
 		readBeganMs := int(time.Now().UnixNano() / 1000000)
@@ -75,73 +63,8 @@ func (context *Context) TraceCapture(toSend string, toEnd string, quiescentSecs 
 		if (toEnd != "" && strings.Contains(captured, toEnd)) {
 			break
 		}
-		timeOutput = time.Now().Unix()
 	}
 
-	return
-
-}
-
-// TraceOutput monitors the trace output for a certain period of time
-// quiescentSecs says "if nonzero, return after N secs of no output activity"
-// maximumSecs says "if nonzero, return after N secs even if output activity is continuing"
-func (context *Context) TraceOutput(quiescentSecs int, maximumSecs int) (err error) {
-
-	// Tracing only works for USB and AUX ports
-	if !context.isSerial {
-		return fmt.Errorf("tracing is only available on USB and AUX ports")
-	}
-
-	// Turn on tracing on the current port
-	req := Request{Req: ReqCardIO}
-	req.Mode = "trace-on"
-	context.TransactionRequest(req)
-
-	// Loop, echoing to the console
-	timeStarted := time.Now().Unix()
-	timeOutput := time.Now().Unix()
-	for {
-
-		now := time.Now().Unix()
-		if quiescentSecs > 0 && now >= timeOutput+int64(quiescentSecs) {
-			return nil
-		}
-		if maximumSecs > 0 && now >= timeStarted+int64(maximumSecs) {
-			return nil
-		}
-
-		buf := make([]byte, 2048)
-		readBeganMs := int(time.Now().UnixNano() / 1000000)
-		length, err := context.openSerialPort.Read(buf)
-		readElapsedMs := int(time.Now().UnixNano()/1000000) - readBeganMs
-
-		if err == nil && length == 0 {
-			// Nothing to read yet
-			// Sleep briefly to be polite yet responsive
-			time.Sleep(1 * time.Millisecond)
-			continue
-		}
-
-		if false {
-			fmt.Printf("mon: elapsed:%d len:%d err:%s '%s'\n", readElapsedMs, length, err, string(buf[:length]))
-		}
-		if readElapsedMs == 0 && length == 0 && err == io.EOF {
-			// On Linux, hardware port failures come back simply as immediate EOF
-			err = fmt.Errorf("hardware failure")
-		}
-		if err != nil {
-			if err == io.EOF {
-				// Just a read timeout
-				continue
-			}
-			break
-		}
-		fmt.Printf("%s", buf[:length])
-		timeOutput = time.Now().Unix()
-	}
-
-	err = fmt.Errorf("error reading from module: %s", err)
-	cardReportError(context, err)
 	return
 
 }

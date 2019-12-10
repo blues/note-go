@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/blues/note-go/notecard"
 	"github.com/blues/note-go/notehub"
 	"io/ioutil"
 	"math/rand"
@@ -90,8 +89,9 @@ func ConfigWrite() error {
 
 // Reset the comms to default
 func configResetInterface() {
-	Config.Interface = "serial"
-	Config.Port, Config.PortConfig = notecard.SerialDefaults()
+	Config.Interface = ""
+	Config.Port = ""
+	Config.PortConfig = 0;
 }
 
 // ConfigReset updates the file with the default info

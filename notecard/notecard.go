@@ -7,10 +7,11 @@ package notecard
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/blues/serial"
 	"io"
 	"strings"
 	"time"
+
+	"go.bug.st/serial"
 )
 
 // Module communication interfaces
@@ -43,7 +44,7 @@ type Context struct {
 	Pretty bool
 
 	// Class functions
-	PortEnumFn     func() (ports []string, err error)
+	PortEnumFn     func(notecardOnly bool) (ports []string, err error)
 	PortDefaultsFn func() (port string, portConfig int)
 	CloseFn        func(context *Context)
 	ReopenFn       func(context *Context) (err error)
@@ -52,8 +53,9 @@ type Context struct {
 
 	// Serial instance state
 	isSerial       bool
-	openSerialPort *serial.Port
-	serialConfig   serial.Config
+	openSerialPort serial.Port
+	serialName	   string
+	serialConfig   serial.Mode
 	i2cName        string
 	i2cAddress     int
 }
@@ -75,8 +77,8 @@ func (context *Context) DebugOutput(enabled bool, pretty bool) {
 }
 
 // EnumPorts returns the list of all available ports on the specified interface
-func (context *Context) EnumPorts() (ports []string, err error) {
-	return context.PortEnumFn()
+func (context *Context) EnumPorts(knownNotecardsOnly bool) (ports []string, err error) {
+	return context.PortEnumFn(knownNotecardsOnly)
 }
 
 // PortDefaults gets the defaults for the specified port
@@ -87,13 +89,24 @@ func (context *Context) PortDefaults() (port string, portConfig int) {
 // Identify this Notecard connection
 func (context *Context) Identify() (protocol string, port string, portConfig int) {
 	if context.isSerial {
-		return "serial", context.serialConfig.Name, context.serialConfig.Baud
+		return "serial", context.serialName, context.serialConfig.BaudRate
 	}
 	return "I2C", context.i2cName, context.i2cAddress
 }
 
+// Defaults gets the default interface, port, and config
+func Defaults() (moduleInterface string, port string, portConfig int) {
+	moduleInterface = NotecardInterfaceSerial
+	port, portConfig = serialDefault()
+	return
+}
+
 // Open the card to establish communications
 func Open(moduleInterface string, port string, portConfig int) (context Context, err error) {
+
+	if moduleInterface == "" {
+		moduleInterface, port, portConfig = Defaults()
+	}
 
 	switch moduleInterface {
 	case NotecardInterfaceSerial:
@@ -180,9 +193,8 @@ func OpenSerial(port string, portConfig int) (context Context, err error) {
 
 	// Record serial configuration
 	context.isSerial = true
-	context.serialConfig.Name = port
-	context.serialConfig.Baud = portConfig
-	context.serialConfig.ReadTimeout = time.Millisecond * 500
+	context.serialName = port
+	context.serialConfig.BaudRate = portConfig
 
 	// Open the serial port
 	err = cardReopenSerial(&context)
@@ -249,7 +261,7 @@ func OpenI2C(port string, portConfig int) (context Context, err error) {
 	err = i2cOpen(uint8(portConfig), port, portConfig)
 	if err != nil {
 		if false {
-			ports, _ := I2CPorts()
+			ports, _ := I2CPorts(true)
 			fmt.Printf("Available ports: %v\n", ports)
 		}
 		err = fmt.Errorf("i2c init error: %s", err)
@@ -299,9 +311,9 @@ func cardReopenSerial(context *Context) (err error) {
 	}
 
 	// Open the serial port
-	context.openSerialPort, err = serial.OpenPort(&context.serialConfig)
+	context.openSerialPort, err = serial.Open(context.serialName, &context.serialConfig)
 	if err != nil {
-		return fmt.Errorf("error opening serial port %s at %d: %s", context.serialConfig.Name, context.serialConfig.Baud, err)
+		return fmt.Errorf("error opening serial port %s at %d: %s", context.serialName, context.serialConfig.BaudRate, err)
 	}
 
 	// Reset serial to a known good state
@@ -324,13 +336,13 @@ func I2CDefaults() (port string, portConfig int) {
 }
 
 // SerialPorts returns the list of available serial ports
-func SerialPorts() (ports []string, err error) {
-	return serialPortEnum()
+func SerialPorts(knownNotecardsOnly bool) (ports []string, err error) {
+	return serialPortEnum(knownNotecardsOnly)
 }
 
 // I2CPorts returns the list of available I2C ports
-func I2CPorts() (ports []string, err error) {
-	return i2cPortEnum()
+func I2CPorts(knownNotecardsOnly bool) (ports []string, err error) {
+	return i2cPortEnum(knownNotecardsOnly)
 }
 
 // TransactionRequest performs a card transaction with a Req structure

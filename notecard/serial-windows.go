@@ -17,12 +17,10 @@ import ()
 
 // Get the default serial device
 func serialDefault() (device string, speed int) {
-	device = "COM*"
-	speed = 115200
-	return
+	return defaultSerialDefault()
 }
 
 // Set or display the serial port
-func serialPortEnum() (names []string, err error) {
-	return
+func serialPortEnum(knownNotecardsOnly bool) (names []string, err error) {
+	return defaultSerialPortEnum(knownNotecardsOnly bool)
 }

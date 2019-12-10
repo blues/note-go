@@ -6,31 +6,12 @@
 
 package notecard
 
-import (
-	"io/ioutil"
-	"strings"
-)
-
-// Get the default serial device.  This is a symlink that maps to /dev/ttyS0 (the serial port on RPi)
-// and also to /dev/ttyAMA0 (the serial port on the RPi CM3)
-func serialDefault() (port string, portConfig int) {
-	port = "/dev/serial0"
-	portConfig = 9600
-	return
+// Get the default serial device
+func serialDefault() (device string, speed int) {
+	return defaultSerialDefault()
 }
 
 // Set or display the serial port
-func serialPortEnum() (names []string, err error) {
-	files, err2 := ioutil.ReadDir("/dev/")
-	if err2 != nil {
-		err = err2
-		return
-	}
-	for _, f := range files {
-		name := f.Name()
-		if strings.HasPrefix(name, "tty.usb") {
-			names = append(names, "/dev/"+name)
-		}
-	}
-	return
+func serialPortEnum(knownNotecardsOnly bool) (names []string, err error) {
+	return defaultSerialPortEnum(knownNotecardsOnly)
 }
