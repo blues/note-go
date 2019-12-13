@@ -101,13 +101,14 @@ func i2cClose() error {
 }
 
 // Enum I2C ports
-func i2cPortEnum(knownNotecardsOnly bool) (names []string, err error) {
+func i2cPortEnum() (allports []string, usbports []string, notecardports []string, err error) {
 	for _, ref := range i2creg.All() {
 		port := ref.Name
 		if ref.Number != -1 {
-			port = fmt.Sprintf("%s", ref.Name)
+			allports = append(allports, port)
+			// Ideally do a probe here to find notecard ports
+			notecardports = append(notecardports, port)
 		}
-		names = append(names, port)
 	}
 	return
 }

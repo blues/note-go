@@ -44,7 +44,7 @@ type Context struct {
     Pretty bool
 
     // Class functions
-    PortEnumFn     func(notecardOnly bool) (ports []string, err error)
+    PortEnumFn     func() (allports []string, usbports []string, notecardports []string, err error)
     PortDefaultsFn func() (port string, portConfig int)
     CloseFn        func(context *Context)
     ReopenFn       func(context *Context) (err error)
@@ -77,8 +77,8 @@ func (context *Context) DebugOutput(enabled bool, pretty bool) {
 }
 
 // EnumPorts returns the list of all available ports on the specified interface
-func (context *Context) EnumPorts(knownNotecardsOnly bool) (ports []string, err error) {
-    return context.PortEnumFn(knownNotecardsOnly)
+func (context *Context) EnumPorts() (allports []string, usbports []string, notecardports []string, err error) {
+    return context.PortEnumFn()
 }
 
 // PortDefaults gets the defaults for the specified port
@@ -271,7 +271,7 @@ func OpenI2C(port string, portConfig int) (context Context, err error) {
     err = i2cOpen(uint8(portConfig), port, portConfig)
     if err != nil {
         if false {
-            ports, _ := I2CPorts(true)
+            ports, _, _, _ := I2CPorts()
             fmt.Printf("Available ports: %v\n", ports)
         }
         err = fmt.Errorf("i2c init error: %s", err)
@@ -346,13 +346,13 @@ func I2CDefaults() (port string, portConfig int) {
 }
 
 // SerialPorts returns the list of available serial ports
-func SerialPorts(knownNotecardsOnly bool) (ports []string, err error) {
-    return serialPortEnum(knownNotecardsOnly)
+func SerialPorts() (allports []string, usbports []string, notecardports []string, err error) {
+    return serialPortEnum()
 }
 
 // I2CPorts returns the list of available I2C ports
-func I2CPorts(knownNotecardsOnly bool) (ports []string, err error) {
-    return i2cPortEnum(knownNotecardsOnly)
+func I2CPorts() (allports []string, usbports []string, notecardports []string, err error) {
+    return i2cPortEnum()
 }
 
 // TransactionRequest performs a card transaction with a Req structure
