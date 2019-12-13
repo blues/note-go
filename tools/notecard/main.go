@@ -61,10 +61,10 @@ func main() {
 		}
 		var ports []string
 		if nInterface == notecard.NotecardInterfaceSerial {
-			ports, _ = notecard.SerialPorts(false)
+			ports, _, _, _ = notecard.SerialPorts()
 		}
 		if nInterface == notecard.NotecardInterfaceI2C {
-			ports, _ = notecard.I2CPorts(false)
+			ports, _, _, _ = notecard.I2CPorts()
 		}
 		if len(ports) != 0 {
 			fmt.Printf("Ports on '%s':\n", nInterface)
