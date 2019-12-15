@@ -368,7 +368,7 @@ func (context *Context) TransactionRequest(req Request) (rsp Request, err error)
     // Perform the transaction
     rspJSON, err2 := context.TransactionJSON(reqJSON)
     if err2 != nil {
-        err = fmt.Errorf("error marshaling request for module: %s", err2)
+        err = fmt.Errorf("transaction error: %s", err2)
         return
     }
 
