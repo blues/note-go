@@ -536,6 +536,7 @@ func cardTransactionSerial(context *Context, reqJSON []byte) (rspJSON []byte, er
     }
 
     // Read the reply until we get '\n' at the end
+	waitBeganSecs := time.Now().Unix()
     for {
         var length int
         buf := make([]byte, 2048)
@@ -558,9 +559,14 @@ func cardTransactionSerial(context *Context, reqJSON []byte) (rspJSON []byte, er
                 // Just a read timeout
                 continue
             }
-            err = fmt.Errorf("error reading from module: %s", err)
-            cardReportError(context, err)
-            return
+			// Ignore [flaky, rare, Windows] hardware errors for up to 10 seconds
+			if (time.Now().Unix() - waitBeganSecs) > 10 {
+	            err = fmt.Errorf("error reading from module: %s", err)
+	            cardReportError(context, err)
+	            return
+			}
+	        time.Sleep(1 * time.Second)
+			continue
         }
         rspJSON = append(rspJSON, buf[:length]...)
         if strings.HasSuffix(string(rspJSON), "\n") {
