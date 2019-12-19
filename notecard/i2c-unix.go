@@ -16,7 +16,6 @@
 package notecard
 
 import (
-	"fmt"
 	"periph.io/x/periph"
 	"periph.io/x/periph/conn/i2c"
 	"periph.io/x/periph/conn/i2c/i2creg"
