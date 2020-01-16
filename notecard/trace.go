@@ -82,6 +82,14 @@ func (context *Context) Trace() (err error) {
 	req.Mode = "trace-on"
 	context.TransactionRequest(req)
 
+	// Enter interactive mode
+	return context.Interactive()
+
+}
+
+// Enter interactive request/response mode
+func (context *Context) Interactive() (err error) {
+
 	// Spawn the input handler
 	go inputHandler(context)
 

@@ -37,9 +37,11 @@ func main() {
 
 	// Process actions
 	var actionRequest string
-	flag.StringVar(&actionRequest, "req", "", "perform a request directly")
+	flag.StringVar(&actionRequest, "req", "", "perform the specified request")
 	var actionTrace bool
-	flag.BoolVar(&actionTrace, "trace", false, "trace serial port output")
+	flag.BoolVar(&actionTrace, "trace", false, "watch Notecard's trace output")
+	var actionInteractive bool
+	flag.BoolVar(&actionInteractive, "request", false, "enter JSON request/response mode")
 
 	// Parse these flags and also the note tool config flags
 	err := noteutil.FlagParse()
@@ -110,6 +112,11 @@ func main() {
 
 	if actionTrace {
 		err = card.Trace()
+	}
+
+	if actionInteractive {
+		fmt.Printf("You may now enter Notecard JSON requests interactively:\n"); 
+		err = card.Interactive()
 	}
 
 	// Process errors
