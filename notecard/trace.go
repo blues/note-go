@@ -83,12 +83,31 @@ func (context *Context) Trace() (err error) {
 	context.TransactionRequest(req)
 
 	// Enter interactive mode
-	return context.Interactive()
+	return context.interactive()
+
+}
+
+// Enter interactive request/response mode, disabling trace in case
+// that was the last mode entered
+func (context *Context) Interactive() (err error) {
+
+	// Interaction only works for USB and AUX ports
+	if !context.isSerial {
+		return fmt.Errorf("interaction mode is only available on USB and AUX ports")
+	}
+
+	// Turn on tracing on the current port
+	req := Request{Req: ReqCardIO}
+	req.Mode = "trace-off"
+	context.TransactionRequest(req)
+
+	// Enter interactive mode
+	return context.interactive()
 
 }
 
 // Enter interactive request/response mode
-func (context *Context) Interactive() (err error) {
+func (context *Context) interactive() (err error) {
 
 	// Spawn the input handler
 	go inputHandler(context)
