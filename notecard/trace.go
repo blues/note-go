@@ -87,7 +87,7 @@ func (context *Context) Trace() (err error) {
 
 }
 
-// Enter interactive request/response mode, disabling trace in case
+// Interactive enters interactive request/response mode, disabling trace in case
 // that was the last mode entered
 func (context *Context) Interactive() (err error) {
 

@@ -252,3 +252,21 @@ type PinState struct {
 	High  bool     `json:"high,omitempty"`
 	Count []uint32 `json:"count,omitempty"`
 }
+
+// SyncLogLevelMajor is just major events
+const SyncLogLevelMajor = 0
+// SyncLogLevelMinor is just major and minor events
+const SyncLogLevelMinor = 1
+// SyncLogLevelDetail is major, minor, and detailed events
+const SyncLogLevelDetail = 2
+// SyncLogLevelAll is all events
+const SyncLogLevelAll = SyncLogLevelDetail
+
+// SyncLogBody is the data structure used in the pseudo-notefile "_synclog.qi"
+type SyncLogBody struct {
+	TimeSecs int64		`json:"time,omitempty"`
+	BootMs int64		`json:"sequence,omitempty"`
+	DetailLevel uint32	`json:"level,omitempty"`
+	Subsystem string	`json:"subsystem,omitempty"`
+	Text string			`json:"text,omitempty"`
+}

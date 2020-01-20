@@ -5,8 +5,10 @@
 package note
 
 import (
-	"encoding/json"
+	"fmt"
 	"time"
+	"strings"
+	"encoding/json"
 )
 
 // DefaultDeviceEndpointID is the default endpoint name of the edge, chosen for its length in protocol messages
@@ -167,4 +169,37 @@ func (note *Note) GetModified() (isAvailable bool, endpointID string, when strin
 	updates = histories[0].Sequence
 	isAvailable = true
 	return
+}
+
+// ErrorContains tests to see if an error contains an error keyword that we might expect
+func ErrorContains(err error, errKeyword string) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(fmt.Sprintf("%s", err), errKeyword)
+}
+
+// ErrorClean removes all error keywords from an error string
+func ErrorClean(err error) error {
+	errstr := fmt.Sprintf("%s", err)
+	for {
+		left := strings.SplitN(errstr, "{", 2)
+		if len(left) == 1 {
+			break
+		}
+		errstr = left[0]
+		b := strings.SplitN(left[1], "}", 2)
+		if len(b) > 1 {
+			errstr += strings.TrimPrefix(b[1], " ")
+		}
+	}
+	return fmt.Errorf(errstr)
+}
+
+// ErrorString safely returns a string from any error, returning "" for nil
+func ErrorString(err error) string {
+	if err == nil {
+		return ""
+	}
+	return fmt.Sprintf("%s", err)
 }
