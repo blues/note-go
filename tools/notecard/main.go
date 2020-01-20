@@ -121,6 +121,8 @@ func main() {
 
 	if err == nil && actionInfo {
 
+		card.DebugOutput(false, false)
+
 		cardVersion := ""
 		cardDeviceUID := ""
 		cardName := ""
@@ -289,31 +291,31 @@ func main() {
 		}
 
 		fmt.Printf("\n%s\n", cardName)
-		fmt.Printf("			  ProductUID: %s\n", cardProductUID)
-		fmt.Printf("		   Serial Number: %s\n", cardSN)
-		fmt.Printf("			   DeviceUID: %s\n", cardDeviceUID)
-		fmt.Printf("			Notehub Host: %s\n", cardHost)
-		fmt.Printf("				 Version: %s\n", cardVersion)
-		fmt.Printf("				   Modem: %s\n", cardModem)
-		fmt.Printf("				   ICCID: %s\n", cardICCID)
-		fmt.Printf("					IMSI: %s\n", cardIMSI)
-		fmt.Printf("					IMEI: %s\n", cardIMEI)
-		fmt.Printf("			 Provisioned: %s\n", cardProvisionedTime)
-		fmt.Printf("	   Used Over-the-Air: %d bytes\n", cardUsedBytes)
-		fmt.Printf("			   Sync Mode: %s\n", cardSyncMode)
-		fmt.Printf("	  Sync Upload Period: %d mins\n", cardUploadMins)
-		fmt.Printf("		 Download Period: %d hours\n", cardDownloadHrs)
-		fmt.Printf("		  Notehub Status: %s\n", cardServiceStatus)
-		fmt.Printf("			 Last Synced: %s\n", cardSyncedTime)
-		fmt.Printf("				 Voltage: %0.02fV\n", cardVoltage)
-		fmt.Printf("			 Temperature: %0.02fC\n", cardTemp)
-		fmt.Printf("				GPS Mode: %s\n", cardGPSMode)
-		fmt.Printf("				Location: %s\n", cardLocation)
-		fmt.Printf("			   Currently: %s\n", cardTime)
-		fmt.Printf("				  Booted: %s\n", cardBootedTime)
-		fmt.Printf("			   Notefiles: %s\n", cardNotefiles)
-		fmt.Printf("   Notefile Storage Used: %d%%\n", cardStorageUsedPct)
-		fmt.Printf("					 Env: %s\n", cardEnv)
+		fmt.Printf("              ProductUID: %s\n", cardProductUID)
+		fmt.Printf("           Serial Number: %s\n", cardSN)
+        fmt.Printf("               DeviceUID: %s\n", cardDeviceUID)
+        fmt.Printf("            Notehub Host: %s\n", cardHost)
+        fmt.Printf("                 Version: %s\n", cardVersion)
+        fmt.Printf("                   Modem: %s\n", cardModem)
+        fmt.Printf("                   ICCID: %s\n", cardICCID)
+        fmt.Printf("                    IMSI: %s\n", cardIMSI)
+        fmt.Printf("                    IMEI: %s\n", cardIMEI)
+        fmt.Printf("             Provisioned: %s\n", cardProvisionedTime)
+        fmt.Printf("       Used Over-the-Air: %d bytes\n", cardUsedBytes)
+        fmt.Printf("               Sync Mode: %s\n", cardSyncMode)
+        fmt.Printf("      Sync Upload Period: %d mins\n", cardUploadMins)
+        fmt.Printf("         Download Period: %d hours\n", cardDownloadHrs)
+        fmt.Printf("          Notehub Status: %s\n", cardServiceStatus)
+        fmt.Printf("             Last Synced: %s\n", cardSyncedTime)
+        fmt.Printf("                 Voltage: %0.02fV\n", cardVoltage)
+        fmt.Printf("             Temperature: %0.02fC\n", cardTemp)
+        fmt.Printf("                GPS Mode: %s\n", cardGPSMode)
+        fmt.Printf("                Location: %s\n", cardLocation)
+        fmt.Printf("               Currently: %s\n", cardTime)
+        fmt.Printf("                  Booted: %s\n", cardBootedTime)
+        fmt.Printf("               Notefiles: %s\n", cardNotefiles)
+        fmt.Printf("   Notefile Storage Used: %d%%\n", cardStorageUsedPct)
+        fmt.Printf("                     Env: %s\n", cardEnv)
 
 	}
 
