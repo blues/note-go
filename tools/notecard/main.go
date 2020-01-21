@@ -389,9 +389,9 @@ func main() {
 			rsp, err = card.TransactionRequest(notecard.Request{Req: "note.get", NotefileID: "_synclog.qi", Delete: true})
 			if err != nil {
 				if note.ErrorContains(err, "invalid character") {
-					err = fmt.Errorf("can't enter commands in a different trace window while 'watching'")
-					break
+					fmt.Printf("WARNING: can't enter commands in a different trace window while 'watching': %s\n", err)
 				}
+				err = nil
 				continue
 			}
 			if rsp.Body == nil {
