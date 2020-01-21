@@ -55,8 +55,8 @@ func main() {
 	flag.BoolVar(&actionWatchAll, "watchall", false, "watch ongoing sync status with full details")
 	var actionWatchLevel int
 	flag.IntVar(&actionWatchLevel, "watchlevel", -1, "watch ongoing sync status of a given level (0-2)")
-	var actionCommsTest bool
-	flag.BoolVar(&actionCommsTest, "commstest", false, "perform repetitive request/response test to validate comms with the Notecard")
+	var actionCommtest bool
+	flag.BoolVar(&actionCommtest, "commtest", false, "perform repetitive request/response test to validate comms with the Notecard")
 
 	// Parse these flags and also the note tool config flags
 	err := noteutil.FlagParse()
@@ -354,6 +354,9 @@ func main() {
 		// Turn off Notecard library debug output
 		card.DebugOutput(false, false)
 
+		// Turn off tracing because it can interfere with our rapid transaction I/O
+		card.TransactionRequest(notecard.Request{Req: "card.io", Mode: "trace-off"})
+
 		// Get the template for the trace log results
 		rsp, err = card.TransactionRequest(notecard.Request{Req: "note.get", NotefileID: "_synclog.qi", Start: true})
 		if err == nil {
@@ -460,8 +463,15 @@ func main() {
 
 	}
 
-	if err == nil && actionCommsTest {
+	if err == nil && actionCommtest {
+
+		// Turn off debug output
 		card.DebugOutput(false, false)
+
+		// Turn off tracing because it can interfere with our rapid transaction I/O
+		card.TransactionRequest(notecard.Request{Req: "card.io", Mode: "trace-off"})
+		
+		// Go into a high-frequency transaction loop
 		transactions := 0
 		began := time.Now()
 		lastMessage := time.Now()
