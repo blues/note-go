@@ -55,6 +55,8 @@ func main() {
 	flag.BoolVar(&actionWatchAll, "watchall", false, "watch ongoing sync status with full details")
 	var actionWatchLevel int
 	flag.IntVar(&actionWatchLevel, "watchlevel", -1, "watch ongoing sync status of a given level (0-2)")
+	var actionCommsTest bool
+	flag.BoolVar(&actionCommsTest, "commstest", false, "perform repetitive request/response test to validate comms with the Notecard")
 
 	// Parse these flags and also the note tool config flags
 	err := noteutil.FlagParse()
@@ -456,6 +458,24 @@ func main() {
 
 		}
 
+	}
+
+	if err == nil && actionCommsTest {
+		card.DebugOutput(false, false)
+		transactions := 0
+		began := time.Now()
+		lastMessage := time.Now()
+		for {
+			_, err = card.TransactionRequest(notecard.Request{Req: "card.version"})
+			if err != nil {
+				break
+			}
+			transactions++
+			if time.Now().Sub(lastMessage).Seconds() > 2 {
+				lastMessage = time.Now()
+				fmt.Printf("%d successful transactions (%0.2f/sec)\n", transactions, float64(transactions)/time.Now().Sub(began).Seconds())
+			}
+		}
 	}
 
 	// Process errors
