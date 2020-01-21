@@ -78,9 +78,12 @@ func (context *Context) Trace() (err error) {
 	}
 
 	// Turn on tracing on the current port
+    debugWas := context.Debug
+	context.Debug = false
 	req := Request{Req: ReqCardIO}
 	req.Mode = "trace-on"
 	context.TransactionRequest(req)
+    context.Debug = debugWas
 
 	// Enter interactive mode
 	return context.interactive()
@@ -97,9 +100,12 @@ func (context *Context) Interactive() (err error) {
 	}
 
 	// Turn on tracing on the current port
+    debugWas := context.Debug
+	context.Debug = false
 	req := Request{Req: ReqCardIO}
 	req.Mode = "trace-off"
 	context.TransactionRequest(req)
+    context.Debug = debugWas
 
 	// Enter interactive mode
 	return context.interactive()
