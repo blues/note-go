@@ -41,6 +41,8 @@ func main() {
 	// Process actions
 	var actionRequest string
 	flag.StringVar(&actionRequest, "req", "", "perform the specified request")
+	var actionLog string
+	flag.StringVar(&actionLog, "log", "", "add a text string to the _log.qo notefile")
 	var actionTrace bool
 	flag.BoolVar(&actionTrace, "trace", false, "watch Notecard's trace output")
 	var actionPlayground bool
@@ -328,6 +330,10 @@ func main() {
 
 	if err == nil && actionRequest != "" {
 		card.TransactionJSON([]byte(actionRequest))
+	}
+
+	if err == nil && actionLog != "" {
+		_, err = card.TransactionRequest(notecard.Request{Req: "service.log", Text: actionLog})
 	}
 
 	if err == nil && actionSync {
