@@ -49,6 +49,8 @@ func main() {
 	flag.BoolVar(&actionPlayground, "play", false, "enter JSON request/response playground")
 	var actionSync bool
 	flag.BoolVar(&actionSync, "sync", false, "manually initiate a sync")
+	var actionProduct string
+	flag.StringVar(&actionProduct, "product", "", "set product UID")
 	var actionInfo bool
 	flag.BoolVar(&actionInfo, "info", false, "show information about the Notecard")
 	var actionWatch bool
@@ -321,6 +323,10 @@ func main() {
         fmt.Printf("   Notefile Storage Used: %d%%\n", cardStorageUsedPct)
         fmt.Printf("                     Env: %s\n", cardEnv)
 
+	}
+
+	if err == nil && actionProduct != "" {
+		_, err = card.TransactionRequest(notecard.Request{Req: "service.set", ProductUID: actionProduct})
 	}
 
 	if err == nil && actionPlayground {

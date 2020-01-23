@@ -22,7 +22,6 @@ type ConfigSettings struct {
 	Hub        string `json:"hub,omitempty"`
 	App        string `json:"app,omitempty"`
 	Device     string `json:"device,omitempty"`
-	Product    string `json:"product,omitempty"`
 	Root       string `json:"root,omitempty"`
 	Cert       string `json:"cert,omitempty"`
 	Key        string `json:"key,omitempty"`
@@ -119,9 +118,6 @@ func ConfigShow() error {
 	if Config.App != "" {
 		fmt.Printf("   -app %s\n", Config.App)
 	}
-	if Config.Product != "" {
-		fmt.Printf("   -product %s\n", Config.Product)
-	}
 	if Config.Device != "" {
 		fmt.Printf("   -device %s\n", Config.Device)
 	}
@@ -204,11 +200,6 @@ func ConfigFlagsProcess() (err error) {
 	} else if configFlags.Device != "" {
 		Config.Device = configFlags.Device
 	}
-	if configFlags.Product == "-" {
-		Config.Product = ""
-	} else if configFlags.Product != "" {
-		Config.Product = configFlags.Product
-	}
 	if configFlags.Interface == "-" {
 		configResetInterface()
 	} else if configFlags.Interface != "" {
@@ -260,9 +251,8 @@ func ConfigFlagsRegister() {
 	flag.IntVar(&configFlags.PortConfig, "portconfig", -1, "set serial device speed or i2c address")
 	flag.BoolVar(&flagConfigHTTP, "http", false, "use http instead of https")
 	flag.BoolVar(&flagConfigHTTPS, "https", false, "use https instead of http")
-	flag.StringVar(&configFlags.Hub, "hub", "", "set notehub command service URL")
+	flag.StringVar(&configFlags.Hub, "hub", "", "set notehub request service URL")
 	flag.StringVar(&configFlags.Device, "device", "", "set DeviceUID")
-	flag.StringVar(&configFlags.Product, "product", "", "set ProductUID")
 	flag.StringVar(&configFlags.App, "app", "", "set AppUID (the Project UID)")
 	flag.StringVar(&configFlags.Root, "root", "", "set path to service's root CA certificate file")
 	flag.StringVar(&configFlags.Key, "key", "", "set path to local private key file")
