@@ -12,6 +12,7 @@ import (
     "time"
 
     "go.bug.st/serial"
+	"github.com/blues/note-go/note"
 )
 
 // Module communication interfaces
@@ -63,10 +64,8 @@ type Context struct {
 // Report a critical card error
 func cardReportError(context *Context, err error) {
     if context.Debug {
-        fmt.Printf("***\n")
         fmt.Printf("*** %s\n", err)
-        fmt.Printf("***\n")
-        time.Sleep(10 * time.Second)
+        time.Sleep(5 * time.Second)
     }
 }
 
@@ -142,9 +141,9 @@ func cardResetSerial(context *Context) (err error) {
     for {
         _, err = context.openSerialPort.Write([]byte("\n\n"))
         if err != nil {
-            err = fmt.Errorf("error transmitting to module: %s", err)
+            err = fmt.Errorf("error transmitting to module: %s %s", err, note.ErrReset)
             cardReportError(context, err)
-            return
+			return
         }
         time.Sleep(500 * time.Millisecond)
         readBeganMs := int(time.Now().UnixNano() / 1000000)
@@ -152,10 +151,10 @@ func cardResetSerial(context *Context) (err error) {
         readElapsedMs := int(time.Now().UnixNano()/1000000) - readBeganMs
         if readElapsedMs == 0 && length == 0 && err == io.EOF {
             // On Linux, hardware port failures come back simply as immediate EOF
-            err = fmt.Errorf("hardware failure")
+            err = fmt.Errorf("hardware failure" + note.ErrReset)
         }
         if err != nil {
-            err = fmt.Errorf("error reading from module: %s", err)
+            err = fmt.Errorf("error reading from module: %s %s", err, errReset)
             cardReportError(context, err)
             return
         }
