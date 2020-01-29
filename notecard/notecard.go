@@ -141,7 +141,7 @@ func cardResetSerial(context *Context) (err error) {
     for {
         _, err = context.openSerialPort.Write([]byte("\n\n"))
         if err != nil {
-            err = fmt.Errorf("error transmitting to module: %s %s", err, note.ErrReset)
+            err = fmt.Errorf("error transmitting to module: %s %s", err, note.ErrCardIo)
             cardReportError(context, err)
 			return
         }
@@ -151,10 +151,10 @@ func cardResetSerial(context *Context) (err error) {
         readElapsedMs := int(time.Now().UnixNano()/1000000) - readBeganMs
         if readElapsedMs == 0 && length == 0 && err == io.EOF {
             // On Linux, hardware port failures come back simply as immediate EOF
-            err = fmt.Errorf("hardware failure" + note.ErrReset)
+            err = fmt.Errorf("hardware failure")
         }
         if err != nil {
-            err = fmt.Errorf("error reading from module: %s %s", err, note.ErrReset)
+            err = fmt.Errorf("error reading from module: %s %s", err, note.ErrCardIo)
             cardReportError(context, err)
             return
         }
@@ -223,7 +223,7 @@ func cardResetI2C(context *Context) (err error) {
         // Read the next chunk of available data
         _, available, err2 := i2cReadBytes(chunklen)
         if err2 != nil {
-            err = fmt.Errorf("error reading chunk: %s", err2)
+            err = fmt.Errorf("error reading chunk: %s %s", err2, note.ErrCardIo)
             return
         }
 
@@ -520,7 +520,7 @@ func cardTransactionSerial(context *Context, reqJSON []byte) (rspJSON []byte, er
             }
             _, err = context.openSerialPort.Write(reqJSON[segOff : segOff+segLen])
             if err != nil {
-                err = fmt.Errorf("error transmitting to module: %s", err)
+                err = fmt.Errorf("error transmitting to module: %s %s", err, note.ErrCardIo)
                 cardReportError(context, err)
                 return
             }
@@ -560,7 +560,7 @@ func cardTransactionSerial(context *Context, reqJSON []byte) (rspJSON []byte, er
             }
 			// Ignore [flaky, rare, Windows] hardware errors for up to 10 seconds
 			if (time.Now().Unix() - waitBeganSecs) > 10 {
-	            err = fmt.Errorf("error reading from module: %s", err)
+	            err = fmt.Errorf("error reading from module: %s %s", err, note.ErrCardIo)
 	            cardReportError(context, err)
 	            return
 			}
@@ -592,7 +592,7 @@ func cardTransactionI2C(context *Context, reqJSON []byte) (rspJSON []byte, err e
         }
         err = i2cWriteBytes(reqJSON[chunkoffset : chunkoffset+chunklen])
         if err != nil {
-            err = fmt.Errorf("chunk write error: %s", err)
+            err = fmt.Errorf("chunk write error: %s %s", err, note.ErrCardIo)
             return
         }
         chunkoffset += chunklen
@@ -615,7 +615,7 @@ func cardTransactionI2C(context *Context, reqJSON []byte) (rspJSON []byte, err e
         // Read the next chunk
         readbuf, available, err2 := i2cReadBytes(chunklen)
         if err2 != nil {
-            err = fmt.Errorf("error reading chunk: %s", err2)
+            err = fmt.Errorf("error reading chunk: %s %s", err2, note.ErrCardIo)
             return
         }
 

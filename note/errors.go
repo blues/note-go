@@ -5,6 +5,6 @@
 // Package note errors.go contains programmatically-testable error strings
 package note
 
-// ErrReset (golint)
-const ErrReset = "{reset}"
+// ErrCardIo (golint)
+const ErrCardIo = "{io}"
 
