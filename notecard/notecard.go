@@ -154,7 +154,7 @@ func cardResetSerial(context *Context) (err error) {
             err = fmt.Errorf("hardware failure" + note.ErrReset)
         }
         if err != nil {
-            err = fmt.Errorf("error reading from module: %s %s", err, errReset)
+            err = fmt.Errorf("error reading from module: %s %s", err, note.ErrReset)
             cardReportError(context, err)
             return
         }
