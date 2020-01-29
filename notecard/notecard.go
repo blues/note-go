@@ -35,6 +35,17 @@ const CardRequestSegmentMaxLen = 1000
 // CardRequestSegmentDelayMs (golint)
 const CardRequestSegmentDelayMs = 250
 
+// cardResetOnNextRequest (golint)
+var cardResetOnNextRequest = false
+
+// IoErrorIsRecoverable is a configuration parameter describing library capabilities.
+// Set this to true if the error recovery of the implementation supports re-open.  On all implementations
+// tested to date, I can't yet get the close/reopen working the way it does on microcontrollers.  For
+// example, on the go serial, I get a nil pointer dereference within the go library.  This MAY have
+// soemthing to do with the fact that we don't cleanly implement the shutdown/restart of the inputHandler
+// in trace, in which case that should be fixed.  In the meantime, this is disabled.
+const IoErrorIsRecoverable = false
+
 // Context for the port that is open
 type Context struct {
 
@@ -64,9 +75,13 @@ type Context struct {
 // Report a critical card error
 func cardReportError(context *Context, err error) {
     if context.Debug {
-        fmt.Printf("*** %s\n", err)
-        time.Sleep(5 * time.Second)
+		// While debugging this code
+        // fmt.Printf("*** %s\n", err)
     }
+	if IoErrorIsRecoverable {
+	    time.Sleep(5 * time.Second)
+		cardResetOnNextRequest = true
+	}
 }
 
 // DebugOutput enables/disables debug output
@@ -310,14 +325,15 @@ func cardCloseI2C(context *Context) {
 
 // Reopen the port
 func (context *Context) Reopen() (err error) {
+	cardResetOnNextRequest = false
     return context.ReopenFn(context)
 }
 
 // Reopen serial
 func cardReopenSerial(context *Context) (err error) {
-    if context.openSerialPort != nil {
-        return fmt.Errorf("error serial port is already open")
-    }
+
+	// Close if open
+	cardCloseSerial(context)
 
     // Open the serial port
     context.openSerialPort, err = serial.Open(context.serialName, &context.serialConfig)
@@ -331,7 +347,8 @@ func cardReopenSerial(context *Context) (err error) {
 
 // Reopen I2C
 func cardReopenI2C(context *Context) (err error) {
-    return fmt.Errorf("error i2c reopen not yet supported since I can't test it yet")
+    fmt.Printf("error i2c reopen not yet supported since I can't test it yet")
+	return
 }
 
 // SerialDefaults returns the default serial parameters
@@ -356,7 +373,7 @@ func I2CPorts() (allports []string, usbports []string, notecardports []string, e
 
 // TransactionRequest performs a card transaction with a Req structure
 func (context *Context) TransactionRequest(req Request) (rsp Request, err error) {
-
+	
     // Marshal the request to JSON
     reqJSON, err2 := json.Marshal(req)
     if err2 != nil {
@@ -456,6 +473,14 @@ func (context *Context) Transaction(req map[string]interface{}) (rsp map[string]
 
 // TransactionJSON performs a card transaction using raw JSON []bytes
 func (context *Context) TransactionJSON(reqJSON []byte) (rspJSON []byte, err error) {
+
+	// Reopen if error
+	if cardResetOnNextRequest {
+		err = context.Reopen()
+		if err != nil {
+			return
+		}
+	}
 
     if len(reqJSON) > 0 {
 

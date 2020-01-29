@@ -29,7 +29,7 @@ var card notecard.Context
 func main() {
 
 	// Substitute args if they're specified in an env var, which is handy both when using this on resin.io
-	// and also when debugging with VS Code
+	// and also when debugging with VS Code 
 	args := os.Getenv("ARGS")
 	if args != "" {
 		os.Args = strings.Split(os.Args[0]+" "+args, " ")
@@ -331,7 +331,12 @@ func main() {
 
 	if err == nil && actionPlayground {
 		fmt.Printf("You may now enter Notecard JSON requests interactively:\n");
-		err = card.Interactive()
+		for {
+			err = card.Interactive()
+			if !note.ErrorContains(err, note.ErrCardIo) || !notecard.IoErrorIsRecoverable {
+				break
+			}
+		}
 	}
 
 	if err == nil && actionRequest != "" {
@@ -502,7 +507,7 @@ func main() {
 
 	// Process errors
 	if err != nil {
-		fmt.Printf("test error: %s\n", err)
+		fmt.Printf("%s\n", err)
 		os.Exit(exitFail)
 	}
 

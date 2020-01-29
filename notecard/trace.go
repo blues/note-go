@@ -11,6 +11,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"github.com/blues/note-go/note"
 )
 
 // TraceCapture monitors the trace output until a delimiter is reached
@@ -27,6 +28,7 @@ func (context *Context) TraceCapture(toSend string, toEnd string) (captured stri
 	if len(toSend) > 0 {
 		_, err = context.openSerialPort.Write(append([]byte(toSend), []byte("\n")...))
 		if err != nil {
+			err = fmt.Errorf("%s %s", err, note.ErrCardIo)
 			return
 		}
 	}
@@ -34,6 +36,15 @@ func (context *Context) TraceCapture(toSend string, toEnd string) (captured stri
 	// Loop, echoing to the console
 	for {
 
+		// Reopen if error
+		if cardResetOnNextRequest {
+			err = context.Reopen()
+			if err != nil {
+				continue
+			}
+		}
+
+		// Read from the card
 		buf := make([]byte, 2048)
 		readBeganMs := int(time.Now().UnixNano() / 1000000)
 		var length int
@@ -57,6 +68,7 @@ func (context *Context) TraceCapture(toSend string, toEnd string) (captured stri
 				err = nil
 				continue
 			}
+			err = fmt.Errorf("%s %s", err, note.ErrCardIo)
 			break
 		}
 		captured += string(buf[:length])
@@ -78,12 +90,12 @@ func (context *Context) Trace() (err error) {
 	}
 
 	// Turn on tracing on the current port
-    debugWas := context.Debug
+	debugWas := context.Debug
 	context.Debug = false
 	req := Request{Req: ReqCardIO}
 	req.Mode = "trace-on"
 	context.TransactionRequest(req)
-    context.Debug = debugWas
+	context.Debug = debugWas
 
 	// Enter interactive mode
 	return context.interactive()
@@ -100,12 +112,12 @@ func (context *Context) Interactive() (err error) {
 	}
 
 	// Turn on tracing on the current port
-    debugWas := context.Debug
+	debugWas := context.Debug
 	context.Debug = false
 	req := Request{Req: ReqCardIO}
 	req.Mode = "trace-off"
 	context.TransactionRequest(req)
-    context.Debug = debugWas
+	context.Debug = debugWas
 
 	// Enter interactive mode
 	return context.interactive()
@@ -137,6 +149,7 @@ func (context *Context) interactive() (err error) {
 				// Just a read timeout
 				continue
 			}
+			err = fmt.Errorf("%s %s", err, note.ErrCardIo)
 			break
 		}
 		fmt.Printf("%s", buf[:length])
@@ -164,7 +177,7 @@ func inputHandler(context *Context) {
 
 			for _, r := range message[1:] {
 				switch {
-				// 'a' - 'z'
+					// 'a' - 'z'
 				case 97 <= r && r <= 122:
 					ba := make([]byte, 1)
 					ba[0] = byte(r - 96)
