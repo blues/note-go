@@ -44,7 +44,7 @@ var cardResetOnNextRequest = false
 // example, on the go serial, I get a nil pointer dereference within the go library.  This MAY have
 // soemthing to do with the fact that we don't cleanly implement the shutdown/restart of the inputHandler
 // in trace, in which case that should be fixed.  In the meantime, this is disabled.
-const IoErrorIsRecoverable = false
+const IoErrorIsRecoverable = true
 
 // Context for the port that is open
 type Context struct {
