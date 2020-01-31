@@ -336,7 +336,7 @@ func main() {
 	}
 
 	if err == nil && actionPlayground {
-		fmt.Printf("You may now enter Notecard JSON requests interactively:\n");
+		fmt.Printf("You may now enter Notecard JSON requests interactively.\nShow sync activity by using \"w\" to toggle Watch Mode on/off.\n");
 		for {
 			err = card.Interactive()
 			if !note.ErrorContains(err, note.ErrCardIo) || !notecard.IoErrorIsRecoverable {
