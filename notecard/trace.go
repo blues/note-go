@@ -14,6 +14,13 @@ import (
 	"github.com/blues/note-go/note"
 )
 
+// The time when the last read began
+var readBeganMs = 0
+var promptedMs = 0
+var prompted = false;
+var inputHandlerActive = false
+var promptHandlerActive = false
+
 // TraceCapture monitors the trace output until a delimiter is reached
 // It then returns the received output to the caller.
 func (context *Context) TraceCapture(toSend string, toEnd string) (captured string, err error) {
@@ -127,14 +134,36 @@ func (context *Context) Interactive() (err error) {
 // Enter interactive request/response mode
 func (context *Context) interactive() (err error) {
 
+	// Exit if not open
+	if context.openSerialPort == nil {
+		err = fmt.Errorf("port not open " + note.ErrCardIo)
+		cardReportError(context, err)
+		return
+	}
+
 	// Spawn the input handler
-	go inputHandler(context)
+	if !inputHandlerActive {
+		go inputHandler(context)
+	}
+	if !promptHandlerActive {
+		go promptHandler(context)
+	}
 
 	// Loop, echoing to the console
 	for {
+
+		// Pause if not open
+		if context.openSerialPort == nil {
+			err = fmt.Errorf("port not open " + note.ErrCardIo)
+			cardReportError(context, err)
+			time.Sleep(2 * time.Second)
+			continue;
+		}
+
+		// Do the read
 		var length int
 		buf := make([]byte, 2048)
-		readBeganMs := int(time.Now().UnixNano() / 1000000)
+		readBeganMs = int(time.Now().UnixNano() / 1000000)
 		length, err = context.openSerialPort.Read(buf)
 		readElapsedMs := int(time.Now().UnixNano()/1000000) - readBeganMs
 		if false {
@@ -152,7 +181,19 @@ func (context *Context) interactive() (err error) {
 			err = fmt.Errorf("%s %s", err, note.ErrCardIo)
 			break
 		}
-		fmt.Printf("%s", buf[:length])
+
+		// Overwrite prompt
+		if prompted {
+			prompted = false
+			fmt.Printf("\r")
+		}
+
+		// Echo
+		text := string(buf[:length])
+		if text != "\n" && text != "\r\n" {
+			fmt.Printf("%s", text)
+		}
+
 	}
 
 	err = fmt.Errorf("error reading from module: %s", err)
@@ -163,6 +204,9 @@ func (context *Context) interactive() (err error) {
 
 // Watch for console input
 func inputHandler(context *Context) {
+
+	// Mark as active, in case we invoke this multiple times
+	inputHandlerActive = true
 
 	// Create a scanner to watch stdin
 	scanner := bufio.NewScanner(os.Stdin)
@@ -175,23 +219,53 @@ func inputHandler(context *Context) {
 
 		if strings.HasPrefix(message, "^") {
 
-			for _, r := range message[1:] {
-				switch {
-					// 'a' - 'z'
-				case 97 <= r && r <= 122:
-					ba := make([]byte, 1)
-					ba[0] = byte(r - 96)
-					context.openSerialPort.Write(ba)
-					// 'A' - 'Z'
-				case 65 <= r && r <= 90:
-					ba := make([]byte, 1)
-					ba[0] = byte(r - 64)
-					context.openSerialPort.Write(ba)
+			if context.openSerialPort != nil {
+				for _, r := range message[1:] {
+					switch {
+						// 'a' - 'z'
+					case 97 <= r && r <= 122:
+						ba := make([]byte, 1)
+						ba[0] = byte(r - 96)
+						context.openSerialPort.Write(ba)
+						// 'A' - 'Z'
+					case 65 <= r && r <= 90:
+						ba := make([]byte, 1)
+						ba[0] = byte(r - 64)
+						context.openSerialPort.Write(ba)
+					}
 				}
 			}
+
 		} else {
-			context.openSerialPort.Write([]byte(message))
-			context.openSerialPort.Write([]byte("\n"))
+
+			// Send the command to the module
+			if context.openSerialPort == nil {
+				time.Sleep(250 * time.Millisecond)
+			} else {
+				context.openSerialPort.Write([]byte(message))
+				context.openSerialPort.Write([]byte("\n"))
+			}
+
+		}
+	}
+
+}
+
+// Display a prompt
+func promptHandler(context *Context) {
+
+	// Mark as active, in case we invoke this multiple times
+	promptHandlerActive = true
+
+	// Loop, prompting whenever a read is pending for a period of time
+	for {
+		if readBeganMs != promptedMs {
+			nowMs := int(time.Now().UnixNano() / 1000000)
+			if readBeganMs == 0 || nowMs > readBeganMs + 500 {
+				promptedMs = readBeganMs
+				prompted = true
+				fmt.Printf("> ")
+			}
 		}
 	}
 

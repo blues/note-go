@@ -74,12 +74,11 @@ type Context struct {
 
 // Report a critical card error
 func cardReportError(context *Context, err error) {
-    if context.Debug {
-		// While debugging this code
-        // fmt.Printf("*** %s\n", err)
+    if context != nil && context.Debug {
+        fmt.Printf("*** %s\n", err)
     }
 	if IoErrorIsRecoverable {
-	    time.Sleep(5 * time.Second)
+	    time.Sleep(500 * time.Millisecond)
 		cardResetOnNextRequest = true
 	}
 }
@@ -134,6 +133,7 @@ func Open(moduleInterface string, port string, portConfig int) (context Context,
         break
     }
     if err != nil {
+		cardReportError(nil, err)
         err = fmt.Errorf("error opening port: %s", err)
         return
     }
@@ -144,6 +144,13 @@ func Open(moduleInterface string, port string, portConfig int) (context Context,
 
 // Reset serial to a known state
 func cardResetSerial(context *Context) (err error) {
+
+	// Exit if not open
+	if context.openSerialPort == nil {
+		err = fmt.Errorf("port not open " + note.ErrCardIo)
+		cardReportError(context, err)
+		return
+	}
 
     // In order to ensure that we're not getting the reply to a failed
     // transaction from a prior session, drain any pending input prior
@@ -338,6 +345,7 @@ func cardReopenSerial(context *Context) (err error) {
     // Open the serial port
     context.openSerialPort, err = serial.Open(context.serialName, &context.serialConfig)
     if err != nil {
+		context.openSerialPort = nil
         return fmt.Errorf("error opening serial port %s at %d: %s", context.serialName, context.serialConfig.BaudRate, err)
     }
 
@@ -532,6 +540,13 @@ func (context *Context) TransactionJSON(reqJSON []byte) (rspJSON []byte, err err
 // Perform a card transaction over serial under the assumption that request already has '\n' terminator
 func cardTransactionSerial(context *Context, reqJSON []byte) (rspJSON []byte, err error) {
 
+	// Exit if not open
+	if context.openSerialPort == nil {
+		err = fmt.Errorf("port not open " + note.ErrCardIo)
+		cardReportError(context, err)
+		return
+	}
+
     // Handle the special case where we are looking only for a reply
     if len(reqJSON) > 0 {
 
@@ -583,8 +598,8 @@ func cardTransactionSerial(context *Context, reqJSON []byte) (rspJSON []byte, er
                 // Just a read timeout
                 continue
             }
-			// Ignore [flaky, rare, Windows] hardware errors for up to 10 seconds
-			if (time.Now().Unix() - waitBeganSecs) > 10 {
+			// Ignore [flaky, rare, Windows] hardware errors for up to several seconds
+			if (time.Now().Unix() - waitBeganSecs) > 2 {
 	            err = fmt.Errorf("error reading from module: %s %s", err, note.ErrCardIo)
 	            cardReportError(context, err)
 	            return

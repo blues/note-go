@@ -51,6 +51,8 @@ func main() {
 	flag.BoolVar(&actionSync, "sync", false, "manually initiate a sync")
 	var actionProduct string
 	flag.StringVar(&actionProduct, "product", "", "set product UID")
+	var actionSN string
+	flag.StringVar(&actionSN, "sn", "", "set serial number")
 	var actionInfo bool
 	flag.BoolVar(&actionInfo, "info", false, "show information about the Notecard")
 	var actionWatch bool
@@ -327,6 +329,10 @@ func main() {
 
 	if err == nil && actionProduct != "" {
 		_, err = card.TransactionRequest(notecard.Request{Req: "service.set", ProductUID: actionProduct})
+	}
+
+	if err == nil && actionSN != "" {
+		_, err = card.TransactionRequest(notecard.Request{Req: "service.set", SN: actionSN})
 	}
 
 	if err == nil && actionPlayground {
