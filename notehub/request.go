@@ -40,6 +40,9 @@ const HubAppMonitor = "hub.app.monitor"
 // HubAppHandlers (golint)
 const HubAppHandlers = "hub.app.handlers"
 
+// HubAppHandlersInternal (golint)
+const HubAppHandlersInternal = "hub.app.handlers.internal"
+
 // HubRequest is is the core data structure for notehub-specific requests
 type HubRequest struct {
 	notecard.Request `json:",omitempty"`
@@ -50,6 +53,8 @@ type HubRequest struct {
 	Contains         string            `json:"contains,omitempty"`
 	Handlers         *[]string         `json:"handlers,omitempty"`
 	FileType         string            `json:"type,omitempty"`
+	FileTags         string            `json:"tags,omitempty"`
+	FileNotes        string            `json:"notes,omitempty"`
 }
 
 // File Types
@@ -98,8 +103,8 @@ type HubRequestFile struct {
 	Contains string                  `json:"contains,omitempty"`
 	Found    string                  `json:"found,omitempty"`
 	FileType string                  `json:"type,omitempty"`
-	Tags	string				     `json:"tags,omitempty"`	// comma-separated, no spaces, case-insensitive
-	Notes	string					 `json:"notes,omitempty"`	// markdown
+	Tags     string                  `json:"tags,omitempty"`  // comma-separated, no spaces, case-insensitive
+	Notes    string                  `json:"notes,omitempty"` // markdown
 	Firmware *HubRequestFileFirmware `json:"firmware,omitempty"`
 	// Arbitrary metadata that the user may define - we don't interpret the schema at all
 	Info *map[string]interface{} `json:"info,omitempty"`
@@ -107,4 +112,3 @@ type HubRequestFile struct {
 
 // HubRequestFileTagPublish indicates that this should be published in the UI
 const HubRequestFileTagPublish = "publish"
-

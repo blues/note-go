@@ -5,10 +5,10 @@
 package note
 
 import (
-	"fmt"
-	"time"
-	"strings"
 	"encoding/json"
+	"fmt"
+	"strings"
+	"time"
 )
 
 // DefaultDeviceEndpointID is the default endpoint name of the edge, chosen for its length in protocol messages

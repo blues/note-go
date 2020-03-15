@@ -7,4 +7,3 @@ package note
 
 // ErrCardIo (golint)
 const ErrCardIo = "{io}"
-

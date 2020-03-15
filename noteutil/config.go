@@ -90,7 +90,7 @@ func ConfigWrite() error {
 func configResetInterface() {
 	Config.Interface = ""
 	Config.Port = ""
-	Config.PortConfig = 0;
+	Config.PortConfig = 0
 }
 
 // ConfigReset updates the file with the default info

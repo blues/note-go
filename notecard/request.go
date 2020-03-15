@@ -177,7 +177,7 @@ type Request struct {
 	Hours            int32                         `json:"hours,omitempty"`
 	Days             int32                         `json:"days,omitempty"`
 	Result           int32                         `json:"result,omitempty"`
-	Port             int32                         `json:"port,omitempty"`
+	I2C              int32                         `json:"i2c,omitempty"`
 	Status           string                        `json:"status,omitempty"`
 	Version          string                        `json:"version,omitempty"`
 	Name             string                        `json:"name,omitempty"`
@@ -245,6 +245,8 @@ type Request struct {
 	Count            uint32                        `json:"count,omitempty"`
 	Sync             bool                          `json:"sync,omitempty"`
 	Live             bool                          `json:"live,omitempty"`
+	Type             int32                         `json:"type,omitempty"`
+	SKU              string                        `json:"sku,omitempty"`
 }
 
 // PinState describes the state of an AUX pin for hardware-related Notecard requests
@@ -255,18 +257,21 @@ type PinState struct {
 
 // SyncLogLevelMajor is just major events
 const SyncLogLevelMajor = 0
+
 // SyncLogLevelMinor is just major and minor events
 const SyncLogLevelMinor = 1
+
 // SyncLogLevelDetail is major, minor, and detailed events
 const SyncLogLevelDetail = 2
+
 // SyncLogLevelAll is all events
 const SyncLogLevelAll = SyncLogLevelDetail
 
 // SyncLogBody is the data structure used in the pseudo-notefile "_synclog.qi"
 type SyncLogBody struct {
-	TimeSecs int64		`json:"time,omitempty"`
-	BootMs int64		`json:"sequence,omitempty"`
-	DetailLevel uint32	`json:"level,omitempty"`
-	Subsystem string	`json:"subsystem,omitempty"`
-	Text string			`json:"text,omitempty"`
+	TimeSecs    int64  `json:"time,omitempty"`
+	BootMs      int64  `json:"sequence,omitempty"`
+	DetailLevel uint32 `json:"level,omitempty"`
+	Subsystem   string `json:"subsystem,omitempty"`
+	Text        string `json:"text,omitempty"`
 }

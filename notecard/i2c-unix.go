@@ -16,6 +16,7 @@
 package notecard
 
 import (
+	"fmt"
 	"periph.io/x/periph"
 	"periph.io/x/periph/conn/i2c"
 	"periph.io/x/periph/conn/i2c/i2creg"
@@ -36,6 +37,7 @@ type I2C struct {
 }
 
 // The open I2C port
+var hostInitialized bool
 var openI2CPort *I2C
 
 // Get the default i2c device
@@ -46,13 +48,15 @@ func i2cDefault() (port string, portConfig int) {
 }
 
 // Open the i2c port
-func i2cOpen(addr uint8, port string, portConfig int) (err error) {
+func i2cOpen(port string, portConfig int) (err error) {
 
 	// Open the periph.io host
-	openI2CPort = &I2C{}
-	openI2CPort.host, err = host.Init()
-	if err != nil {
-		return
+	if !hostInitialized {
+		openI2CPort = &I2C{}
+		openI2CPort.host, err = host.Init()
+		if err != nil {
+			return
+		}
 	}
 
 	// Open the I2C instance
@@ -67,29 +71,64 @@ func i2cOpen(addr uint8, port string, portConfig int) (err error) {
 	return nil
 }
 
+// Set the port config of the open port
+func i2cSetConfig(portConfig int) (err error) {
+	openI2CPort.device = &i2c.Dev{Bus: openI2CPort.bus, Addr: uint16(portConfig)}
+	return
+}
+
 // WriteBytes writes a buffer to I2C
 func i2cWriteBytes(buf []byte) (err error) {
 	time.Sleep(1 * time.Millisecond) // By design, must not send more than once every 1Ms
 	reg := make([]byte, 1)
 	reg[0] = byte(len(buf))
 	reg = append(reg, buf...)
-	return openI2CPort.device.Tx(reg, nil)
+	err = openI2CPort.device.Tx(reg, nil)
+	if err != nil {
+		err = fmt.Errorf("wb: %s", err)
+	}
+	return
 }
 
 // ReadBytes reads a buffer from I2C and returns how many are still pending
 func i2cReadBytes(datalen int) (outbuf []byte, available int, err error) {
 	time.Sleep(1 * time.Millisecond) // By design, must not send more than once every 1Ms
 	readbuf := make([]byte, datalen+2)
-	reg := make([]byte, 2)
-	reg[0] = byte(0)
-	reg[1] = byte(datalen)
-	err = openI2CPort.device.Tx(reg, readbuf)
-	if err != nil {
+	for i := 0; ; i++ { // Retry just for robustness
+		reg := make([]byte, 2)
+		reg[0] = byte(0)
+		reg[1] = byte(datalen)
+		err = openI2CPort.device.Tx(reg, readbuf)
+		if err == nil {
+			break
+		}
+		if i >= 10 {
+			err = fmt.Errorf("rb: %s", err)
+			return
+		}
+		time.Sleep(2 * time.Millisecond)
+	}
+	if len(readbuf) < 2 {
+		err = fmt.Errorf("rb: not enough data (%d < 2)", len(readbuf))
 		return
 	}
 	available = int(readbuf[0])
+	if available > 253 {
+		err = fmt.Errorf("rb: available too large (%d >253)", available)
+		return
+	}
 	good := readbuf[1]
-	_ = good
+	if len(readbuf) < int(2+good) {
+		err = fmt.Errorf("rb: insufficient data (%d < %d)", len(readbuf), 2+good)
+		return
+	}
+	if 2 > 2+good {
+		if false {
+			fmt.Printf("i2cReadBytes(%d): %v\n", datalen, readbuf)
+		}
+		err = fmt.Errorf("rb: %d bytes returned while expecting %d", good, datalen)
+		return
+	}
 	outbuf = readbuf[2 : 2+good]
 	return
 }
@@ -101,11 +140,21 @@ func i2cClose() error {
 
 // Enum I2C ports
 func i2cPortEnum() (allports []string, usbports []string, notecardports []string, err error) {
+
+	// Open the periph.io host
+	if !hostInitialized {
+		openI2CPort = &I2C{}
+		openI2CPort.host, err = host.Init()
+		if err != nil {
+			return
+		}
+	}
+
+	// Enum
 	for _, ref := range i2creg.All() {
 		port := ref.Name
 		if ref.Number != -1 {
 			allports = append(allports, port)
-			// Ideally do a probe here to find notecard ports
 			notecardports = append(notecardports, port)
 		}
 	}
