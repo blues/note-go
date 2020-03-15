@@ -41,6 +41,10 @@ func main() {
 	flag.StringVar(&flagUpload, "upload", "", "filename to upload")
 	var flagType string
 	flag.StringVar(&flagType, "type", "", "indicate file type of image such as 'firmware'")
+	var flagTags string
+	flag.StringVar(&flagTags, "tags", "", "indicate tags to attach to uploaded image")
+	var flagNotes string
+	flag.StringVar(&flagNotes, "notes", "", "indicate notes to attach to uploaded image")
 	var flagOverwrite bool
 	flag.BoolVar(&flagOverwrite, "overwrite", false, "use exact filename in upload and overwrite it on service")
 	var flagOut string
@@ -102,7 +106,7 @@ func main() {
 		}
 		req := notehub.HubRequest{}
 		req.Req = notehub.HubDeviceMonitor
-		reqHub(noteutil.Config.Hub, req, "", req.FileType, false, noteutil.Config.Secure, flagMonitorJq, outq)
+		reqHub(noteutil.Config.Hub, req, "", req.FileType, req.FileTags, req.FileNotes, false, noteutil.Config.Secure, flagMonitorJq, outq)
 	}
 
 	// Process app monitor commands
@@ -113,7 +117,7 @@ func main() {
 		}
 		req := notehub.HubRequest{}
 		req.Req = notehub.HubAppHandlers
-		rsp, err := reqHub(noteutil.Config.Hub, req, "", req.FileType, false, noteutil.Config.Secure, flagMonitorJq, nil)
+		rsp, err := reqHub(noteutil.Config.Hub, req, "", req.FileType, req.FileTags, req.FileNotes, false, noteutil.Config.Secure, flagMonitorJq, nil)
 		if err != nil {
 			fmt.Printf("%s\n", err)
 			os.Exit(exitFail)
@@ -131,16 +135,16 @@ func main() {
 			req.FleetUID = ""           // Monitor all fleets in the app
 			noteutil.Config.Device = "" // DeviceUID must be "" to prevent http-req.go from redirecting to handler
 			if i+1 == len(*rsp.Handlers) {
-				reqHub(handler, req, "", req.FileType, false, noteutil.Config.Secure, flagMonitorJq, outq)
+				reqHub(handler, req, "", req.FileType, req.FileTags, req.FileNotes, false, noteutil.Config.Secure, flagMonitorJq, outq)
 			} else {
-				go reqHub(handler, req, "", req.FileType, false, noteutil.Config.Secure, flagMonitorJq, outq)
+				go reqHub(handler, req, "", req.FileType, req.FileTags, req.FileNotes, false, noteutil.Config.Secure, flagMonitorJq, outq)
 			}
 		}
 	}
 
 	// Process requests
 	if flagReq != "" || flagUpload != "" {
-		rsp, err := reqHubJSON(noteutil.Config.Hub, []byte(flagReq), flagUpload, flagType, flagOverwrite, noteutil.Config.Secure, flagMonitorJq, nil)
+		rsp, err := reqHubJSON(noteutil.Config.Hub, []byte(flagReq), flagUpload, flagType, flagTags, flagNotes, flagOverwrite, noteutil.Config.Secure, flagMonitorJq, nil)
 		if err != nil {
 			fmt.Printf("Error processing request: %s\n", err)
 			os.Exit(exitFail)

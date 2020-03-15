@@ -17,8 +17,13 @@ func i2cDefault() (port string, portConfig int) {
 	return
 }
 
+// Set the port config of the open port
+func i2cSetConfig(portConfig int) (err error) {
+	return fmt.Errorf("i2c not yet implemented")
+}
+
 // Open the i2c port
-func i2cOpen(addr uint8, port string, portConfig int) (err error) {
+func i2cOpen(port string, portConfig int) (err error) {
 	return fmt.Errorf("i2c not yet implemented")
 }
 

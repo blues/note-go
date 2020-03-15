@@ -1,21 +1,21 @@
-// Copyright 2017 Blues Inc.  All rights reserved. 
+// Copyright 2017 Blues Inc.  All rights reserved.
 // Use of this source code is governed by licenses granted by the
 // copyright holder including that found in the LICENSE file.
 
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
-	"time"
+	"github.com/blues/note-go/note"
+	"github.com/blues/note-go/notecard"
+	"github.com/blues/note-go/noteutil"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
-	"encoding/json"
-	"github.com/blues/note-go/note"
-	"github.com/blues/note-go/notecard"
-	"github.com/blues/note-go/noteutil"
+	"time"
 )
 
 // Exit codes
@@ -29,7 +29,7 @@ var card notecard.Context
 func main() {
 
 	// Substitute args if they're specified in an env var, which is handy both when using this on resin.io
-	// and also when debugging with VS Code 
+	// and also when debugging with VS Code
 	args := os.Getenv("ARGS")
 	if args != "" {
 		os.Args = strings.Split(os.Args[0]+" "+args, " ")
@@ -284,7 +284,7 @@ func main() {
 			rsp, err = card.TransactionRequest(notecard.Request{Req: "file.changes"})
 			if err == nil {
 				if rsp.FileInfo != nil {
-					for notefileID, info := range(*rsp.FileInfo) {
+					for notefileID, info := range *rsp.FileInfo {
 						if cardNotefiles != "" {
 							cardNotefiles += ", "
 						}
@@ -301,29 +301,29 @@ func main() {
 		fmt.Printf("\n%s\n", cardName)
 		fmt.Printf("              ProductUID: %s\n", cardProductUID)
 		fmt.Printf("           Serial Number: %s\n", cardSN)
-        fmt.Printf("               DeviceUID: %s\n", cardDeviceUID)
-        fmt.Printf("            Notehub Host: %s\n", cardHost)
-        fmt.Printf("                 Version: %s\n", cardVersion)
-        fmt.Printf("                   Modem: %s\n", cardModem)
-        fmt.Printf("                   ICCID: %s\n", cardICCID)
-        fmt.Printf("                    IMSI: %s\n", cardIMSI)
-        fmt.Printf("                    IMEI: %s\n", cardIMEI)
-        fmt.Printf("             Provisioned: %s\n", cardProvisionedTime)
-        fmt.Printf("       Used Over-the-Air: %d bytes\n", cardUsedBytes)
-        fmt.Printf("               Sync Mode: %s\n", cardSyncMode)
-        fmt.Printf("      Sync Upload Period: %d mins\n", cardUploadMins)
-        fmt.Printf("         Download Period: %d hours\n", cardDownloadHrs)
-        fmt.Printf("          Notehub Status: %s\n", cardServiceStatus)
-        fmt.Printf("             Last Synced: %s\n", cardSyncedTime)
-        fmt.Printf("                 Voltage: %0.02fV\n", cardVoltage)
-        fmt.Printf("             Temperature: %0.02fC\n", cardTemp)
-        fmt.Printf("                GPS Mode: %s\n", cardGPSMode)
-        fmt.Printf("                Location: %s\n", cardLocation)
-        fmt.Printf("               Currently: %s\n", cardTime)
-        fmt.Printf("                  Booted: %s\n", cardBootedTime)
-        fmt.Printf("               Notefiles: %s\n", cardNotefiles)
-        fmt.Printf("   Notefile Storage Used: %d%%\n", cardStorageUsedPct)
-        fmt.Printf("                     Env: %s\n", cardEnv)
+		fmt.Printf("               DeviceUID: %s\n", cardDeviceUID)
+		fmt.Printf("            Notehub Host: %s\n", cardHost)
+		fmt.Printf("                 Version: %s\n", cardVersion)
+		fmt.Printf("                   Modem: %s\n", cardModem)
+		fmt.Printf("                   ICCID: %s\n", cardICCID)
+		fmt.Printf("                    IMSI: %s\n", cardIMSI)
+		fmt.Printf("                    IMEI: %s\n", cardIMEI)
+		fmt.Printf("             Provisioned: %s\n", cardProvisionedTime)
+		fmt.Printf("       Used Over-the-Air: %d bytes\n", cardUsedBytes)
+		fmt.Printf("               Sync Mode: %s\n", cardSyncMode)
+		fmt.Printf("      Sync Upload Period: %d mins\n", cardUploadMins)
+		fmt.Printf("         Download Period: %d hours\n", cardDownloadHrs)
+		fmt.Printf("          Notehub Status: %s\n", cardServiceStatus)
+		fmt.Printf("             Last Synced: %s\n", cardSyncedTime)
+		fmt.Printf("                 Voltage: %0.02fV\n", cardVoltage)
+		fmt.Printf("             Temperature: %0.02fC\n", cardTemp)
+		fmt.Printf("                GPS Mode: %s\n", cardGPSMode)
+		fmt.Printf("                Location: %s\n", cardLocation)
+		fmt.Printf("               Currently: %s\n", cardTime)
+		fmt.Printf("                  Booted: %s\n", cardBootedTime)
+		fmt.Printf("               Notefiles: %s\n", cardNotefiles)
+		fmt.Printf("   Notefile Storage Used: %d%%\n", cardStorageUsedPct)
+		fmt.Printf("                     Env: %s\n", cardEnv)
 
 	}
 
@@ -336,7 +336,7 @@ func main() {
 	}
 
 	if err == nil && actionPlayground {
-		fmt.Printf("You may now enter Notecard JSON requests interactively.\nShow sync activity by using \"w\" to toggle Watch Mode on/off.\n");
+		fmt.Printf("You may now enter Notecard JSON requests interactively.\nShow sync activity by using \"w\" to toggle Watch Mode on/off.\n")
 		for {
 			err = card.Interactive()
 			if !note.ErrorContains(err, note.ErrCardIo) || !notecard.IoErrorIsRecoverable {
@@ -383,7 +383,7 @@ func main() {
 		// Get the template for the trace log results
 		rsp, err = card.TransactionRequest(notecard.Request{Req: "note.get", NotefileID: "_synclog.qi", Start: true})
 		if err == nil {
-			for _, entry := range(strings.Split(rsp.Status, ",")) {
+			for _, entry := range strings.Split(rsp.Status, ",") {
 				str := strings.Split(entry, ":")
 				if len(str) >= 2 {
 					cols++
@@ -422,7 +422,7 @@ func main() {
 			}
 			if rsp.Body == nil {
 				time.Sleep(500 * time.Millisecond)
-				continue;
+				continue
 			}
 			var bodyJSON []byte
 			bodyJSON, err = note.ObjectToJSON(rsp.Body)
@@ -439,9 +439,9 @@ func main() {
 			}
 
 			// Output a header if it will help readability
-			if linesDisplayed % 250 == 0 {
+			if linesDisplayed%250 == 0 {
 				fmt.Printf("\n%s ", strings.Repeat(" ", len(now)))
-				for i:=0; i<cols; i++ {
+				for i := 0; i < cols; i++ {
 					fmt.Printf("%s%s",
 						subsystemDisplayName[i],
 						strings.Repeat(" ", colWidth-len(subsystemDisplayName[i])))
@@ -468,7 +468,7 @@ func main() {
 			// Display indentation
 			fmt.Printf("%s ", timebuf)
 			indentstr := "." + strings.Repeat(" ", colWidth-1)
-			for _, ss := range(subsystem) {
+			for _, ss := range subsystem {
 				if ss == body.Subsystem {
 					break
 				}
@@ -493,7 +493,7 @@ func main() {
 
 		// Turn off tracing because it can interfere with our rapid transaction I/O
 		card.TransactionRequest(notecard.Request{Req: "card.io", Mode: "trace-off"})
-		
+
 		// Go into a high-frequency transaction loop
 		transactions := 0
 		began := time.Now()

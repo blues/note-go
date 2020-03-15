@@ -4,5 +4,5 @@ go 1.12
 
 require (
 	go.bug.st/serial v1.0.0
-	periph.io/x/periph v3.4.0+incompatible
+	periph.io/x/periph v3.6.2+incompatible
 )

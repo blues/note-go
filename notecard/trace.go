@@ -7,17 +7,17 @@ package notecard
 import (
 	"bufio"
 	"fmt"
+	"github.com/blues/note-go/note"
 	"io"
 	"os"
 	"strings"
 	"time"
-	"github.com/blues/note-go/note"
 )
 
 // The time when the last read began
 var readBeganMs = 0
 var promptedMs = 0
-var prompted = false;
+var prompted = false
 var inputHandlerActive = false
 var promptHandlerActive = false
 
@@ -79,7 +79,7 @@ func (context *Context) TraceCapture(toSend string, toEnd string) (captured stri
 			break
 		}
 		captured += string(buf[:length])
-		if (toEnd != "" && strings.Contains(captured, toEnd)) {
+		if toEnd != "" && strings.Contains(captured, toEnd) {
 			break
 		}
 	}
@@ -157,7 +157,7 @@ func (context *Context) interactive() (err error) {
 			err = fmt.Errorf("port not open " + note.ErrCardIo)
 			cardReportError(context, err)
 			time.Sleep(2 * time.Second)
-			continue;
+			continue
 		}
 
 		// Do the read
@@ -222,7 +222,7 @@ func inputHandler(context *Context) {
 			if context.openSerialPort != nil {
 				for _, r := range message[1:] {
 					switch {
-						// 'a' - 'z'
+					// 'a' - 'z'
 					case 97 <= r && r <= 122:
 						ba := make([]byte, 1)
 						ba[0] = byte(r - 96)
@@ -261,7 +261,7 @@ func promptHandler(context *Context) {
 	for {
 		if readBeganMs != promptedMs {
 			nowMs := int(time.Now().UnixNano() / 1000000)
-			if readBeganMs == 0 || nowMs > readBeganMs + 500 {
+			if readBeganMs == 0 || nowMs > readBeganMs+500 {
 				promptedMs = readBeganMs
 				prompted = true
 				fmt.Printf("> ")

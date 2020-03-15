@@ -18,8 +18,11 @@ type DeviceSession struct {
 	// Cell ID where the session originated and quality ("mcc,mnc,lac,cellid")
 	CellID string `json:"cell,omitempty"`
 	// Signal strength/quality of the cell
-	Rssi int `json:"rssi,omitempty"`
-	Sinr int `json:"sinr,omitempty"`
+	Rssi int    `json:"rssi,omitempty"`
+	Sinr int    `json:"sinr,omitempty"`
+	Rsrp int    `json:"rsrp,omitempty"`
+	Rsrq int    `json:"rsrq,omitempty"`
+	Rat  string `json:"rat,omitempty"`
 	// Last known tower location at beginning of session
 	Tower TowerLocation `json:"tower,omitempty"`
 	// Last known GPS location extracted from data flowing through session

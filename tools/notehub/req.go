@@ -15,6 +15,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -36,7 +37,7 @@ func addQuery(in string, key string, value string) (out string) {
 }
 
 // Perform an HTTP requet, but do so using structs rather than bytes
-func reqHub(hub string, request notehub.HubRequest, requestFile string, filetype string, overwrite bool, secure bool, dropNonJSON bool, outq chan string) (response notehub.HubRequest, err error) {
+func reqHub(hub string, request notehub.HubRequest, requestFile string, filetype string, filetags string, filenotes string, overwrite bool, secure bool, dropNonJSON bool, outq chan string) (response notehub.HubRequest, err error) {
 
 	reqJSON, err2 := json.Marshal(request)
 	if err2 != nil {
@@ -44,7 +45,7 @@ func reqHub(hub string, request notehub.HubRequest, requestFile string, filetype
 		return
 	}
 
-	rspJSON, err2 := reqHubJSON(hub, reqJSON, requestFile, filetype, overwrite, secure, dropNonJSON, outq)
+	rspJSON, err2 := reqHubJSON(hub, reqJSON, requestFile, filetype, filetags, filenotes, overwrite, secure, dropNonJSON, outq)
 	if err2 != nil {
 		err = err2
 		return
@@ -56,7 +57,7 @@ func reqHub(hub string, request notehub.HubRequest, requestFile string, filetype
 }
 
 // Perform an HTTP request
-func reqHubJSON(hub string, request []byte, requestFile string, filetype string, overwrite bool, secure bool, dropNonJSON bool, outq chan string) (response []byte, err error) {
+func reqHubJSON(hub string, request []byte, requestFile string, filetype string, filetags string, filenotes string, overwrite bool, secure bool, dropNonJSON bool, outq chan string) (response []byte, err error) {
 
 	scheme := "http"
 	if secure {
@@ -69,7 +70,7 @@ func reqHubJSON(hub string, request []byte, requestFile string, filetype string,
 		fn = path[len(path)-1]
 	}
 
-	url := fmt.Sprintf("%s://%s%s", scheme, hub, notehub.DefaultAPITopicReq)
+	httpurl := fmt.Sprintf("%s://%s%s", scheme, hub, notehub.DefaultAPITopicReq)
 	query := addQuery("", "app", noteutil.Config.App)
 	query = addQuery(query, "device", noteutil.Config.Device)
 	query = addQuery(query, "upload", fn)
@@ -79,7 +80,13 @@ func reqHubJSON(hub string, request []byte, requestFile string, filetype string,
 	if filetype != "" {
 		query = addQuery(query, "type", filetype)
 	}
-	url += query
+	if filetags != "" {
+		query = addQuery(query, "tags", filetags)
+	}
+	if filenotes != "" {
+		query = addQuery(query, "notes", url.PathEscape(filenotes))
+	}
+	httpurl += query
 
 	var fileContents []byte
 	var fileLength int
@@ -93,7 +100,7 @@ func reqHubJSON(hub string, request []byte, requestFile string, filetype string,
 		buffer = bytes.NewBuffer(fileContents)
 	}
 
-	httpReq, err := http.NewRequest("POST", url, buffer)
+	httpReq, err := http.NewRequest("POST", httpurl, buffer)
 	if err != nil {
 		return
 	}
