@@ -5,16 +5,14 @@
 package notehub
 
 import (
+	"github.com/blues/note-go/note"
 	"github.com/blues/note-go/notecard"
 )
 
 // Supported requests
 
-// HubDeviceMonitor (golint)
-const HubDeviceMonitor = "hub.device.monitor"
-
-// HubDeviceSignal (golint)
-const HubDeviceSignal = "hub.device.signal"
+// HubDeviceContact (golint)
+const HubDeviceContact = "hub.device.contact"
 
 // HubQuery (golint)
 const HubQuery = "hub.app.data.query"
@@ -34,18 +32,10 @@ const HubAppUploadDelete = "hub.app.upload.delete"
 // HubAppUploadRead (golint)
 const HubAppUploadRead = "hub.app.upload.get"
 
-// HubAppMonitor (golint)
-const HubAppMonitor = "hub.app.monitor"
-
-// HubAppHandlers (golint)
-const HubAppHandlers = "hub.app.handlers"
-
-// HubAppHandlersInternal (golint)
-const HubAppHandlersInternal = "hub.app.handlers.internal"
-
 // HubRequest is is the core data structure for notehub-specific requests
 type HubRequest struct {
 	notecard.Request `json:",omitempty"`
+	Contact			 *note.EventContact `json:"contact,omitempty"`
 	AppUID           string            `json:"app,omitempty"`
 	FleetUID         string            `json:"fleet,omitempty"`
 	DbQuery          *DbQuery          `json:"query,omitempty"`
