@@ -100,6 +100,9 @@ func reqHubJSON(hub string, request []byte, requestFile string, filetype string,
 		buffer = bytes.NewBuffer(fileContents)
 	}
 
+	if false {
+		fmt.Printf("secure: %t\n%s\n", secure, httpurl)
+	}
 	httpReq, err := http.NewRequest("POST", httpurl, buffer)
 	if err != nil {
 		return
