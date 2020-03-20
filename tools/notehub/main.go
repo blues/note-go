@@ -105,7 +105,7 @@ func main() {
 			os.Exit(exitFail)
 		}
 		req := notehub.HubRequest{}
-		req.Req = notehub.HubDeviceMonitor
+		req.Req = "hub.device.monitor"
 		reqHub(noteutil.Config.Hub, req, "", req.FileType, req.FileTags, req.FileNotes, false, noteutil.Config.Secure, flagMonitorJq, outq)
 	}
 
@@ -116,7 +116,7 @@ func main() {
 			os.Exit(exitFail)
 		}
 		req := notehub.HubRequest{}
-		req.Req = notehub.HubAppHandlers
+		req.Req = "hub.app.handlers"
 		rsp, err := reqHub(noteutil.Config.Hub, req, "", req.FileType, req.FileTags, req.FileNotes, false, noteutil.Config.Secure, flagMonitorJq, nil)
 		if err != nil {
 			fmt.Printf("%s\n", err)
@@ -131,7 +131,7 @@ func main() {
 		}
 		for i, handler := range *rsp.Handlers {
 			req := notehub.HubRequest{}
-			req.Req = notehub.HubAppMonitor
+			req.Req = "hub.app.monitor"
 			req.FleetUID = ""           // Monitor all fleets in the app
 			noteutil.Config.Device = "" // DeviceUID must be "" to prevent http-req.go from redirecting to handler
 			if i+1 == len(*rsp.Handlers) {
