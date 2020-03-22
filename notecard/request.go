@@ -91,6 +91,9 @@ const ReqCardTemp = "card.temp"
 // ReqCardVoltage (golint)
 const ReqCardVoltage = "card.voltage"
 
+// ReqCardMotion (golint)
+const ReqCardMotion = "card.motion"
+
 // ReqCardIO (golint)
 const ReqCardIO = "card.io"
 
