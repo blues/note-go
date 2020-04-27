@@ -5,15 +5,16 @@
 package noteutil
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/blues/note-go/notehub"
 	"io/ioutil"
 	"math/rand"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/blues/note-go/note"
+	"github.com/blues/note-go/notehub"
 )
 
 // ConfigSettings defines the config file that maintains the command processor's state
@@ -54,7 +55,7 @@ func ConfigRead() error {
 		ConfigReset()
 		err = nil
 	} else if err == nil {
-		err = json.Unmarshal(contents, &Config)
+		err = note.JSONUnmarshal(contents, &Config)
 		if err != nil || Config.When == "" {
 			ConfigReset()
 			if err != nil {
@@ -71,7 +72,7 @@ func ConfigRead() error {
 func ConfigWrite() error {
 
 	// Marshal it
-	configJSON, _ := json.MarshalIndent(Config, "", "    ")
+	configJSON, _ := note.JSONMarshalIndent(Config, "", "    ")
 
 	// Write the file
 	fd, err := os.OpenFile(configSettingsPath(), os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0666)
@@ -208,7 +209,9 @@ func ConfigFlagsProcess() (err error) {
 	if configFlags.Port != "" {
 		Config.Port = configFlags.Port
 	}
-	if configFlags.PortConfig != -1 {
+	if configFlags.PortConfig < 0 {
+		Config.PortConfig = 0
+	} else if configFlags.PortConfig != 0 {
 		Config.PortConfig = configFlags.PortConfig
 	}
 
@@ -240,32 +243,34 @@ func ConfigFlagsProcess() (err error) {
 }
 
 // ConfigFlagsRegister registers the config-related flags
-func ConfigFlagsRegister() {
-
-	// Start by setting to default if requested
-	flag.BoolVar(&flagConfigReset, "config-reset", false, "reset the note tool config to its defaults")
+func ConfigFlagsRegister(notecardFlags bool, notehubFlags bool) {
 
 	// Process the commands
-	flag.StringVar(&configFlags.Interface, "interface", "", "select 'serial' or 'i2c' interface")
-	flag.StringVar(&configFlags.Port, "port", "", "select serial or i2c port")
-	flag.IntVar(&configFlags.PortConfig, "portconfig", -1, "set serial device speed or i2c address")
-	flag.BoolVar(&flagConfigHTTP, "http", false, "use http instead of https")
-	flag.BoolVar(&flagConfigHTTPS, "https", false, "use https instead of http")
-	flag.StringVar(&configFlags.Hub, "hub", "", "set notehub request service URL")
-	flag.StringVar(&configFlags.Device, "device", "", "set DeviceUID")
-	flag.StringVar(&configFlags.App, "app", "", "set AppUID (the Project UID)")
-	flag.StringVar(&configFlags.Root, "root", "", "set path to service's root CA certificate file")
-	flag.StringVar(&configFlags.Key, "key", "", "set path to local private key file")
-	flag.StringVar(&configFlags.Cert, "cert", "", "set path to local cert file")
+	if notecardFlags {
+		flag.StringVar(&configFlags.Interface, "interface", "", "select 'serial' or 'i2c' interface for notecard")
+		flag.StringVar(&configFlags.Port, "port", "", "select serial or i2c port for notecard")
+		flag.IntVar(&configFlags.PortConfig, "portconfig", 0, "set serial device speed or i2c address for notecard")
+	}
+	if notehubFlags {
+		flag.BoolVar(&flagConfigHTTP, "http", false, "use http instead of https")
+		flag.BoolVar(&flagConfigHTTPS, "https", false, "use https instead of http")
+		flag.StringVar(&configFlags.Hub, "hub", "", "set notehub request service URL")
+		flag.StringVar(&configFlags.Device, "device", "", "set DeviceUID")
+		flag.StringVar(&configFlags.App, "app", "", "set AppUID (the Project UID)")
+		flag.StringVar(&configFlags.Root, "root", "", "set path to service's root CA certificate file")
+		flag.StringVar(&configFlags.Key, "key", "", "set path to local private key file")
+		flag.StringVar(&configFlags.Cert, "cert", "", "set path to local cert file")
+	}
 
 	// Write the config if asked to do so
+	flag.BoolVar(&flagConfigReset, "config-reset", false, "reset the note tool config to its defaults")
 	flag.BoolVar(&flagConfigSave, "config-save", false, "save changes to note tool config")
 
 }
 
 // FlagParse is a wrapper around flag.Parse that handles our config flags
-func FlagParse() (err error) {
-	ConfigFlagsRegister()
+func FlagParse(notecardFlags bool, notehubFlags bool) (err error) {
+	ConfigFlagsRegister(notecardFlags, notehubFlags)
 	flag.Parse()
 	return ConfigFlagsProcess()
 }

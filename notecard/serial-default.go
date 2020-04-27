@@ -5,8 +5,9 @@
 package notecard
 
 import (
-	"go.bug.st/serial/enumerator"
 	"strings"
+
+	"go.bug.st/serial/enumerator"
 )
 
 // Notecard's USB VID/PID

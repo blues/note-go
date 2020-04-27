@@ -97,6 +97,9 @@ const ReqCardMotion = "card.motion"
 // ReqCardIO (golint)
 const ReqCardIO = "card.io"
 
+// ReqCardWireless (golint)
+const ReqCardWireless = "card.wireless"
+
 // ReqCardAUX (golint)
 const ReqCardAUX = "card.aux"
 
@@ -171,13 +174,18 @@ type Request struct {
 	USB              bool                          `json:"usb,omitempty"`
 	Connected        bool                          `json:"connected,omitempty"`
 	Secure           bool                          `json:"secure,omitempty"`
+	Unsecure         bool                          `json:"unsecure,omitempty"`
+	Alert            bool                          `json:"alert,omitempty"`
 	Retry            bool                          `json:"retry,omitempty"`
 	Signals          int32                         `json:"signals,omitempty"`
 	Max              int32                         `json:"max,omitempty"`
 	Changes          int32                         `json:"changes,omitempty"`
 	Seconds          int32                         `json:"seconds,omitempty"`
+	SecondsV         string                        `json:"vseconds,omitempty"`
 	Minutes          int32                         `json:"minutes,omitempty"`
+	MinutesV         string                        `json:"vminutes,omitempty"`
 	Hours            int32                         `json:"hours,omitempty"`
+	HoursV           string                        `json:"vhours,omitempty"`
 	Days             int32                         `json:"days,omitempty"`
 	Result           int32                         `json:"result,omitempty"`
 	I2C              int32                         `json:"i2c,omitempty"`
@@ -205,7 +213,7 @@ type Request struct {
 	Latitude         float64                       `json:"lat,omitempty"`
 	Longitude        float64                       `json:"lon,omitempty"`
 	Value            float64                       `json:"value,omitempty"`
-	Wireless         string                        `json:"wireless,omitempty"`
+	ValueV           string                        `json:"vvalue,omitempty"`
 	SN               string                        `json:"sn,omitempty"`
 	Text             string                        `json:"text,omitempty"`
 	Offset           int32                         `json:"offset,omitempty"`
@@ -249,7 +257,9 @@ type Request struct {
 	Sync             bool                          `json:"sync,omitempty"`
 	Live             bool                          `json:"live,omitempty"`
 	Type             int32                         `json:"type,omitempty"`
+	Number           int64                         `json:"number,omitempty"`
 	SKU              string                        `json:"sku,omitempty"`
+	Net              *NetInfo                      `json:"net,omitempty"`
 }
 
 // PinState describes the state of an AUX pin for hardware-related Notecard requests
@@ -267,8 +277,11 @@ const SyncLogLevelMinor = 1
 // SyncLogLevelDetail is major, minor, and detailed events
 const SyncLogLevelDetail = 2
 
+// SyncLogLevelProg is everything plus programmatically-targeted
+const SyncLogLevelProg = 3
+
 // SyncLogLevelAll is all events
-const SyncLogLevelAll = SyncLogLevelDetail
+const SyncLogLevelAll = SyncLogLevelProg
 
 // SyncLogBody is the data structure used in the pseudo-notefile "_synclog.qi"
 type SyncLogBody struct {

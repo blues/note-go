@@ -7,13 +7,14 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/blues/note-go/notehub"
-	"github.com/blues/note-go/noteutil"
 	"io/ioutil"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
+
+	"github.com/blues/note-go/notehub"
+	"github.com/blues/note-go/noteutil"
 )
 
 // Exit codes
@@ -51,7 +52,7 @@ func main() {
 	flag.StringVar(&flagOut, "out", "", "output filename")
 
 	// Parse these flags and also the note tool config flags
-	err := noteutil.FlagParse()
+	err := noteutil.FlagParse(false, true)
 	if err != nil {
 		fmt.Printf("%s\n", err)
 		os.Exit(exitFail)

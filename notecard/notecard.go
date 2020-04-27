@@ -5,7 +5,6 @@
 package notecard
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
@@ -388,7 +387,7 @@ func I2CPorts() (allports []string, usbports []string, notecardports []string, e
 func (context *Context) TransactionRequest(req Request) (rsp Request, err error) {
 
 	// Marshal the request to JSON
-	reqJSON, err2 := json.Marshal(req)
+	reqJSON, err2 := note.JSONMarshal(req)
 	if err2 != nil {
 		err = fmt.Errorf("error marshaling request for module: %s", err2)
 		return
@@ -397,12 +396,12 @@ func (context *Context) TransactionRequest(req Request) (rsp Request, err error)
 	// Perform the transaction
 	rspJSON, err2 := context.TransactionJSON(reqJSON)
 	if err2 != nil {
-		err = fmt.Errorf("transaction error: %s", err2)
+		err = err2
 		return
 	}
 
 	// Unmarshal for convenience of the caller
-	err = json.Unmarshal(rspJSON, &rsp)
+	err = note.JSONUnmarshal(rspJSON, &rsp)
 	if err != nil {
 		err = fmt.Errorf("error unmarshaling reply from module: %s", err)
 		return
@@ -458,7 +457,7 @@ func (context *Context) Transaction(req map[string]interface{}) (rsp map[string]
 	} else {
 
 		// Marshal the request to JSON
-		reqJSON, err = json.Marshal(req)
+		reqJSON, err = note.JSONMarshal(req)
 		if err != nil {
 			err = fmt.Errorf("error marshaling request for module: %s", err)
 			return
@@ -474,7 +473,7 @@ func (context *Context) Transaction(req map[string]interface{}) (rsp map[string]
 	}
 
 	// Unmarshal for convenience of the caller
-	err = json.Unmarshal(rspJSON, &rsp)
+	err = note.JSONUnmarshal(rspJSON, &rsp)
 	if err != nil {
 		err = fmt.Errorf("error unmarshaling reply from module: %s", err)
 		return
@@ -501,9 +500,9 @@ func (context *Context) TransactionJSON(reqJSON []byte) (rspJSON []byte, err err
 			requestJSON := reqJSON
 			if context.Pretty {
 				var req Request
-				e := json.Unmarshal(requestJSON, &req)
+				e := note.JSONUnmarshal(requestJSON, &req)
 				if e == nil {
-					prettyJSON, e := json.MarshalIndent(req, "", "    ")
+					prettyJSON, e := note.JSONMarshalIndent(req, "", "    ")
 					if e == nil {
 						requestJSON = prettyJSON
 					}
@@ -517,23 +516,30 @@ func (context *Context) TransactionJSON(reqJSON []byte) (rspJSON []byte, err err
 
 	}
 
-	// Perform the transaction
+	// Perform the transaction and set ERR if there is an I/O error
 	rspJSON, err = context.TransactionFn(context, reqJSON)
 	if err != nil {
 		context.ResetFn(context)
 	}
 
+	// Decode the response to create an error if the transaction returned an error.  We
+	// do this because it's SUPER inconvenient to always be checking for a response error
+	// vs an error on the transaction itself
+	var rsp Request
+	if err == nil && note.JSONUnmarshal(rspJSON, &rsp) == nil && rsp.Err != "" {
+		var req Request
+		if note.JSONUnmarshal(reqJSON, &req) == nil {
+			err = fmt.Errorf("%s: %s", req.Req, rsp.Err)
+		}
+	}
+
 	if context.Debug {
 		responseJSON := rspJSON
 		if context.Pretty {
-			var rsp Request
-			e := json.Unmarshal(responseJSON, &rsp)
+			prettyJSON, e := note.JSONMarshalIndent(rsp, "    ", "    ")
 			if e == nil {
-				prettyJSON, e := json.MarshalIndent(rsp, "    ", "    ")
-				if e == nil {
-					fmt.Printf("==> ")
-					responseJSON = append(prettyJSON, byte('\n'))
-				}
+				fmt.Printf("==> ")
+				responseJSON = append(prettyJSON, byte('\n'))
 			}
 		}
 		fmt.Printf("%s", string(responseJSON))

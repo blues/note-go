@@ -14,6 +14,9 @@ import (
 // HubDeviceContact (golint)
 const HubDeviceContact = "hub.device.contact"
 
+// HubAppGetSchemas (golint)
+const HubAppGetSchemas = "hub.app.schemas.get"
+
 // HubQuery (golint)
 const HubQuery = "hub.app.data.query"
 

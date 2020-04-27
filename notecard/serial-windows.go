@@ -13,8 +13,6 @@
 
 package notecard
 
-import ()
-
 // Get the default serial device
 func serialDefault() (device string, speed int) {
 	return defaultSerialDefault()

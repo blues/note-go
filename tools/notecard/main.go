@@ -5,17 +5,17 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/blues/note-go/note"
-	"github.com/blues/note-go/notecard"
-	"github.com/blues/note-go/noteutil"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/blues/note-go/note"
+	"github.com/blues/note-go/notecard"
+	"github.com/blues/note-go/noteutil"
 )
 
 // Exit codes
@@ -27,13 +27,6 @@ var card notecard.Context
 
 // Main entry
 func main() {
-
-	// Substitute args if they're specified in an env var, which is handy both when using this on resin.io
-	// and also when debugging with VS Code
-	args := os.Getenv("ARGS")
-	if args != "" {
-		os.Args = strings.Split(os.Args[0]+" "+args, " ")
-	}
 
 	// Spawn our signal handler
 	go signalHandler()
@@ -53,6 +46,8 @@ func main() {
 	flag.StringVar(&actionProduct, "product", "", "set product UID")
 	var actionSN string
 	flag.StringVar(&actionSN, "sn", "", "set serial number")
+	var actionHost string
+	flag.StringVar(&actionHost, "host", "", "set notehub to be used")
 	var actionInfo bool
 	flag.BoolVar(&actionInfo, "info", false, "show information about the Notecard")
 	var actionWatch bool
@@ -65,7 +60,7 @@ func main() {
 	flag.BoolVar(&actionCommtest, "commtest", false, "perform repetitive request/response test to validate comms with the Notecard")
 
 	// Parse these flags and also the note tool config flags
-	err := noteutil.FlagParse()
+	err := noteutil.FlagParse(true, false)
 	if err != nil {
 		fmt.Printf("%s\n", err)
 		os.Exit(exitFail)
@@ -134,28 +129,27 @@ func main() {
 		cardVersion := ""
 		cardDeviceUID := ""
 		cardName := ""
-		cardICCID := ""
-		cardIMSI := ""
-		cardIMEI := ""
-		cardModem := ""
 		rsp, err := card.TransactionRequest(notecard.Request{Req: "card.version"})
 		if err == nil {
 			cardName = rsp.Name
 			cardDeviceUID = rsp.DeviceUID
 			cardVersion = rsp.Version
-			cardWireless := strings.Split(rsp.Wireless, ",")
-			if len(cardWireless) >= 4 {
-				cardModem = cardWireless[3]
-			}
-			if len(cardWireless) >= 3 {
-				cardIMEI = cardWireless[2]
-			}
-			if len(cardWireless) >= 2 {
-				cardIMSI = cardWireless[1]
-			}
-			if len(cardWireless) >= 1 {
-				cardICCID = cardWireless[0]
-			}
+		}
+
+		cardICCID := ""
+		cardIMSI := ""
+		cardIMEI := ""
+		cardICCIDX := ""
+		cardIMSIX := ""
+		cardModem := ""
+		rsp, err = card.TransactionRequest(notecard.Request{Req: "card.wireless"})
+		if err == nil {
+			cardModem = rsp.Net.ModemFirmware
+			cardIMEI = rsp.Net.Imei
+			cardIMSI = rsp.Net.Imsi
+			cardICCID = rsp.Net.Iccid
+			cardIMSIX = rsp.Net.ImsiExternal
+			cardICCIDX = rsp.Net.IccidExternal
 		}
 
 		cardSN := ""
@@ -177,7 +171,7 @@ func main() {
 		}
 
 		if cardProductUID == "" {
-			cardProductUID = "*** PRODUCT UID NOT YET SET. PLEASE USE NOTEHUB.IO TO CREATE A PROJECT AND A PRODUCT UID ***"
+			cardProductUID = "*** Product UID is not set. Please use notehub.io to create a project and a product UID ***"
 		}
 
 		cardVoltage := 0.0
@@ -308,6 +302,10 @@ func main() {
 		fmt.Printf("                   ICCID: %s\n", cardICCID)
 		fmt.Printf("                    IMSI: %s\n", cardIMSI)
 		fmt.Printf("                    IMEI: %s\n", cardIMEI)
+		if cardICCIDX != "" {
+			fmt.Printf("          External ICCID: %s\n", cardICCIDX)
+			fmt.Printf("           External IMSI: %s\n", cardIMSIX)
+		}
 		fmt.Printf("             Provisioned: %s\n", cardProvisionedTime)
 		fmt.Printf("       Used Over-the-Air: %d bytes\n", cardUsedBytes)
 		fmt.Printf("               Sync Mode: %s\n", cardSyncMode)
@@ -333,6 +331,10 @@ func main() {
 
 	if err == nil && actionSN != "" {
 		_, err = card.TransactionRequest(notecard.Request{Req: "service.set", SN: actionSN})
+	}
+
+	if err == nil && actionHost != "" {
+		_, err = card.TransactionRequest(notecard.Request{Req: "service.set", Host: actionHost})
 	}
 
 	if err == nil && actionPlayground {
@@ -430,7 +432,7 @@ func main() {
 				break
 			}
 			var body notecard.SyncLogBody
-			err = json.Unmarshal(bodyJSON, &body)
+			err = note.JSONUnmarshal(bodyJSON, &body)
 			if err != nil {
 				break
 			}
@@ -476,7 +478,7 @@ func main() {
 			}
 
 			// Display the message
-			if body.DetailLevel == notecard.SyncLogLevelMajor {
+			if actionWatchLevel < notecard.SyncLogLevelProg {
 				fmt.Printf("%s\n", note.ErrorClean(fmt.Errorf(body.Text)))
 			} else {
 				fmt.Printf("%s\n", body.Text)

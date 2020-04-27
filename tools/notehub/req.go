@@ -8,15 +8,16 @@ import (
 	"bytes"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/json"
 	"fmt"
-	"github.com/blues/note-go/notehub"
-	"github.com/blues/note-go/noteutil"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/blues/note-go/note"
+	"github.com/blues/note-go/notehub"
+	"github.com/blues/note-go/noteutil"
 )
 
 // Add an arg to an URL query string
@@ -39,7 +40,7 @@ func addQuery(in string, key string, value string) (out string) {
 // Perform an HTTP requet, but do so using structs rather than bytes
 func reqHub(hub string, request notehub.HubRequest, requestFile string, filetype string, filetags string, filenotes string, overwrite bool, secure bool, dropNonJSON bool, outq chan string) (response notehub.HubRequest, err error) {
 
-	reqJSON, err2 := json.Marshal(request)
+	reqJSON, err2 := note.JSONMarshal(request)
 	if err2 != nil {
 		err = err2
 		return
@@ -51,7 +52,7 @@ func reqHub(hub string, request notehub.HubRequest, requestFile string, filetype
 		return
 	}
 
-	err = json.Unmarshal(rspJSON, &response)
+	err = note.JSONUnmarshal(rspJSON, &response)
 	return
 
 }

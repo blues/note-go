@@ -5,8 +5,8 @@
 package note
 
 import (
+	"bytes"
 	"encoding/json"
-	"fmt"
 	"strings"
 	"time"
 )
@@ -48,6 +48,7 @@ type History struct {
 
 // Info is a general "content" structure
 type Info struct {
+	NoteID  string                  `json:"id,omitempty"`
 	Body    *map[string]interface{} `json:"body,omitempty"`
 	Payload *[]byte                 `json:"payload,omitempty"`
 	Deleted bool                    `json:"deleted,omitempty"`
@@ -66,7 +67,7 @@ func (note *Note) SetBody(body []byte) (err error) {
 		note.Body = nil
 	} else {
 		note.Body = map[string]interface{}{}
-		err = json.Unmarshal(body, &note.Body)
+		err = JSONUnmarshal(body, &note.Body)
 		if err != nil {
 			return
 		}
@@ -76,22 +77,35 @@ func (note *Note) SetBody(body []byte) (err error) {
 
 // JSONToBody unmarshals the specify object and returns it as a map[string]interface{}
 func JSONToBody(bodyJSON []byte) (body map[string]interface{}, err error) {
-	err = json.Unmarshal(bodyJSON, &body)
+	err = JSONUnmarshal(bodyJSON, &body)
 	return
 }
 
 // ObjectToJSON Marshals the specify object and returns it as a []byte
 func ObjectToJSON(object interface{}) (bodyJSON []byte, err error) {
-	bodyJSON, err = json.Marshal(object)
+	bodyJSON, err = JSONMarshal(object)
 	return
 }
 
 // ObjectToBody Marshals the specify object and returns it as map
 func ObjectToBody(object interface{}) (body map[string]interface{}, err error) {
 	var bodyJSON []byte
-	bodyJSON, err = json.Marshal(object)
+	bodyJSON, err = JSONMarshal(object)
 	if err == nil {
-		err = json.Unmarshal(bodyJSON, &body)
+		err = JSONUnmarshal(bodyJSON, &body)
+	}
+	return
+}
+
+// BodyToObject Unmarshals the specified map into an object
+func BodyToObject(body *map[string]interface{}, object interface{}) (err error) {
+	if body == nil {
+		return
+	}
+	var bodyJSON []byte
+	bodyJSON, err = JSONMarshal(body)
+	if err == nil {
+		err = JSONUnmarshal(bodyJSON, object)
 	}
 	return
 }
@@ -117,7 +131,7 @@ func (note *Note) GetBody() []byte {
 	if note.Body == nil {
 		return []byte("{}")
 	}
-	data, err := json.Marshal(note.Body)
+	data, err := JSONMarshal(note.Body)
 	if err != nil {
 		return []byte("{}")
 	}
@@ -171,35 +185,38 @@ func (note *Note) GetModified() (isAvailable bool, endpointID string, when strin
 	return
 }
 
-// ErrorContains tests to see if an error contains an error keyword that we might expect
-func ErrorContains(err error, errKeyword string) bool {
-	if err == nil {
-		return false
-	}
-	return strings.Contains(fmt.Sprintf("%s", err), errKeyword)
+// JSONUnmarshal uses JSON Numbers, rather than assuming Floats.  This fixes an issue
+// in which, when decoding to an arbitrary interface, the JSON package decodes
+// large numbers (like Unix epoch) into floats.
+func JSONUnmarshal(data []byte, v interface{}) (err error) {
+	d := json.NewDecoder(strings.NewReader(string(data)))
+	d.UseNumber()
+	return d.Decode(v)
 }
 
-// ErrorClean removes all error keywords from an error string
-func ErrorClean(err error) error {
-	errstr := fmt.Sprintf("%s", err)
-	for {
-		left := strings.SplitN(errstr, "{", 2)
-		if len(left) == 1 {
-			break
-		}
-		errstr = left[0]
-		b := strings.SplitN(left[1], "}", 2)
-		if len(b) > 1 {
-			errstr += strings.TrimPrefix(b[1], " ")
-		}
-	}
-	return fmt.Errorf(errstr)
+// JSONMarshal is the equivalent to the json package's Marshal, however it does not escape HTML
+// sitting inside JSON strings.
+func JSONMarshal(v interface{}) ([]byte, error) {
+	buffer := &bytes.Buffer{}
+	encoder := json.NewEncoder(buffer)
+	encoder.SetEscapeHTML(false)
+	err := encoder.Encode(v)
+	clean := bytes.TrimSuffix(buffer.Bytes(), []byte("\n"))
+	return clean, err
 }
 
-// ErrorString safely returns a string from any error, returning "" for nil
-func ErrorString(err error) string {
-	if err == nil {
-		return ""
+// JSONMarshalIndent is like Marshal but applies Indent to format the output.
+// Each JSON element in the output will begin on a new line beginning with prefix
+// followed by one or more copies of indent according to the indentation nesting.
+func JSONMarshalIndent(v interface{}, prefix, indent string) ([]byte, error) {
+	b, err := JSONMarshal(v)
+	if err != nil {
+		return nil, err
 	}
-	return fmt.Sprintf("%s", err)
+	var buf bytes.Buffer
+	err = json.Indent(&buf, b, prefix, indent)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }

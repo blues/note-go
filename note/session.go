@@ -33,6 +33,8 @@ type DeviceSession struct {
 	WhereLocation string  `json:"where_location,omitempty"`
 	WhereCountry  string  `json:"where_country,omitempty"`
 	WhereTimeZone string  `json:"where_timezone,omitempty"`
+	// Log key for this session
+	SessionLogKey string `json:"session_log_key,omitempty"`
 	// Total device usage at the beginning of the period
 	This DeviceUsage `json:"this,omitempty"`
 	// Total device usage at the beginning of the next period, whenever it happens to occur

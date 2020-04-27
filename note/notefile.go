@@ -39,4 +39,6 @@ type NotefileInfo struct {
 	ReqTime bool `json:"req_time,omitempty"`
 	// ReqLoc is specified if notes stored in this notefile must have a valid location associated with them
 	ReqLoc bool `json:"req_loc,omitempty"`
+	// AnonAddAllowed is specified if anyone is allowed to drop into this notefile without authentication
+	AnonAddAllowed bool `json:"anon_add,omitempty"`
 }

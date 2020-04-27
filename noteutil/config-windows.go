@@ -11,7 +11,7 @@ import (
 	"os/user"
 )
 
-// Get the default directory
+// ConfigDir gets the default directory
 func ConfigDir() string {
 	usr, err := user.Current()
 	if err != nil {
