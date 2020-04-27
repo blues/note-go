@@ -7,11 +7,12 @@ package notecard
 import (
 	"bufio"
 	"fmt"
-	"github.com/blues/note-go/note"
 	"io"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/blues/note-go/note"
 )
 
 // The time when the last read began

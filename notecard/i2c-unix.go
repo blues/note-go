@@ -17,11 +17,12 @@ package notecard
 
 import (
 	"fmt"
+	"time"
+
 	"periph.io/x/periph"
 	"periph.io/x/periph/conn/i2c"
 	"periph.io/x/periph/conn/i2c/i2creg"
 	"periph.io/x/periph/host"
-	"time"
 )
 
 const (
