@@ -7,9 +7,10 @@ jobs:
     docker:
       - image: circleci/golang:1.13.7
     working_directory: /go/src/github.com/blues/note-go
+    persist_to_workspace: ./artifacts/
     steps:
       - checkout
-      - run: mkdir artifacts
+      - run: mkdir -p ./artifacts/
       - run:
           name: Build all executable binaries. (note, notehub, notecard, ...)
           environment:
@@ -18,3 +19,16 @@ jobs:
       - store_artifacts:
           path: artifacts
 
+  publish-github-release:
+    docker:
+      - image: cibuilds/github:0.10
+    requires:
+      - build
+    steps:
+      - attach_workspace:
+          at: ./artifacts
+      - run:
+          name: "Publish Release on GitHub"
+          command: |
+            VERSION="$(git describe --dirty)"
+            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ./artifacts/
