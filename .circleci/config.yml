@@ -18,7 +18,6 @@ jobs:
           command: find * -name 'main.go' -execdir go build -x -o "$(pwd)/artifacts/" \;
       - store_artifacts:
           path: artifacts
-
   publish-github-release:
     docker:
       - image: cibuilds/github:0.10
