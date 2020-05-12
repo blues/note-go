@@ -28,7 +28,7 @@ jobs:
       # We need to do a checkout so the CIRCLE_PROJECT_REPONAME and CIRCLE_SHA1 vars are populated for the command below.
       - checkout
       - attach_workspace:
-          at: ./artifacts
+          at: .
       - run: ls -l ./artifacts/
       - run:
           name: "Publish Release on GitHub"
