@@ -14,7 +14,7 @@ jobs:
           name: Build all executable binaries. (note, notehub, notecard, ...)
           environment:
             GO111MODULE: "on"
-          command: find * -name 'main.go' -execdir go build -x -o artifacts \;
+          command: find * -name 'main.go' -execdir go build -x -o $(pwd)/artifacts \;
       - store_artifacts:
           path: artifacts
 
