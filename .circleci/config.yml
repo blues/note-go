@@ -7,7 +7,6 @@ jobs:
     docker:
       - image: circleci/golang:1.13.7
     working_directory: /go/src/github.com/blues/note-go
-    persist_to_workspace: ./artifacts/
     steps:
       - checkout
       - run: mkdir -p ./artifacts/
@@ -17,7 +16,8 @@ jobs:
             GO111MODULE: "on"
           command: find * -name 'main.go' -execdir go build -x -o "$(pwd)/artifacts/" \;
       - store_artifacts:
-          path: artifacts
+          path: ./artifacts/
+      - persist_to_workspace: ./artifacts/
 
   publish-github-release:
     docker:
