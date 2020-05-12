@@ -29,6 +29,7 @@ jobs:
       - checkout
       - attach_workspace:
           at: ./artifacts
+      - run: ls -l ./artifacts/
       - run:
           name: "Publish Release on GitHub"
           command: |
