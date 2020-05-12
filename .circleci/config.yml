@@ -9,8 +9,12 @@ jobs:
     working_directory: /go/src/github.com/blues/note-go
     steps:
       - checkout
+      - run: mkdir artifacts
       - run:
           name: Build all executable binaries. (note, notehub, notecard, ...)
           environment:
             GO111MODULE: "on"
-          command: find * -name 'main.go' -execdir go build -x \;
+          command: find * -name 'main.go' -execdir go build -x -o artifacts \;
+      - store_artifacts:
+          path: artifacts
+
