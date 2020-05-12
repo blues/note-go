@@ -18,11 +18,10 @@ jobs:
           command: find * -name 'main.go' -execdir go build -x -o "$(pwd)/artifacts/" \;
       - store_artifacts:
           path: artifacts
+
   publish-github-release:
     docker:
       - image: cibuilds/github:0.10
-    requires:
-      - build
     steps:
       - attach_workspace:
           at: ./artifacts
@@ -31,3 +30,11 @@ jobs:
           command: |
             VERSION="$(git describe --dirty)"
             ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ./artifacts/
+workflows:
+  version: 2
+  build-and-publish:
+    jobs:
+      - build
+      - publish-github-release:
+          requires:
+            - build
