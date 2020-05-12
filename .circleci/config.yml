@@ -17,12 +17,15 @@ jobs:
           command: find * -name 'main.go' -execdir go build -x -o "$(pwd)/artifacts/" \;
       - store_artifacts:
           path: ./artifacts/
-      - persist_to_workspace: ./artifacts/
+      - persist_to_workspace:
+          root: .
+          paths: ./artifacts/
 
   publish-github-release:
     docker:
       - image: cibuilds/github:0.10
     steps:
+      # We need to do a checkout so the CIRCLE_PROJECT_REPONAME and CIRCLE_SHA1 vars are populated for the command below.
       - checkout
       - attach_workspace:
           at: ./artifacts
