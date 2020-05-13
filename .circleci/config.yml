@@ -10,16 +10,24 @@ jobs:
     steps:
       - checkout
       - run: mkdir -p ./artifacts/
+      - run: GOOS=linux   GOARCH=386   ./build.sh
+      - run: GOOS=linux   GOARCH=amd64 ./build.sh
+      - run: GOOS=linux   GOARCH=arm   ./build.sh
+      - run: GOOS=windows GOARCH=386   ./build.sh
+      - run: GOOS=windows GOARCH=amd64 ./build.sh
+      - run: find products -type f -exec file '{}' +
       - run:
-          name: Build all executable binaries. (note, notehub, notecard, ...)
+          name: Darwin Build executables. (note, notehub, notecard, ...)
           environment:
             GO111MODULE: "on"
-          command: find * -name 'main.go' -execdir go build -x -o "$(pwd)/artifacts/" \;
+            GOOS: "darwin"
+          command: find * -name 'main.go' -execdir go build -x -o "$(pwd)/executables/" \;
       - store_artifacts:
-          path: ./artifacts/
+          path: ./products/
       - persist_to_workspace:
           root: .
-          paths: ./artifacts/
+          paths:
+            - products
 
   publish-github-release:
     docker:
