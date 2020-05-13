@@ -9,25 +9,18 @@ jobs:
     working_directory: /go/src/github.com/blues/note-go
     steps:
       - checkout
-      - run: mkdir -p ./artifacts/
-      - run: GOOS=linux   GOARCH=386   ./build.sh
-      - run: GOOS=linux   GOARCH=amd64 ./build.sh
-      - run: GOOS=linux   GOARCH=arm   ./build.sh
-      - run: GOOS=windows GOARCH=386   ./build.sh
-      - run: GOOS=windows GOARCH=amd64 ./build.sh
-      - run: find products -type f -exec file '{}' +
-      - run:
-          name: Darwin Build executables. (note, notehub, notecard, ...)
-          environment:
-            GO111MODULE: "on"
-            GOOS: "darwin"
-          command: find * -name 'main.go' -execdir go build -x -o "$(pwd)/executables/" \;
+      - run: export GOOS=linux   GOARCH=386   ; ./build.sh && ./package.sh
+      - run: export GOOS=linux   GOARCH=amd64 ; ./build.sh && ./package.sh
+      - run: export GOOS=linux   GOARCH=arm   ; ./build.sh && ./package.sh
+      - run: export GOOS=windows GOARCH=386   ; ./build.sh && ./package.sh
+      - run: export GOOS=windows GOARCH=amd64 ; ./build.sh && ./package.sh
+      - run: find ./build/ -type f -print0 | xargs --null file
       - store_artifacts:
-          path: ./products/
+          path: ./build/packages/
       - persist_to_workspace:
           root: .
           paths:
-            - products
+            - ./build/packages/
 
   publish-github-release:
     docker:
@@ -37,12 +30,13 @@ jobs:
       - checkout
       - attach_workspace:
           at: .
-      - run: ls -l ./artifacts/
+      - run: ls -l ./build/packages/
       - run:
           name: "Publish Release on GitHub"
           command: |
             VERSION="$(git describe --dirty)"
-            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ./artifacts/
+            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} 
+                -c ${CIRCLE_SHA1} -delete ${VERSION} ./build/packages/
 
 workflows:
   version: 2

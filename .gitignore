@@ -3,7 +3,7 @@
 build
 
 # Production build proucts
-products/
+./build/
 
 # Binaries for programs and plugins
 *.exe
