@@ -9,12 +9,55 @@ jobs:
     working_directory: /go/src/github.com/blues/note-go
     steps:
       - checkout
-      - run: mkdir artifacts
-      - run:
-          name: Build all executable binaries. (note, notehub, notecard, ...)
-          environment:
-            GO111MODULE: "on"
-          command: find * -name 'main.go' -execdir go build -x -o "$(pwd)/artifacts/" \;
+      - run: export GOOS=linux   GOARCH=amd64 ; ./build.sh && ./package.sh
+      - run: export GOOS=linux   GOARCH=arm   ; ./build.sh && ./package.sh
+      - run: export GOOS=windows GOARCH=386   ; ./build.sh && ./package.sh
+      - run: export GOOS=windows GOARCH=amd64 ; ./build.sh && ./package.sh
+      - run: find ./build/ -type f
       - store_artifacts:
-          path: artifacts
+          path: ./build/packages/
+      - persist_to_workspace:
+          root: .
+          paths:
+            - ./build/packages/
 
+  publish-github-release:
+    docker:
+      - image: cibuilds/github:0.10
+    steps:
+      # We need to do a checkout so the CIRCLE_PROJECT_REPONAME and CIRCLE_SHA1 vars are populated for the command below.
+      - checkout
+      - attach_workspace:
+          at: .
+      - run: ls -l ./build/packages/
+      - run:
+          name: "Publish Release on GitHub"
+          command: |
+            VERSION="$(git describe --dirty)"
+            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} \
+                -c ${CIRCLE_SHA1} -delete ${VERSION} ./build/packages/
+          # The GITHUB_TOKEN is generated here: https://github.com/settings/tokens for the notebot-ci user and securely
+          # set here: https://app.circleci.com/settings/project/github/blues/note-go/environment-variables
+
+workflows:
+  version: 2
+  build-and-publish:
+    jobs:
+      - build:
+          filters:
+            # Because we don't filter out certain branches this code implicitly
+            # says `build` will run for all builds triggered by a branch push
+            # or PR. But in the circle-ci ui we chose to only build for PRs here:
+            # https://app.circleci.com/settings/project/github/blues/note-go/advanced
+            tags: &PUBLISH_TAG_FILTER_REGEX
+              # Unlike branch-triggered builds, we do filter down to certain
+              # tags. Match v1.2.3 etc. i.e. only build for tags that look like
+              # they're tagging a release.
+              only: /^v\d+\.\d+\.\d+$/
+      - publish-github-release:
+          requires:
+            - build
+          filters:
+            branches:
+              ignore: /.*/
+            tags: *PUBLISH_TAG_FILTER_REGEX
