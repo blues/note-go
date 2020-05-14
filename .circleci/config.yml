@@ -45,10 +45,10 @@ workflows:
       - publish-github-release:
           requires:
             - build
-          # filters:
-          #   branches:
-          #     ignore: /.*/
-          #   tags:
-          #     # match 1.2.3 etc. i.e. only tags that look like they're tagging a release.
-          #     only: /^\d+\.\d+\.\d+$/
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              # match 1.2.3 etc. i.e. only tags that look like they're tagging a release.
+              only: /^\d+\.\d+\.\d+$/
 
