@@ -36,19 +36,28 @@ jobs:
             VERSION="$(git describe --dirty)"
             ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} \
                 -c ${CIRCLE_SHA1} -delete ${VERSION} ./build/packages/
+          # The GITHUB_TOKEN is generated here: https://github.com/settings/tokens for the notebot-ci user and securely
+          # set here: https://app.circleci.com/settings/project/github/blues/note-go/environment-variables
 
 workflows:
   version: 2
   build-and-publish:
     jobs:
-      - build
+      - build:
+          filters:
+            # Because we don't filter out certain branches this code implicitly
+            # says `build` will run for all builds triggered by a branch push
+            # or PR. But in the circle-ci ui we chose to only build for PRs here:
+            # https://app.circleci.com/settings/project/github/blues/note-go/advanced
+            tags: &PUBLISH_TAG_FILTER_REGEX
+              # Unlike branch-triggered builds, we do filter down to certain
+              # tags. Match 1.2.3 etc. i.e. only build for tags that look like
+              # they're tagging a release.
+              only: /^\d+\.\d+\.\d+$/
       - publish-github-release:
           requires:
             - build
           filters:
             branches:
               ignore: /.*/
-            tags:
-              # match 1.2.3 etc. i.e. only tags that look like they're tagging a release.
-              only: /^\d+\.\d+\.\d+$/
-
+            tags: *PUBLISH_TAG_FILTER_REGEX
