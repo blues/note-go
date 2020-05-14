@@ -9,7 +9,6 @@ jobs:
     working_directory: /go/src/github.com/blues/note-go
     steps:
       - checkout
-      - run: export GOOS=linux   GOARCH=386   ; ./build.sh && ./package.sh
       - run: export GOOS=linux   GOARCH=amd64 ; ./build.sh && ./package.sh
       - run: export GOOS=linux   GOARCH=arm   ; ./build.sh && ./package.sh
       - run: export GOOS=windows GOARCH=386   ; ./build.sh && ./package.sh
