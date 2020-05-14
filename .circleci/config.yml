@@ -51,9 +51,9 @@ workflows:
             # https://app.circleci.com/settings/project/github/blues/note-go/advanced
             tags: &PUBLISH_TAG_FILTER_REGEX
               # Unlike branch-triggered builds, we do filter down to certain
-              # tags. Match 1.2.3 etc. i.e. only build for tags that look like
+              # tags. Match v1.2.3 etc. i.e. only build for tags that look like
               # they're tagging a release.
-              only: /^\d+\.\d+\.\d+$/
+              only: /^v\d+\.\d+\.\d+$/
       - publish-github-release:
           requires:
             - build
