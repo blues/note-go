@@ -2,6 +2,9 @@
 **/.idea
 build
 
+# Production build proucts
+./build/
+
 # Binaries for programs and plugins
 *.exe
 *.exe~
