@@ -28,8 +28,8 @@ readonly BUILD_EXE_DIR="$SCRIPT_DIR/build/$GOOS/$GOARCH/"
 mkdir -p "$BUILD_EXE_DIR"
 
 # Build each executable binary
-readarray -t build_dirs < <(find . -name 'main.go' -print0 | xargs --null dirname)
 # build_dirs is an array of all the folders which contain a main.go
+IFS=$'\r\n' GLOBIGNORE='*' command eval  'build_dirs=($(find . -name main.go -print0 | xargs -0n1 dirname))'
 for dir in "${build_dirs[@]}"; do
   (
     cd "$dir"
