@@ -18,6 +18,7 @@ import (
 const (
 	NotecardInterfaceSerial = "serial"
 	NotecardInterfaceI2C    = "i2c"
+	NotecardInterfaceRemote = "remote"
 )
 
 // CardI2CMax controls chunk size that's socially appropriate on the I2C bus.
@@ -69,6 +70,12 @@ type Context struct {
 	serialConfig   serial.Mode
 	i2cName        string
 	i2cAddress     int
+
+	// Remote instance state
+	farmURL             string
+	farmCheckoutMins    int
+	farmCheckoutExpires int64
+	farmCard            RemoteCard
 }
 
 // Report a critical card error
@@ -134,6 +141,9 @@ func Open(moduleInterface string, port string, portConfig int) (context Context,
 		break
 	case NotecardInterfaceI2C:
 		context, err = OpenI2C(port, portConfig)
+		break
+	case NotecardInterfaceRemote:
+		context, err = OpenRemote(port, portConfig)
 		break
 	default:
 		err = fmt.Errorf("unknown interface: %s", moduleInterface)
@@ -711,4 +721,35 @@ func cardTransactionI2C(context *Context, reqJSON []byte) (rspJSON []byte, err e
 
 	// Done
 	return
+}
+
+// OpenRemote opens a remote card
+func OpenRemote(farmURL string, farmCheckoutMins int) (context Context, err error) {
+
+	// Set up class functions
+	context.PortEnumFn = remotePortEnum
+	context.PortDefaultsFn = remotePortDefault
+	context.CloseFn = remoteClose
+	context.ReopenFn = remoteReopen
+	context.ResetFn = remoteReset
+	context.TransactionFn = remoteTransaction
+
+	// Record serial configuration
+	context.farmURL = farmURL
+	if farmCheckoutMins == 0 {
+		farmCheckoutMins = 1
+	}
+	context.farmCheckoutMins = farmCheckoutMins
+	context.farmCheckoutExpires = time.Now().Unix() + int64(context.farmCheckoutMins*60)
+
+	// Open the port
+	err = context.ReopenFn(&context)
+	if err != nil {
+		err = fmt.Errorf("error opening remote %s: %s", farmURL, err)
+		return
+	}
+
+	// All set
+	return
+
 }

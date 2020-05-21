@@ -44,8 +44,9 @@ type DeviceSession struct {
 	// Physical device info
 	Voltage float64 `json:"voltage,omitempty"`
 	Temp    float64 `json:"temp,omitempty"`
-	// Development mode
-	Development bool `json:"dev,omitempty"`
+	// Type of session
+	ContinuousSession bool `json:"continuous,omitempty"`
+	TLSSession        bool `json:"tls,omitempty"`
 	// For keeping track of when the last work was done for a session
 	LastWorkDone int64
 }

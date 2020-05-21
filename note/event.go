@@ -13,6 +13,9 @@ const EventUpdate = "note.update"
 // EventDelete (golint)
 const EventDelete = "note.delete"
 
+// EventTest (golint)
+const EventTest = "test"
+
 // EventPost (golint)
 const EventPost = "post"
 
@@ -62,6 +65,8 @@ type Event struct {
 	SessionUID    string                   `json:"session,omitempty"`
 	EventUID      string                   `json:"event,omitempty"`
 	Payload       []byte                   `json:"payload,omitempty"`
+	ReplyURL      string                   `json:"reply,omitempty"`
+	TLS           bool                     `json:"tls,omitempty"`
 }
 
 // EventLogEntry is the log entry used by notification processing

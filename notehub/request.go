@@ -35,6 +35,21 @@ const HubAppUploadDelete = "hub.app.upload.delete"
 // HubAppUploadRead (golint)
 const HubAppUploadRead = "hub.app.upload.get"
 
+// HubEnvSet (golint)
+const HubEnvSet = "hub.env.set"
+
+// HubEnvGet (golint)
+const HubEnvGet = "hub.env.get"
+
+// HubEnvScopeApp (golint)
+const HubEnvScopeApp = "app"
+
+// HubEnvScopeFleet (golint)
+const HubEnvScopeFleet = "fleet"
+
+// HubEnvScopeDevice (golint)
+const HubEnvScopeDevice = "device"
+
 // HubRequest is is the core data structure for notehub-specific requests
 type HubRequest struct {
 	notecard.Request `json:",omitempty"`
@@ -48,6 +63,7 @@ type HubRequest struct {
 	FileType         string             `json:"type,omitempty"`
 	FileTags         string             `json:"tags,omitempty"`
 	FileNotes        string             `json:"notes,omitempty"`
+	Env              *map[string]string `json:"env,omitempty"`
 }
 
 // File Types
