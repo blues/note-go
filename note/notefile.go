@@ -4,6 +4,21 @@
 
 package note
 
+// TrackNotefile is the hard-wired notefile that the notecard can use for tracking the device
+const TrackNotefile = "_track.qo"
+
+// NotecardRequestNotefile is a special notefile for sending notecard requests
+const NotecardRequestNotefile = "_req.qis"
+
+// NotecardResponseNotefile is a special notefile for sending notecard requests
+const NotecardResponseNotefile = "_rsp.qos"
+
+// LogNotefile is the hard-wired notefile that the notecard uses for debug logging
+const LogNotefile = "_log.qo"
+
+// HealthNotefile is the hard-wired notefile that the notecard uses for health-related info
+const HealthNotefile = "_health.qo"
+
 // SyncPriorityLowest (golint)
 const SyncPriorityLowest = -3
 
@@ -29,6 +44,8 @@ const SyncPriorityHighest = 3
 type NotefileInfo struct {
 	// The count of modified notes in this notefile. This is used in the Req API, but not in the Notebox info
 	Changes int `json:"changes,omitempty"`
+	// The count of total notes in this notefile. This is used in the Req API, but not in the Notebox info
+	Total int `json:"total,omitempty"`
 	// This is a unidirectional "to-hub" or "from-hub" endpoint
 	SyncHubEndpointID string `json:"sync_hub_endpoint,omitempty"`
 	// Relative positive/negative priority of data, with 0 being normal

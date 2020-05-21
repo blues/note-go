@@ -85,6 +85,9 @@ const ReqCardLocation = "card.location"
 // ReqCardLocationMode (golint)
 const ReqCardLocationMode = "card.location.mode"
 
+// ReqCardLocationTrack (golint)
+const ReqCardLocationTrack = "card.location.track"
+
 // ReqCardTemp (golint)
 const ReqCardTemp = "card.temp"
 
@@ -93,6 +96,15 @@ const ReqCardVoltage = "card.voltage"
 
 // ReqCardMotion (golint)
 const ReqCardMotion = "card.motion"
+
+// ReqCardMotionMode (golint)
+const ReqCardMotionMode = "card.motion.mode"
+
+// ReqCardMotionSync (golint)
+const ReqCardMotionSync = "card.motion.sync"
+
+// ReqCardMotionTrack (golint)
+const ReqCardMotionTrack = "card.motion.track"
 
 // ReqCardIO (golint)
 const ReqCardIO = "card.io"
@@ -200,10 +212,10 @@ type Request struct {
 	Zone             string                        `json:"zone,omitempty"`
 	Mode             string                        `json:"mode,omitempty"`
 	Host             string                        `json:"host,omitempty"`
-	Target           string                        `json:"target,omitempty"`
+	Movements        string                        `json:"movements,omitempty"`
 	ProductUID       string                        `json:"product,omitempty"`
 	DeviceUID        string                        `json:"device,omitempty"`
-	Route            string                        `json:"route,omitempty"`
+	RouteUID         string                        `json:"route,omitempty"`
 	Files            *[]string                     `json:"files,omitempty"`
 	FileInfo         *map[string]note.NotefileInfo `json:"info,omitempty"`
 	Notes            *map[string]note.Info         `json:"notes,omitempty"`
@@ -240,8 +252,7 @@ type Request struct {
 	Trace            string                        `json:"trace,omitempty"`
 	Usage            *[]string                     `json:"usage,omitempty"`
 	State            *[]PinState                   `json:"state,omitempty"`
-	Serial           string                        `json:"serial,omitempty"`
-	Time             uint32                        `json:"time,omitempty"`
+	Time             int64                         `json:"time,omitempty"`
 	VMin             float64                       `json:"vmin,omitempty"`
 	VMax             float64                       `json:"vmax,omitempty"`
 	VAvg             float64                       `json:"vavg,omitempty"`
@@ -260,6 +271,7 @@ type Request struct {
 	Number           int64                         `json:"number,omitempty"`
 	SKU              string                        `json:"sku,omitempty"`
 	Net              *NetInfo                      `json:"net,omitempty"`
+	Sensitivity      int32                         `json:"sensitivity,omitempty"`
 }
 
 // PinState describes the state of an AUX pin for hardware-related Notecard requests

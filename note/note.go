@@ -17,6 +17,12 @@ const DefaultDeviceEndpointID = ""
 // DefaultHubEndpointID is the default endpoint name of the hub, chosen for its length in protocol messages
 const DefaultHubEndpointID = "1"
 
+// HubDefaultInboundNotefile is the hard-wired default notefile for user data
+const HubDefaultInboundNotefile = "data.qi"
+
+// HubDefaultOutboundNotefile is the hard-wired default notefile for user data
+const HubDefaultOutboundNotefile = "data.qo"
+
 // Note is the most fundamental data structure, containing
 // user data referred to as its "body" and its "payload".  All
 // access to these fields, and changes to these fields, must
