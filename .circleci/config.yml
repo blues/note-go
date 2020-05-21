@@ -57,8 +57,8 @@ jobs:
       - run:
           name: "Publish Release on GitHub"
           command: |
-            ghr -t "$GITHUB_TOKEN" -u "$CIRCLE_PROJECT_USERNAME" -r "$CIRCLE_PROJECT_REPONAME" \
-                -c "$CIRCLE_SHA1" -delete "$CIRCLE_TAG" ./build/packages/
+            ghr -t "${GITHUB_TOKEN}" -u "${CIRCLE_PROJECT_USERNAME}" -r "${CIRCLE_PROJECT_REPONAME}" \
+                -c "${CIRCLE_SHA1}" -delete "${CIRCLE_TAG}" ./build/packages/
           # The GITHUB_TOKEN is generated here: https://github.com/settings/tokens for the
           # notebot-ci user and securely set here:
           # https://app.circleci.com/settings/project/github/blues/note-go/environment-variables
