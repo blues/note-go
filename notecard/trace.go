@@ -97,6 +97,13 @@ func (context *Context) Trace() (err error) {
 		return fmt.Errorf("tracing is only available on USB and AUX ports")
 	}
 
+	// Exit if not open
+	if context.openSerialPort == nil {
+		err = fmt.Errorf("port not open " + note.ErrCardIo)
+		cardReportError(context, err)
+		return
+	}
+
 	// Turn on tracing on the current port
 	debugWas := context.Debug
 	context.Debug = false
@@ -104,43 +111,6 @@ func (context *Context) Trace() (err error) {
 	req.Mode = "trace-on"
 	context.TransactionRequest(req)
 	context.Debug = debugWas
-
-	// Enter interactive mode
-	return context.interactive()
-
-}
-
-// Interactive enters interactive request/response mode, disabling trace in case
-// that was the last mode entered
-func (context *Context) Interactive() (err error) {
-
-	// Interaction only works for USB and AUX ports
-	if !context.isSerial {
-		return fmt.Errorf("interaction mode is only available on USB and AUX ports")
-	}
-
-	// Turn on tracing on the current port
-	debugWas := context.Debug
-	context.Debug = false
-	req := Request{Req: ReqCardIO}
-	req.Mode = "trace-off"
-	context.TransactionRequest(req)
-	context.Debug = debugWas
-
-	// Enter interactive mode
-	return context.interactive()
-
-}
-
-// Enter interactive request/response mode
-func (context *Context) interactive() (err error) {
-
-	// Exit if not open
-	if context.openSerialPort == nil {
-		err = fmt.Errorf("port not open " + note.ErrCardIo)
-		cardReportError(context, err)
-		return
-	}
 
 	// Spawn the input handler
 	if !inputHandlerActive {
@@ -267,7 +237,10 @@ func promptHandler(context *Context) {
 				prompted = true
 				fmt.Printf("> ")
 			}
+		} else {
+			time.Sleep(150 * time.Millisecond)
 		}
+		time.Sleep(100 * time.Millisecond)
 	}
 
 }
