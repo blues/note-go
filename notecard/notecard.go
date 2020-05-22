@@ -8,11 +8,15 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/blues/note-go/note"
 	"go.bug.st/serial"
 )
+
+// Protect against multiple concurrent callers
+var transLock sync.RWMutex
 
 // Module communication interfaces
 const (
@@ -496,34 +500,44 @@ func (context *Context) Transaction(req map[string]interface{}) (rsp map[string]
 // TransactionJSON performs a card transaction using raw JSON []bytes
 func (context *Context) TransactionJSON(reqJSON []byte) (rspJSON []byte, err error) {
 
+	// Make sure that it is valid JSON, because the transports won't validate this
+	// and they may misbehave if they do not get a valid JSON response back.
+	var req Request
+	err = note.JSONUnmarshal(reqJSON, &req)
+	if err != nil {
+		return
+	}
+
+	// Make sure that the JSON has a single \n terminator
+	for {
+		if strings.HasSuffix(string(reqJSON), "\n") {
+			reqJSON = []byte(strings.TrimSuffix(string(reqJSON), "\n"))
+			continue
+		}
+		if strings.HasSuffix(string(reqJSON), "\r") {
+			reqJSON = []byte(strings.TrimSuffix(string(reqJSON), "\r"))
+			continue
+		}
+		break
+	}
+	reqJSON = []byte(string(reqJSON) + "\n")
+
+	// Only one caller at a time
+	transLock.Lock()
+
 	// Reopen if error
 	if cardResetOnNextRequest {
 		err = context.Reopen()
 		if err != nil {
+			transLock.Unlock()
 			return
 		}
 	}
 
-	if len(reqJSON) > 0 {
-
-		if context.Debug {
-			requestJSON := reqJSON
-			if context.Pretty {
-				var req Request
-				e := note.JSONUnmarshal(requestJSON, &req)
-				if e == nil {
-					prettyJSON, e := note.JSONMarshalIndent(req, "", "    ")
-					if e == nil {
-						requestJSON = prettyJSON
-					}
-				}
-			}
-			fmt.Printf("%s\n", string(requestJSON))
-		}
-
-		// Make sure that the JSON has a terminator
-		reqJSON = []byte(string(reqJSON) + "\n")
-
+	// Debug
+	if context.Debug && context.Pretty {
+		prettyJSON, _ := note.JSONMarshalIndent(req, "", "    ")
+		fmt.Printf("%s\n", string(prettyJSON))
 	}
 
 	// Perform the transaction and set ERR if there is an I/O error
@@ -539,7 +553,11 @@ func (context *Context) TransactionJSON(reqJSON []byte) (rspJSON []byte, err err
 	if err == nil && note.JSONUnmarshal(rspJSON, &rsp) == nil && rsp.Err != "" {
 		var req Request
 		if note.JSONUnmarshal(reqJSON, &req) == nil {
-			err = fmt.Errorf("%s: %s", req.Req, rsp.Err)
+			if req.Req == "" {
+				err = fmt.Errorf("%s", rsp.Err)
+			} else {
+				err = fmt.Errorf("%s: %s", req.Req, rsp.Err)
+			}
 		}
 	}
 
@@ -554,6 +572,9 @@ func (context *Context) TransactionJSON(reqJSON []byte) (rspJSON []byte, err err
 		}
 		fmt.Printf("%s", string(responseJSON))
 	}
+
+	// Done
+	transLock.Unlock()
 	return
 
 }
@@ -685,6 +706,11 @@ func cardTransactionI2C(context *Context, reqJSON []byte) (rspJSON []byte, err e
 		readlen := len(readbuf)
 		jsonbufLen += readlen
 
+		// If we received something, don't time out
+		if readlen > 0 {
+			expires = time.Now().Add(time.Duration(10 * time.Second))
+		}
+
 		// If the last byte of the chunk is \n, chances are that we're done.  However, just so
 		// that we pull everything pending from the module, we only exit when we've received
 		// a newline AND there's nothing left available from the module.
@@ -713,9 +739,6 @@ func cardTransactionI2C(context *Context, reqJSON []byte) (rspJSON []byte, err e
 			err = fmt.Errorf("transaction timeout")
 			return
 		}
-
-		// Delay, simply waiting for the Notecard to process the request
-		time.Sleep(50 * time.Millisecond)
 
 	}
 

@@ -109,6 +109,9 @@ const ReqCardMotionTrack = "card.motion.track"
 // ReqCardIO (golint)
 const ReqCardIO = "card.io"
 
+// ReqCardTrace (golint)
+const ReqCardTrace = "card.trace"
+
 // ReqCardWireless (golint)
 const ReqCardWireless = "card.wireless"
 
@@ -294,6 +297,9 @@ const SyncLogLevelProg = 3
 
 // SyncLogLevelAll is all events
 const SyncLogLevelAll = SyncLogLevelProg
+
+// SyncLogLevelNone is no events
+const SyncLogLevelNone = -1
 
 // SyncLogBody is the data structure used in the pseudo-notefile "_synclog.qi"
 type SyncLogBody struct {

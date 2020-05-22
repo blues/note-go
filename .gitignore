@@ -31,4 +31,6 @@ ehthumbs.db
 Thumbs.db
 
 # VS Code configuration files
-.vscode
+.vscode/*
+# whitelist
+!.vscode/launch.json

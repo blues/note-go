@@ -40,6 +40,8 @@ func main() {
 	flag.BoolVar(&actionTrace, "trace", false, "watch Notecard's trace output")
 	var actionPlayground bool
 	flag.BoolVar(&actionPlayground, "play", false, "enter JSON request/response playground")
+	var actionPlaytime int
+	flag.IntVar(&actionPlaytime, "playtime", 0, "enter number of minutes to play")
 	var actionSync bool
 	flag.BoolVar(&actionSync, "sync", false, "manually initiate a sync")
 	var actionProduct string
@@ -50,12 +52,8 @@ func main() {
 	flag.StringVar(&actionHost, "host", "", "set notehub to be used")
 	var actionInfo bool
 	flag.BoolVar(&actionInfo, "info", false, "show information about the Notecard")
-	var actionWatch bool
-	flag.BoolVar(&actionWatch, "watch", false, "watch ongoing sync status")
-	var actionWatchAll bool
-	flag.BoolVar(&actionWatchAll, "watchall", false, "watch ongoing sync status with full details")
 	var actionWatchLevel int
-	flag.IntVar(&actionWatchLevel, "watchlevel", -1, "watch ongoing sync status of a given level (0-2)")
+	flag.IntVar(&actionWatchLevel, "watch", -1, "watch ongoing sync status of a given level (0-5)")
 	var actionCommtest bool
 	flag.BoolVar(&actionCommtest, "commtest", false, "perform repetitive request/response test to validate comms with the Notecard")
 
@@ -108,7 +106,12 @@ func main() {
 	}
 
 	// Open the card, just to make sure errors are reported early
-	card, err = notecard.Open(noteutil.Config.Interface, noteutil.Config.Port, noteutil.Config.PortConfig)
+	configVal := noteutil.Config.PortConfig
+	if actionPlaytime != 0 {
+		configVal = actionPlaytime
+		actionPlayground = true
+	}
+	card, err = notecard.Open(noteutil.Config.Interface, noteutil.Config.Port, configVal)
 	if err != nil {
 		fmt.Printf("Can't open card: %s\n", err)
 		os.Exit(exitFail)
@@ -337,18 +340,8 @@ func main() {
 		_, err = card.TransactionRequest(notecard.Request{Req: "service.set", Host: actionHost})
 	}
 
-	if err == nil && actionPlayground {
-		fmt.Printf("You may now enter Notecard JSON requests interactively.\nShow sync activity by using \"w\" to toggle Watch Mode on/off.\n")
-		for {
-			err = card.Interactive()
-			if !note.ErrorContains(err, note.ErrCardIo) || !notecard.IoErrorIsRecoverable {
-				break
-			}
-		}
-	}
-
 	if err == nil && actionRequest != "" {
-		card.TransactionJSON([]byte(actionRequest))
+		_, err = card.TransactionJSON([]byte(actionRequest))
 	}
 
 	if err == nil && actionLog != "" {
@@ -357,135 +350,6 @@ func main() {
 
 	if err == nil && actionSync {
 		_, err = card.TransactionRequest(notecard.Request{Req: "service.sync"})
-	}
-
-	if err == nil && actionTrace {
-		err = card.Trace()
-	}
-
-	if err == nil && actionWatch {
-		actionWatchLevel = notecard.SyncLogLevelMajor
-	}
-	if err == nil && actionWatchAll {
-		actionWatchLevel = notecard.SyncLogLevelDetail
-	}
-	if err == nil && actionWatchLevel != -1 {
-		var rsp notecard.Request
-		var colWidth int
-		var cols int
-		var subsystem []string
-		var subsystemDisplayName []string
-
-		// Turn off Notecard library debug output
-		card.DebugOutput(false, false)
-
-		// Turn off tracing because it can interfere with our rapid transaction I/O
-		card.TransactionRequest(notecard.Request{Req: "card.io", Mode: "trace-off"})
-
-		// Get the template for the trace log results
-		rsp, err = card.TransactionRequest(notecard.Request{Req: "note.get", NotefileID: "_synclog.qi", Start: true})
-		if err == nil {
-			for _, entry := range strings.Split(rsp.Status, ",") {
-				str := strings.Split(entry, ":")
-				if len(str) >= 2 {
-					cols++
-					subsystem = append(subsystem, str[0])
-					subsystemDisplayName = append(subsystemDisplayName, str[1])
-					if len(str[1]) > colWidth {
-						colWidth = len(str[1])
-					}
-				}
-			}
-		}
-
-		// Align into columns
-		colWidth += 4
-		now := time.Now().Local().Format("03:04:05 PM MST")
-
-		// Print an opening banner if necessary
-		linesDisplayed := 0
-		rsp, err = card.TransactionRequest(notecard.Request{Req: "note.get", NotefileID: "_synclog.qi"})
-		if err == nil && rsp.Body == nil {
-			fmt.Printf("%s waiting for sync activity\n", now)
-		}
-
-		// Loop, printing data
-		prevTimeSecs := int64(0)
-		for err == nil {
-
-			// Get the next entry
-			rsp, err = card.TransactionRequest(notecard.Request{Req: "note.get", NotefileID: "_synclog.qi", Delete: true})
-			if err != nil {
-				if note.ErrorContains(err, "invalid character") {
-					fmt.Printf("WARNING: can't enter commands in a different trace window while 'watching': %s\n", err)
-				}
-				err = nil
-				continue
-			}
-			if rsp.Body == nil {
-				time.Sleep(500 * time.Millisecond)
-				continue
-			}
-			var bodyJSON []byte
-			bodyJSON, err = note.ObjectToJSON(rsp.Body)
-			if err != nil {
-				break
-			}
-			var body notecard.SyncLogBody
-			err = note.JSONUnmarshal(bodyJSON, &body)
-			if err != nil {
-				break
-			}
-			if body.DetailLevel > uint32(actionWatchLevel) {
-				continue
-			}
-
-			// Output a header if it will help readability
-			if linesDisplayed%250 == 0 {
-				fmt.Printf("\n%s ", strings.Repeat(" ", len(now)))
-				for i := 0; i < cols; i++ {
-					fmt.Printf("%s%s",
-						subsystemDisplayName[i],
-						strings.Repeat(" ", colWidth-len(subsystemDisplayName[i])))
-				}
-				fmt.Printf("\n\n")
-			} else {
-
-				// Output a spacer if there is a distance in time
-				if body.TimeSecs != 0 && body.TimeSecs > prevTimeSecs+30 {
-					fmt.Printf("\n")
-				}
-
-			}
-			linesDisplayed++
-
-			// Display either the time OR the 'secs since boot' if time isn't available
-			prevTimeSecs = body.TimeSecs
-			timebuf := time.Unix(int64(body.TimeSecs), 0).Local().Format("03:04:05 PM MST")
-			if body.TimeSecs == 0 {
-				str := fmt.Sprintf("%d", body.BootMs)
-				timebuf = fmt.Sprintf("%s%s", str, strings.Repeat(" ", len(timebuf)-len(str)))
-			}
-
-			// Display indentation
-			fmt.Printf("%s ", timebuf)
-			indentstr := "." + strings.Repeat(" ", colWidth-1)
-			for _, ss := range subsystem {
-				if ss == body.Subsystem {
-					break
-				}
-				fmt.Printf("%s", indentstr)
-			}
-
-			// Display the message
-			if actionWatchLevel < notecard.SyncLogLevelProg {
-				fmt.Printf("%s\n", note.ErrorClean(fmt.Errorf(body.Text)))
-			} else {
-				fmt.Printf("%s\n", body.Text)
-			}
-
-		}
-
 	}
 
 	if err == nil && actionCommtest {
@@ -509,6 +373,21 @@ func main() {
 			if time.Now().Sub(lastMessage).Seconds() > 2 {
 				lastMessage = time.Now()
 				fmt.Printf("%d successful transactions (%0.2f/sec)\n", transactions, float64(transactions)/time.Now().Sub(began).Seconds())
+			}
+		}
+	}
+
+	if err == nil && actionTrace {
+		err = card.Trace()
+	}
+
+	if err == nil && actionPlayground {
+		fmt.Printf("You may now enter Notecard JSON requests interactively.\nType w to toggle Sync Watch, or q to quit.\n")
+		for {
+			card.DebugOutput(false, false)
+			err = card.Interactive(false, actionWatchLevel, true, "w", "q")
+			if !note.ErrorContains(err, note.ErrCardIo) || !notecard.IoErrorIsRecoverable {
+				break
 			}
 		}
 	}

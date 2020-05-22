@@ -122,7 +122,7 @@ func cardList(context *Context) (cards []RemoteCard, err error) {
 		return
 	}
 
-	httpclient := &http.Client{Timeout: time.Second * 15}
+	httpclient := &http.Client{Timeout: time.Second * 90}
 	resp, err2 := httpclient.Do(req)
 	if err2 != nil {
 		err = fmt.Errorf("notefarm: can't get device list: %s", err2)
@@ -180,8 +180,9 @@ func remoteReopen(context *Context) (err error) {
 				// We don't need to reserve the card if it expires after what we need
 				if context.farmCheckoutExpires < expires {
 					context.farmCard = c
-					secs := int(expires-context.farmCheckoutExpires) % 60
-					mins := int(expires-context.farmCheckoutExpires) / 60
+					now := time.Now().Unix()
+					secs := int(expires-now) % 60
+					mins := int(expires-now) / 60
 					fmt.Printf("%s reserved for %dm %2ds\n", c.DeviceUID, mins, secs)
 					return
 				}
@@ -281,20 +282,20 @@ func remoteTransaction(context *Context, reqJSON []byte) (rspJSON []byte, err er
 		req, err = http.NewRequest("POST", context.farmCard.DirectURL, bytes.NewBuffer(reqJSON))
 		if err != nil {
 			rspJSON = []byte(fmt.Sprintf("{\"err\":\"%s\"}", err))
-			return
+			break
 		}
 
-		httpclient := &http.Client{Timeout: time.Second * 15}
+		httpclient := &http.Client{Timeout: time.Second * 90}
 		resp, err = httpclient.Do(req)
 		if err != nil {
 			rspJSON = []byte(fmt.Sprintf("{\"err\":\"%s\"}", err))
-			return
+			break
 		}
 
 		rspbuf, err = ioutil.ReadAll(resp.Body)
 		if err != nil {
 			rspJSON = []byte(fmt.Sprintf("{\"err\":\"%s\"}", err))
-			return
+			break
 		}
 
 		// Validate that it's compliant JSON
@@ -304,18 +305,19 @@ func remoteTransaction(context *Context, reqJSON []byte) (rspJSON []byte, err er
 
 			// See if there was an I/O error to the card, and retry if so
 			if !strings.Contains(string(rspbuf), "{io}") {
+				rspJSON = rspbuf
 				break
 			}
 			if i > maxRetries {
 				rspJSON = []byte(fmt.Sprintf("{\"err\":\"proxy: cannot communicate with notecard {io}\"}"))
-				return
+				break
 			}
 
 		} else {
 
 			if i > maxRetries {
 				rspJSON = []byte(fmt.Sprintf("{\"err\":\"%s\"}", err))
-				return
+				break
 			}
 
 		}
@@ -325,7 +327,6 @@ func remoteTransaction(context *Context, reqJSON []byte) (rspJSON []byte, err er
 
 	}
 
-	rspJSON = rspbuf
 	return
 
 }
