@@ -22,6 +22,8 @@ type NetInfo struct {
 	Rsrp int32 `json:"rsrp,omitempty"`
 	// An integer indicating the reference signal received quality (RSRQ)
 	Rsrq int32 `json:"rsrq,omitempty"`
+	// An integer indicating relative signal strength in a human-readable way
+	Bars uint32 `json:"bars,omitempty"`
 	// An integer indicating the signal to interference plus noise ratio (SINR).
 	// Logarithmic value of SINR. Values are in 1/5th of a dB. The range is 0-250
 	// which translates to -20dB - +30dB

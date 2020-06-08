@@ -482,7 +482,7 @@ func (context *Context) Transaction(req map[string]interface{}) (rsp map[string]
 	// Perform the transaction
 	rspJSON, err2 := context.TransactionJSON(reqJSON)
 	if err2 != nil {
-		err = fmt.Errorf("error marshaling request for module: %s", err2)
+		err = fmt.Errorf("error from TransactionJSON: %s", err2)
 		return
 	}
 
@@ -500,27 +500,31 @@ func (context *Context) Transaction(req map[string]interface{}) (rsp map[string]
 // TransactionJSON performs a card transaction using raw JSON []bytes
 func (context *Context) TransactionJSON(reqJSON []byte) (rspJSON []byte, err error) {
 
-	// Make sure that it is valid JSON, because the transports won't validate this
-	// and they may misbehave if they do not get a valid JSON response back.
 	var req Request
-	err = note.JSONUnmarshal(reqJSON, &req)
-	if err != nil {
-		return
-	}
 
-	// Make sure that the JSON has a single \n terminator
-	for {
-		if strings.HasSuffix(string(reqJSON), "\n") {
-			reqJSON = []byte(strings.TrimSuffix(string(reqJSON), "\n"))
-			continue
+	// Handle the special case where we are just processing a response
+	if len(reqJSON) > 0 {
+		// Make sure that it is valid JSON, because the transports won't validate this
+		// and they may misbehave if they do not get a valid JSON response back.
+		err = note.JSONUnmarshal(reqJSON, &req)
+		if err != nil {
+			return
 		}
-		if strings.HasSuffix(string(reqJSON), "\r") {
-			reqJSON = []byte(strings.TrimSuffix(string(reqJSON), "\r"))
-			continue
+
+		// Make sure that the JSON has a single \n terminator
+		for {
+			if strings.HasSuffix(string(reqJSON), "\n") {
+				reqJSON = []byte(strings.TrimSuffix(string(reqJSON), "\n"))
+				continue
+			}
+			if strings.HasSuffix(string(reqJSON), "\r") {
+				reqJSON = []byte(strings.TrimSuffix(string(reqJSON), "\r"))
+				continue
+			}
+			break
 		}
-		break
+		reqJSON = []byte(string(reqJSON) + "\n")
 	}
-	reqJSON = []byte(string(reqJSON) + "\n")
 
 	// Only one caller at a time
 	transLock.Lock()

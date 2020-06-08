@@ -31,6 +31,7 @@ type RemoteCard struct {
 	DeviceUID       string `json:"device,omitempty"`
 	ProductUID      string `json:"product,omitempty"`
 	SN              string `json:"sn,omitempty"`
+	Reservation     string `json:"reservation,omitempty"`
 	Transactions    uint32 `json:"transactions,omitempty"`
 	TransactionTime uint32 `json:"transaction_time,omitempty"`
 	Refreshed       uint32 `json:"refreshed,omitempty"`
@@ -175,7 +176,7 @@ func remoteReopen(context *Context) (err error) {
 		ourCallerID := callerID()
 		ourCard := RemoteCard{}
 		for _, c := range cards {
-			cid, expires := extractCallerID(c.SN)
+			cid, expires := extractCallerID(c.Reservation)
 			if cid == ourCallerID {
 				// We don't need to reserve the card if it expires after what we need
 				if context.farmCheckoutExpires < expires {
@@ -195,9 +196,9 @@ func remoteReopen(context *Context) (err error) {
 		first := true
 		oursExpires := int64(0)
 		now := time.Now().Unix()
-		if ourCard.SN == "" {
+		if ourCard.Reservation == "" {
 			for _, c := range cards {
-				_, expires := extractCallerID(c.SN)
+				_, expires := extractCallerID(c.Reservation)
 				if oursExpires > now {
 					continue
 				}
@@ -217,9 +218,10 @@ func remoteReopen(context *Context) (err error) {
 		context.farmCard = ourCard
 
 		// Reserve the card
-		req := Request{Req: "service.set"}
+		req := Request{Req: "card.reserve"}
 		checkoutMins := ((context.farmCheckoutMins / reservationModulusMinutes) + 1) * reservationModulusMinutes
-		req.SN = callerIDWithExpiration(now + int64(checkoutMins*60))
+		reservation := callerIDWithExpiration(now + int64(checkoutMins*60))
+		req.Status = reservation
 		reqJSON, err1 := note.ObjectToJSON(req)
 		if err1 != nil {
 			err = err1
@@ -243,7 +245,7 @@ func remoteReopen(context *Context) (err error) {
 
 			for _, c := range cards {
 				if c.DeviceUID == ourCard.DeviceUID {
-					if c.SN == req.SN {
+					if c.Reservation == reservation {
 						fmt.Printf("%s reserved for %d minutes\n", c.DeviceUID, checkoutMins)
 						return
 					}

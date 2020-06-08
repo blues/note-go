@@ -240,7 +240,6 @@ func promptHandler(context *Context) {
 		} else {
 			time.Sleep(150 * time.Millisecond)
 		}
-		time.Sleep(100 * time.Millisecond)
 	}
 
 }
