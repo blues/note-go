@@ -67,6 +67,12 @@ func remoteClose(context *Context) {
 // different processes on the same machine.
 func callerID() (id string) {
 
+	// See if it's specified in the environment
+	id = os.Getenv("NOTEFARM_CALLERID")
+	if id != "" {
+		return
+	}
+
 	// Get the mac address
 	interfaces, err := net.Interfaces()
 	if err == nil {
@@ -179,7 +185,7 @@ func remoteReopen(context *Context) (err error) {
 			cid, expires := extractCallerID(c.Reservation)
 			if cid == ourCallerID {
 				// We don't need to reserve the card if it expires after what we need
-				if context.farmCheckoutExpires < expires {
+				if context.farmCheckoutExpires <= expires {
 					context.farmCard = c
 					now := time.Now().Unix()
 					secs := int(expires-now) % 60
@@ -188,6 +194,8 @@ func remoteReopen(context *Context) (err error) {
 					return
 				}
 				ourCard = c
+				// fmt.Printf("notefarm: trying to extend our reservation of %s from %v to %v\n",
+				// 	ourCard.DeviceUID, expires, context.farmCheckoutExpires)
 				break
 			}
 		}
@@ -199,10 +207,14 @@ func remoteReopen(context *Context) (err error) {
 		if ourCard.Reservation == "" {
 			for _, c := range cards {
 				_, expires := extractCallerID(c.Reservation)
-				if oursExpires > now {
+				if expires > now {
+					// Someone else has this card reserved. We must not claim it.
 					continue
 				}
+				// We found a card that's not reserved.
 				if first || expires < oursExpires {
+					// fmt.Printf("%v looks unreserved because its expire time %v <= %v [now].\n", c.DeviceUID, expires, now)
+					// Let's plan on this being our card until we find a less recently used one.
 					first = false
 					ourCard = c
 					oursExpires = expires
@@ -212,6 +224,7 @@ func remoteReopen(context *Context) (err error) {
 				err = fmt.Errorf("notefarm: all cards are currently reserved")
 				return
 			}
+			// fmt.Printf("notefarm: trying to reserve a new card %v.\n", ourCard.DeviceUID)
 		}
 
 		// On an interim basis claim the card
@@ -219,14 +232,14 @@ func remoteReopen(context *Context) (err error) {
 
 		// Reserve the card
 		req := Request{Req: "card.reserve"}
-		checkoutMins := ((context.farmCheckoutMins / reservationModulusMinutes) + 1) * reservationModulusMinutes
-		reservation := callerIDWithExpiration(now + int64(checkoutMins*60))
+		reservation := callerIDWithExpiration(now + int64(context.farmCheckoutMins*60))
 		req.Status = reservation
 		reqJSON, err1 := note.ObjectToJSON(req)
 		if err1 != nil {
 			err = err1
 			return
 		}
+		// fmt.Printf("Sending reservation request: %v\n", string(reqJSON))
 		_, err = remoteTransaction(context, reqJSON)
 		if err != nil {
 			err = fmt.Errorf("notefarm reservation error: %s", err)
@@ -246,7 +259,7 @@ func remoteReopen(context *Context) (err error) {
 			for _, c := range cards {
 				if c.DeviceUID == ourCard.DeviceUID {
 					if c.Reservation == reservation {
-						fmt.Printf("%s reserved for %d minutes\n", c.DeviceUID, checkoutMins)
+						fmt.Printf("%s reserved for %d minutes\n", c.DeviceUID, context.farmCheckoutMins)
 						return
 					}
 				}

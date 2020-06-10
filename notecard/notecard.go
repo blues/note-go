@@ -686,8 +686,8 @@ func cardTransactionI2C(context *Context, reqJSON []byte) (rspJSON []byte, err e
 		sentInSegment += chunklen
 		if sentInSegment > CardRequestSegmentMaxLen {
 			sentInSegment -= CardRequestSegmentMaxLen
-			time.Sleep(CardRequestSegmentDelayMs * time.Millisecond)
 		}
+		time.Sleep(CardRequestSegmentDelayMs * time.Millisecond)
 	}
 
 	// Loop, building a reply buffer out of received chunks.  We'll build the reply in the same
@@ -766,6 +766,7 @@ func OpenRemote(farmURL string, farmCheckoutMins int) (context Context, err erro
 	if farmCheckoutMins == 0 {
 		farmCheckoutMins = 1
 	}
+	farmCheckoutMins = (((farmCheckoutMins - 1) / reservationModulusMinutes) + 1) * reservationModulusMinutes
 	context.farmCheckoutMins = farmCheckoutMins
 	context.farmCheckoutExpires = time.Now().Unix() + int64(context.farmCheckoutMins*60)
 
