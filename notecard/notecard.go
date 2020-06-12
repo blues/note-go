@@ -39,9 +39,6 @@ const CardRequestSegmentMaxLen = 1000
 // CardRequestSegmentDelayMs (golint)
 const CardRequestSegmentDelayMs = 250
 
-// cardResetOnNextRequest (golint)
-var cardResetOnNextRequest = false
-
 // IoErrorIsRecoverable is a configuration parameter describing library capabilities.
 // Set this to true if the error recovery of the implementation supports re-open.  On all implementations
 // tested to date, I can't yet get the close/reopen working the way it does on microcontrollers.  For
@@ -58,6 +55,10 @@ type Context struct {
 
 	// Pretty-print trace output JSON
 	Pretty bool
+
+	// Reset should be done on next transaction
+	resetRequired  bool
+	reopenRequired bool
 
 	// Class functions
 	PortEnumFn     func() (allports []string, usbports []string, notecardports []string, err error)
@@ -76,6 +77,7 @@ type Context struct {
 	i2cAddress     int
 
 	// Remote instance state
+	isRemote            bool
 	farmURL             string
 	farmCheckoutMins    int
 	farmCheckoutExpires int64
@@ -89,7 +91,7 @@ func cardReportError(context *Context, err error) {
 	}
 	if IoErrorIsRecoverable {
 		time.Sleep(500 * time.Millisecond)
-		cardResetOnNextRequest = true
+		context.reopenRequired = true
 	}
 }
 
@@ -155,7 +157,7 @@ func Open(moduleInterface string, port string, portConfig int) (context Context,
 	}
 	if err != nil {
 		cardReportError(nil, err)
-		err = fmt.Errorf("error opening port: %s", err)
+		err = fmt.Errorf("error opening port: %s %s", err, note.ErrCardIo)
 		return
 	}
 
@@ -176,19 +178,19 @@ func cardResetSerial(context *Context) (err error) {
 	// In order to ensure that we're not getting the reply to a failed
 	// transaction from a prior session, drain any pending input prior
 	// to transmitting a command.  Note that we use this technique of
-	// looking for a known reply to \n\n, rather than just "draining
+	// looking for a known reply to \n, rather than just "draining
 	// anything pending on serial", because the nature of read() is
 	// that it blocks (until timeout) if there's nothing available.
 	var length int
 	buf := make([]byte, 2048)
 	for {
-		_, err = context.openSerialPort.Write([]byte("\n\n"))
+		_, err = context.openSerialPort.Write([]byte("\n"))
 		if err != nil {
 			err = fmt.Errorf("error transmitting to module: %s %s", err, note.ErrCardIo)
 			cardReportError(context, err)
 			return
 		}
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(750 * time.Millisecond)
 		readBeganMs := int(time.Now().UnixNano() / 1000000)
 		length, err = context.openSerialPort.Read(buf)
 		readElapsedMs := int(time.Now().UnixNano()/1000000) - readBeganMs
@@ -244,10 +246,14 @@ func OpenSerial(port string, portConfig int) (context Context, err error) {
 	context.serialConfig.BaudRate = portConfig
 
 	// Open the serial port
-	err = cardReopenSerial(&context)
-	if err != nil {
-		err = fmt.Errorf("error opening serial port %s at %d: %s", port, portConfig, err)
-		return
+	if true {
+		context.reopenRequired = true
+	} else {
+		err = cardReopenSerial(&context)
+		if err != nil {
+			err = fmt.Errorf("error opening serial port %s at %d: %s %s", port, portConfig, err, note.ErrCardIo)
+			return
+		}
 	}
 
 	// All set
@@ -327,6 +333,7 @@ func OpenI2C(port string, portConfig int) (context Context, err error) {
 
 // Reset the port
 func (context *Context) Reset() (err error) {
+	context.resetRequired = false
 	return context.ResetFn(context)
 }
 
@@ -350,12 +357,18 @@ func cardCloseI2C(context *Context) {
 
 // Reopen the port
 func (context *Context) Reopen() (err error) {
-	cardResetOnNextRequest = false
-	return context.ReopenFn(context)
+	context.reopenRequired = false
+	err = context.ReopenFn(context)
+	return
 }
 
 // Reopen serial
 func cardReopenSerial(context *Context) (err error) {
+
+	// Handle deferred insertion
+	if context.serialName == "" {
+		context.serialName, context.serialConfig.BaudRate = serialDefault()
+	}
 
 	// Close if open
 	cardCloseSerial(context)
@@ -364,7 +377,7 @@ func cardReopenSerial(context *Context) (err error) {
 	context.openSerialPort, err = serial.Open(context.serialName, &context.serialConfig)
 	if err != nil {
 		context.openSerialPort = nil
-		return fmt.Errorf("error opening serial port %s at %d: %s", context.serialName, context.serialConfig.BaudRate, err)
+		return fmt.Errorf("error opening serial port %s at %d: %s %s", context.serialName, context.serialConfig.BaudRate, err, note.ErrCardIo)
 	}
 
 	// Reset serial to a known good state
@@ -417,7 +430,7 @@ func (context *Context) TransactionRequest(req Request) (rsp Request, err error)
 	// Unmarshal for convenience of the caller
 	err = note.JSONUnmarshal(rspJSON, &rsp)
 	if err != nil {
-		err = fmt.Errorf("error unmarshaling reply from module: %s", err)
+		err = fmt.Errorf("error unmarshaling reply from module: %s %s", err, note.ErrCardIo)
 		return
 	}
 
@@ -489,7 +502,7 @@ func (context *Context) Transaction(req map[string]interface{}) (rsp map[string]
 	// Unmarshal for convenience of the caller
 	err = note.JSONUnmarshal(rspJSON, &rsp)
 	if err != nil {
-		err = fmt.Errorf("error unmarshaling reply from module: %s", err)
+		err = fmt.Errorf("error unmarshaling reply from module: %s %s", err, note.ErrCardIo)
 		return
 	}
 
@@ -502,8 +515,9 @@ func (context *Context) TransactionJSON(reqJSON []byte) (rspJSON []byte, err err
 
 	var req Request
 
-	// Handle the special case where we are just processing a response
+	// Handle the special case where we are just processing a response (used by test fixture)
 	if len(reqJSON) > 0 {
+
 		// Make sure that it is valid JSON, because the transports won't validate this
 		// and they may misbehave if they do not get a valid JSON response back.
 		err = note.JSONUnmarshal(reqJSON, &req)
@@ -526,11 +540,16 @@ func (context *Context) TransactionJSON(reqJSON []byte) (rspJSON []byte, err err
 		reqJSON = []byte(string(reqJSON) + "\n")
 	}
 
+	// Do a reset if one was pending
+	if context.resetRequired {
+		context.Reset()
+	}
+
 	// Only one caller at a time
 	transLock.Lock()
 
 	// Reopen if error
-	if cardResetOnNextRequest {
+	if context.reopenRequired {
 		err = context.Reopen()
 		if err != nil {
 			transLock.Unlock()
@@ -539,15 +558,20 @@ func (context *Context) TransactionJSON(reqJSON []byte) (rspJSON []byte, err err
 	}
 
 	// Debug
-	if context.Debug && context.Pretty {
-		prettyJSON, _ := note.JSONMarshalIndent(req, "", "    ")
-		fmt.Printf("%s\n", string(prettyJSON))
+	if context.Debug {
+		var j []byte
+		if context.Pretty {
+			j, _ = note.JSONMarshalIndent(req, "", "    ")
+		} else {
+			j, _ = note.JSONMarshal(req)
+		}
+		fmt.Printf("%s\n", string(j))
 	}
 
 	// Perform the transaction and set ERR if there is an I/O error
 	rspJSON, err = context.TransactionFn(context, reqJSON)
 	if err != nil {
-		context.ResetFn(context)
+		context.resetRequired = true
 	}
 
 	// Decode the response to create an error if the transaction returned an error.  We
@@ -555,16 +579,20 @@ func (context *Context) TransactionJSON(reqJSON []byte) (rspJSON []byte, err err
 	// vs an error on the transaction itself
 	var rsp Request
 	if err == nil && note.JSONUnmarshal(rspJSON, &rsp) == nil && rsp.Err != "" {
-		var req Request
-		if note.JSONUnmarshal(reqJSON, &req) == nil {
-			if req.Req == "" {
-				err = fmt.Errorf("%s", rsp.Err)
-			} else {
-				err = fmt.Errorf("%s: %s", req.Req, rsp.Err)
-			}
+		if req.Req == "" {
+			err = fmt.Errorf("%s", rsp.Err)
+		} else {
+			err = fmt.Errorf("%s: %s", req.Req, rsp.Err)
 		}
 	}
 
+	// If this was a card restore, we know that a reopen will be required
+	if !context.isRemote && (req.Req == ReqCardRestore || req.Req == ReqCardRestart) {
+		time.Sleep(8 * time.Second)
+		context.reopenRequired = true
+	}
+
+	// Debug
 	if context.Debug {
 		responseJSON := rspJSON
 		if context.Pretty {
@@ -754,6 +782,7 @@ func cardTransactionI2C(context *Context, reqJSON []byte) (rspJSON []byte, err e
 func OpenRemote(farmURL string, farmCheckoutMins int) (context Context, err error) {
 
 	// Set up class functions
+	context.isRemote = true
 	context.PortEnumFn = remotePortEnum
 	context.PortDefaultsFn = remotePortDefault
 	context.CloseFn = remoteClose
@@ -773,7 +802,7 @@ func OpenRemote(farmURL string, farmCheckoutMins int) (context Context, err erro
 	// Open the port
 	err = context.ReopenFn(&context)
 	if err != nil {
-		err = fmt.Errorf("error opening remote %s: %s", farmURL, err)
+		err = fmt.Errorf("error opening remote %s: %s %s", farmURL, err, note.ErrCardIo)
 		return
 	}
 

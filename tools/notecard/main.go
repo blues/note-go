@@ -56,6 +56,10 @@ func main() {
 	flag.IntVar(&actionWatchLevel, "watch", -1, "watch ongoing sync status of a given level (0-5)")
 	var actionCommtest bool
 	flag.BoolVar(&actionCommtest, "commtest", false, "perform repetitive request/response test to validate comms with the Notecard")
+	var actionSetup string
+	flag.StringVar(&actionSetup, "setup", "", "issue requests sequentially as stored in the specified .json file")
+	var actionScan string
+	flag.StringVar(&actionScan, "scan", "", "scan a batch of notecards to collect info into a json file")
 
 	// Parse these flags and also the note tool config flags
 	err := noteutil.FlagParse(true, false)
@@ -113,7 +117,7 @@ func main() {
 	}
 	card, err = notecard.Open(noteutil.Config.Interface, noteutil.Config.Port, configVal)
 	if err != nil {
-		fmt.Printf("Can't open card: %s\n", err)
+		fmt.Printf("%s\n", err)
 		os.Exit(exitFail)
 
 	}
@@ -350,6 +354,23 @@ func main() {
 
 	if err == nil && actionSync {
 		_, err = card.TransactionRequest(notecard.Request{Req: "service.sync"})
+	}
+
+	if err == nil && actionSetup != "" && actionScan == "" {
+		var requests []notecard.Request
+		requests, err = loadRequests(actionSetup)
+		if err == nil {
+			for _, req := range requests {
+				_, err = card.TransactionRequest(req)
+				if err != nil {
+					break
+				}
+			}
+		}
+	}
+
+	if err == nil && actionScan != "" {
+		err = scan(actionSetup, actionScan)
 	}
 
 	if err == nil && actionCommtest {

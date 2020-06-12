@@ -45,7 +45,7 @@ func (context *Context) TraceCapture(toSend string, toEnd string) (captured stri
 	for {
 
 		// Reopen if error
-		if cardResetOnNextRequest {
+		if context.reopenRequired {
 			err = context.Reopen()
 			if err != nil {
 				continue
