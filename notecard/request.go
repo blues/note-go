@@ -264,6 +264,7 @@ type Request struct {
 	Montly           float64                       `json:"monthly,omitempty"`
 	Verify           bool                          `json:"verify,omitempty"`
 	Set              bool                          `json:"set,omitempty"`
+	Reset            bool                          `json:"reset,omitempty"`
 	Calibration      float64                       `json:"calibration,omitempty"`
 	Heartbeat        bool                          `json:"heartbeat,omitempty"`
 	Threshold        int32                         `json:"threshold,omitempty"`
@@ -275,11 +276,14 @@ type Request struct {
 	SKU              string                        `json:"sku,omitempty"`
 	Net              *NetInfo                      `json:"net,omitempty"`
 	Sensitivity      int32                         `json:"sensitivity,omitempty"`
+	Requested        int32                         `json:"requested,omitempty"`
+	Completed        int32                         `json:"completed,omitempty"`
 }
 
 // PinState describes the state of an AUX pin for hardware-related Notecard requests
 type PinState struct {
 	High  bool     `json:"high,omitempty"`
+	Low   bool     `json:"low,omitempty"`
 	Count []uint32 `json:"count,omitempty"`
 }
 
@@ -301,7 +305,10 @@ const SyncLogLevelAll = SyncLogLevelProg
 // SyncLogLevelNone is no events
 const SyncLogLevelNone = -1
 
-// SyncLogBody is the data structure used in the pseudo-notefile "_synclog.qi"
+// SyncLogNotefile is the special notefile containing sync log info
+const SyncLogNotefile = "_synclog.qi"
+
+// SyncLogBody is the data structure used in the SyncLogNotefile
 type SyncLogBody struct {
 	TimeSecs    int64  `json:"time,omitempty"`
 	BootMs      int64  `json:"sequence,omitempty"`

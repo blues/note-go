@@ -355,6 +355,14 @@ func cardCloseI2C(context *Context) {
 	i2cClose()
 }
 
+// ReopenIfRequired reopens the port but only if required
+func (context *Context) ReopenIfRequired() (err error) {
+	if context.reopenRequired {
+		err = context.ReopenFn(context)
+	}
+	return
+}
+
 // Reopen the port
 func (context *Context) Reopen() (err error) {
 	context.reopenRequired = false
@@ -420,19 +428,11 @@ func (context *Context) TransactionRequest(req Request) (rsp Request, err error)
 		return
 	}
 
-	// Perform the transaction
-	rspJSON, err2 := context.TransactionJSON(reqJSON)
-	if err2 != nil {
-		err = err2
-		return
-	}
-
-	// Unmarshal for convenience of the caller
-	err = note.JSONUnmarshal(rspJSON, &rsp)
-	if err != nil {
-		err = fmt.Errorf("error unmarshaling reply from module: %s %s", err, note.ErrCardIo)
-		return
-	}
+	// Perform the transaction in a way that ALSO assumes that the JSON coming back from
+	// the device is unmarshalled even on error.
+	var rspJSON []byte
+	rspJSON, err = context.TransactionJSON(reqJSON)
+	note.JSONUnmarshal(rspJSON, &rsp)
 
 	// Done
 	return
