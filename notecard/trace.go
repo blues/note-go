@@ -32,6 +32,13 @@ func (context *Context) TraceCapture(toSend string, toEnd string) (captured stri
 		return
 	}
 
+	// Reopen if required
+	err = context.ReopenIfRequired()
+	if err != nil {
+		cardReportError(context, err)
+		return
+	}
+
 	// Send the string, if supplied
 	if len(toSend) > 0 {
 		_, err = context.openSerialPort.Write(append([]byte(toSend), []byte("\n")...))
@@ -98,6 +105,11 @@ func (context *Context) Trace() (err error) {
 	}
 
 	// Exit if not open
+	err = context.ReopenIfRequired()
+	if err != nil {
+		cardReportError(context, err)
+		return
+	}
 	if context.openSerialPort == nil {
 		err = fmt.Errorf("port not open " + note.ErrCardIo)
 		cardReportError(context, err)

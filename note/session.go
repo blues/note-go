@@ -17,6 +17,8 @@ type DeviceSession struct {
 	Addr string `json:"addr,omitempty"`
 	// Cell ID where the session originated and quality ("mcc,mnc,lac,cellid")
 	CellID string `json:"cell,omitempty"`
+	// Parameters passed by device as a result of scanning towers/APs
+	ScanResults *[]byte `json:"scan,omitempty"`
 	// Signal strength/quality of the cell
 	Rssi int    `json:"rssi,omitempty"`
 	Sinr int    `json:"sinr,omitempty"`
@@ -64,4 +66,5 @@ type TowerLocation struct {
 	MNC         int     `json:"mnc,omitempty"`
 	LAC         int     `json:"lac,omitempty"`
 	CID         int     `json:"cid,omitempty"`
+	Towers      int     `json:"tri,omitempty"` // triangulation points
 }

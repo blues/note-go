@@ -34,6 +34,14 @@ func main() {
 	// Process actions
 	var actionRequest string
 	flag.StringVar(&actionRequest, "req", "", "perform the specified request")
+	var actionWhenConnected bool
+	flag.BoolVar(&actionWhenConnected, "when-connected", false, "wait until connected")
+	var actionWhenDisconnected bool
+	flag.BoolVar(&actionWhenDisconnected, "when-disconnected", false, "wait until disconnected")
+	var actionWhenDisarmed bool
+	flag.BoolVar(&actionWhenDisarmed, "when-disarmed", false, "wait until ATTN is disarmed")
+	var actionWhenSynced bool
+	flag.BoolVar(&actionWhenSynced, "when-synced", false, "sync if needed and wait until sync completed")
 	var actionLog string
 	flag.StringVar(&actionLog, "log", "", "add a text string to the _log.qo notefile")
 	var actionTrace bool
@@ -122,12 +130,91 @@ func main() {
 
 	}
 
-	// Turn on Notecard library debug output
-	card.DebugOutput(true, false)
-
 	// Process non-config commands
 
 	err = nil
+
+	// Wait until disconnected
+	if err == nil && actionWhenDisconnected {
+		for {
+			rsp, err := card.TransactionRequest(notecard.Request{Req: "service.status", NotefileID: notecard.SyncLogNotefile, Delete: true})
+			if err != nil {
+				fmt.Printf("%s\n", err)
+				break
+			}
+			if strings.Contains(rsp.Status, note.ErrTransportDisconnected) {
+				break
+			}
+			fmt.Printf("%s\n", rsp.Status)
+			time.Sleep(3 * time.Second)
+		}
+	}
+
+	// Wait until connected
+	if err == nil && actionWhenConnected {
+		for {
+			delay := true
+			rsp, err := card.TransactionRequest(notecard.Request{Req: "note.get", NotefileID: notecard.SyncLogNotefile, Delete: true})
+			if err != nil && note.ErrorContains(err, note.ErrNoteNoExist) {
+				delay = true
+				err = nil
+			}
+			if err != nil {
+				fmt.Printf("%s\n", err)
+				break
+			}
+			if rsp.Connected {
+				break
+			} else if rsp.Body != nil {
+				var body notecard.SyncLogBody
+				note.BodyToObject(rsp.Body, &body)
+				fmt.Printf("%s\n", body.Text)
+			}
+			if delay {
+				time.Sleep(3 * time.Second)
+			}
+		}
+	}
+
+	// Wait until disarmed
+	if err == nil && actionWhenDisarmed {
+		for {
+			rsp, err := card.TransactionRequest(notecard.Request{Req: "card.attn"})
+			if err != nil {
+				fmt.Printf("%s\n", err)
+			} else if rsp.Set {
+				break
+			}
+			time.Sleep(3 * time.Second)
+		}
+	}
+
+	// Wait until synced
+	if err == nil && actionWhenSynced {
+		var rsp notecard.Request
+		req := notecard.Request{Req: "service.sync.status"}
+		req.Sync = true // Initiate sync if sync is needed
+		rsp, err = card.TransactionRequest(req)
+		for err == nil {
+			rsp, err = card.TransactionRequest(notecard.Request{Req: "service.sync.status"})
+			if err != nil {
+				fmt.Printf("%s\n", err)
+				break
+			}
+			if rsp.Alert {
+				fmt.Printf("sync error\n")
+				break
+			}
+			if rsp.Completed > 0 {
+				break
+			}
+			fmt.Printf("%s\n", rsp.Status)
+			time.Sleep(3 * time.Second)
+		}
+	}
+
+	// Turn on Notecard library debug output
+	card.DebugOutput(true, false)
 
 	if err == nil && actionInfo {
 
@@ -360,9 +447,39 @@ func main() {
 		var requests []notecard.Request
 		requests, err = loadRequests(actionSetup)
 		if err == nil {
-			for _, req := range requests {
-				_, err = card.TransactionRequest(req)
-				if err != nil {
+			repeat := false
+			repeatForever := false
+			countLeft := uint32(0)
+			done := false
+			for !done {
+				for _, req := range requests {
+					if req.Req == "delay" {
+						time.Sleep(time.Duration(req.Seconds) * time.Second)
+						continue
+					}
+					if req.Req == "repeat" {
+						if !repeat {
+							repeat = true
+							countLeft = req.Count
+							if countLeft == 0 {
+								repeatForever = true
+							}
+						} else {
+							if countLeft > 0 {
+								countLeft--
+							}
+							if countLeft == 0 && !repeatForever {
+								done = true
+							}
+						}
+						continue
+					}
+					_, err = card.TransactionRequest(req)
+					if err != nil {
+						break
+					}
+				}
+				if !repeat {
 					break
 				}
 			}
