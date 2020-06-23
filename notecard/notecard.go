@@ -540,13 +540,13 @@ func (context *Context) TransactionJSON(reqJSON []byte) (rspJSON []byte, err err
 		reqJSON = []byte(string(reqJSON) + "\n")
 	}
 
+	// Only one caller at a time
+	transLock.Lock()
+
 	// Do a reset if one was pending
 	if context.resetRequired {
 		context.Reset()
 	}
-
-	// Only one caller at a time
-	transLock.Lock()
 
 	// Reopen if error
 	if context.reopenRequired {
