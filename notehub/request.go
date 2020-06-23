@@ -23,17 +23,32 @@ const HubQuery = "hub.app.data.query"
 // HubAppUpload (golint)
 const HubAppUpload = "hub.app.upload.add"
 
+// HubUpload (golint)
+const HubUpload = "hub.upload.add"
+
 // HubAppUploads (golint)
 const HubAppUploads = "hub.app.upload.query"
+
+// HubUploads (golint)
+const HubUploads = "hub.upload.query"
 
 // HubAppUploadSet (golint)
 const HubAppUploadSet = "hub.app.upload.set"
 
+// HubUploadSet (golint)
+const HubUploadSet = "hub.upload.set"
+
 // HubAppUploadDelete (golint)
 const HubAppUploadDelete = "hub.app.upload.delete"
 
+// HubUploadDelete (golint)
+const HubUploadDelete = "hub.upload.delete"
+
 // HubAppUploadRead (golint)
 const HubAppUploadRead = "hub.app.upload.get"
+
+// HubUploadRead (golint)
+const HubUploadRead = "hub.upload.get"
 
 // HubEnvSet (golint)
 const HubEnvSet = "hub.env.set"
@@ -76,6 +91,9 @@ const HubFileTypeUserFirmware = "firmware"
 
 // HubFileTypeCardFirmware (golint)
 const HubFileTypeCardFirmware = "notecard"
+
+// HubFileTypeNotefarm (golint)
+const HubFileTypeNotefarm = "notefarm"
 
 // HubRequestFileFirmware is firmware-specific metadata
 type HubRequestFileFirmware struct {
