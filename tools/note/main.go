@@ -24,7 +24,7 @@ const exitOk = 0
 const exitFail = 1
 
 // The open notecard
-var card notecard.Context
+var card *notecard.Context
 
 // Main entry
 func main() {
