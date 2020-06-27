@@ -23,18 +23,17 @@ const reservationModulusMinutes = 5
 
 // RemoteCard is the full description of notecards managed by the farm
 type RemoteCard struct {
-	Instance        string `json:"instance,omitempty"`
-	Address         int    `json:"address,omitempty"`
-	DirectURL       string `json:"direct,omitempty"`
-	ProxyURL        string `json:"proxy,omitempty"`
-	Version         string `json:"version,omitempty"`
-	DeviceUID       string `json:"device,omitempty"`
-	ProductUID      string `json:"product,omitempty"`
-	SN              string `json:"sn,omitempty"`
-	Reservation     string `json:"reservation,omitempty"`
-	Transactions    uint32 `json:"transactions,omitempty"`
-	TransactionTime uint32 `json:"transaction_time,omitempty"`
-	Refreshed       uint32 `json:"refreshed,omitempty"`
+	Instance    string `json:"instance,omitempty"`
+	Address     int    `json:"address,omitempty"`
+	DirectURL   string `json:"direct,omitempty"`
+	ProxyURL    string `json:"proxy,omitempty"`
+	Version     string `json:"version,omitempty"`
+	DeviceUID   string `json:"device,omitempty"`
+	ProductUID  string `json:"product,omitempty"`
+	SN          string `json:"sn,omitempty"`
+	Reservation string `json:"reservation,omitempty"`
+	Modified    uint32 `json:"modified,omitempty"`
+	Refreshed   uint32 `json:"refreshed,omitempty"`
 }
 
 // RemoteCards are the objects that get published
@@ -54,6 +53,11 @@ func remotePortEnum() (allFarms []string, unused []string, notecardFarms []strin
 
 // Reset communications with the remote notecard
 func remoteReset(context *Context) (err error) {
+	return
+}
+
+// Set config on the remote port
+func remoteSetConfig(context *Context, portConfig int) (err error) {
 	return
 }
 
@@ -296,20 +300,42 @@ func remoteTransaction(context *Context, reqJSON []byte) (rspJSON []byte, err er
 		var req *http.Request
 		req, err = http.NewRequest("POST", context.farmCard.DirectURL, bytes.NewBuffer(reqJSON))
 		if err != nil {
-			rspJSON = []byte(fmt.Sprintf("{\"err\":\"%s\"}", err))
+			rspJSON = []byte(fmt.Sprintf("{\"err\":\"create request failure: %s\"}", err))
 			break
 		}
 
-		httpclient := &http.Client{Timeout: time.Second * 90}
-		resp, err = httpclient.Do(req)
-		if err != nil {
-			rspJSON = []byte(fmt.Sprintf("{\"err\":\"%s\"}", err))
+		// Retry requests because Balena server needs to throttle us when we are hammering it
+		success := false
+		for i := 0; i < 10; i++ {
+			httpclient := &http.Client{Timeout: time.Second * 90}
+			resp, err = httpclient.Do(req)
+			if err == nil {
+				success = true
+				break
+			}
+			// The standard web method for LB rate limit rejection is to reset the TCP circuit
+			// Note that we need to detect EOF in this hacky way because
+			// it is embedded at the end of a very long "Post:" message.
+			if strings.HasSuffix(fmt.Sprintf("%s", err), "EOF") {
+				err = fmt.Errorf("http transmit after %d retries: %s", i+1, err)
+				rspJSON = []byte(fmt.Sprintf("{\"err\":\"%s\"}", strconv.Quote(fmt.Sprintf("%s", err))))
+				break
+			}
+			// Handle service rate-limiting by delaying for a moment, then retrying.  we
+			// preset the response in case we exceed the maximum retries.
+			time.Sleep(2 * time.Second)
+			err = fmt.Errorf("rate limited after %d retries", i+1)
+			rspJSON = []byte(fmt.Sprintf("{\"err\":\"%s\"}", strconv.Quote(fmt.Sprintf("%s", err))))
+		}
+		if !success {
 			break
 		}
 
+		// Success, so now we read the response
 		rspbuf, err = ioutil.ReadAll(resp.Body)
 		if err != nil {
-			rspJSON = []byte(fmt.Sprintf("{\"err\":\"%s\"}", err))
+			err = fmt.Errorf("reading response failed: %s", err)
+			rspJSON = []byte(fmt.Sprintf("{\"err\":\"err reading response: %s\"}", err))
 			break
 		}
 
@@ -329,9 +355,9 @@ func remoteTransaction(context *Context, reqJSON []byte) (rspJSON []byte, err er
 			}
 
 		} else {
-
+			err = fmt.Errorf("hit max retries: %s", err)
 			if i > maxRetries {
-				rspJSON = []byte(fmt.Sprintf("{\"err\":\"%s\"}", err))
+				rspJSON = []byte(fmt.Sprintf("{\"err\":\"hit max retries: %s\"}", err))
 				break
 			}
 
