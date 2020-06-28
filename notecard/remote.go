@@ -297,35 +297,39 @@ func remoteTransaction(context *Context, reqJSON []byte) (rspJSON []byte, err er
 	var maxRetries = 5
 	for i := 0; ; i++ {
 
-		var req *http.Request
-		req, err = http.NewRequest("POST", context.farmCard.DirectURL, bytes.NewBuffer(reqJSON))
-		if err != nil {
-			rspJSON = []byte(fmt.Sprintf("{\"err\":\"create request failure: %s\"}", err))
-			break
-		}
-
 		// Retry requests because Balena server needs to throttle us when we are hammering it
 		success := false
 		for i := 0; i < 10; i++ {
+
+			// Do the HTTP request
+			var req *http.Request
+			req, err = http.NewRequest("POST", context.farmCard.DirectURL, bytes.NewBuffer(reqJSON))
+			if err != nil {
+				rspJSON = []byte(fmt.Sprintf("{\"err\":\"create request failure: %s\"}", err))
+				break
+			}
 			httpclient := &http.Client{Timeout: time.Second * 90}
 			resp, err = httpclient.Do(req)
 			if err == nil {
 				success = true
 				break
 			}
+
 			// The standard web method for LB rate limit rejection is to reset the TCP circuit
 			// Note that we need to detect EOF in this hacky way because
 			// it is embedded at the end of a very long "Post:" message.
-			if strings.HasSuffix(fmt.Sprintf("%s", err), "EOF") {
+			if !strings.HasSuffix(fmt.Sprintf("%s", err), "EOF") {
 				err = fmt.Errorf("http transmit after %d retries: %s", i+1, err)
 				rspJSON = []byte(fmt.Sprintf("{\"err\":\"%s\"}", strconv.Quote(fmt.Sprintf("%s", err))))
 				break
 			}
+
 			// Handle service rate-limiting by delaying for a moment, then retrying.  we
 			// preset the response in case we exceed the maximum retries.
 			time.Sleep(2 * time.Second)
 			err = fmt.Errorf("rate limited after %d retries", i+1)
 			rspJSON = []byte(fmt.Sprintf("{\"err\":\"%s\"}", strconv.Quote(fmt.Sprintf("%s", err))))
+
 		}
 		if !success {
 			break
