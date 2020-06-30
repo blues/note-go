@@ -28,6 +28,7 @@ type RemoteCard struct {
 	DirectURL   string `json:"direct,omitempty"`
 	ProxyURL    string `json:"proxy,omitempty"`
 	Version     string `json:"version,omitempty"`
+	CardTest    string `json:"card,omitempty"`
 	DeviceUID   string `json:"device,omitempty"`
 	ProductUID  string `json:"product,omitempty"`
 	SN          string `json:"sn,omitempty"`
