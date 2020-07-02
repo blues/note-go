@@ -109,7 +109,10 @@ type Context struct {
 
 // Report a critical card error
 func cardReportError(context *Context, err error) {
-	if context != nil && context.Debug {
+	if context == nil {
+		return
+	}
+	if context.Debug {
 		fmt.Printf("*** %s\n", err)
 	}
 	if IoErrorIsRecoverable {
