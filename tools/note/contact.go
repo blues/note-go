@@ -156,7 +156,7 @@ func contactSet(name string, email string, daysInactive int) (contact note.Messa
 
 	// Get the current device's info
 	var rsp notecard.Request
-	rsp, err = card.TransactionRequest(notecard.Request{Req: notecard.ReqServiceGet})
+	rsp, err = card.TransactionRequest(notecard.Request{Req: notecard.ReqHubGet})
 	if err != nil {
 		return
 	}

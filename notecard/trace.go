@@ -41,7 +41,7 @@ func (context *Context) TraceCapture(toSend string, toEnd string) (captured stri
 
 	// Send the string, if supplied
 	if len(toSend) > 0 {
-		_, err = context.openSerialPort.Write(append([]byte(toSend), []byte("\n")...))
+		_, err = context.serialPort.Write(append([]byte(toSend), []byte("\n")...))
 		if err != nil {
 			err = fmt.Errorf("%s %s", err, note.ErrCardIo)
 			return
@@ -63,7 +63,7 @@ func (context *Context) TraceCapture(toSend string, toEnd string) (captured stri
 		buf := make([]byte, 2048)
 		readBeganMs := int(time.Now().UnixNano() / 1000000)
 		var length int
-		length, err = context.openSerialPort.Read(buf)
+		length, err = context.serialPort.Read(buf)
 		readElapsedMs := int(time.Now().UnixNano()/1000000) - readBeganMs
 
 		if err == nil && length == 0 {
@@ -110,7 +110,7 @@ func (context *Context) Trace() (err error) {
 		cardReportError(context, err)
 		return
 	}
-	if context.openSerialPort == nil {
+	if !context.serialPortIsOpen {
 		err = fmt.Errorf("port not open " + note.ErrCardIo)
 		cardReportError(context, err)
 		return
@@ -136,7 +136,7 @@ func (context *Context) Trace() (err error) {
 	for {
 
 		// Pause if not open
-		if context.openSerialPort == nil {
+		if !context.serialPortIsOpen {
 			err = fmt.Errorf("port not open " + note.ErrCardIo)
 			cardReportError(context, err)
 			time.Sleep(2 * time.Second)
@@ -147,7 +147,7 @@ func (context *Context) Trace() (err error) {
 		var length int
 		buf := make([]byte, 2048)
 		readBeganMs = int(time.Now().UnixNano() / 1000000)
-		length, err = context.openSerialPort.Read(buf)
+		length, err = context.serialPort.Read(buf)
 		readElapsedMs := int(time.Now().UnixNano()/1000000) - readBeganMs
 		if false {
 			fmt.Printf("mon: elapsed:%d len:%d err:%s '%s'\n", readElapsedMs, length, err, string(buf[:length]))
@@ -202,19 +202,19 @@ func inputHandler(context *Context) {
 
 		if strings.HasPrefix(message, "^") {
 
-			if context.openSerialPort != nil {
+			if !context.serialPortIsOpen {
 				for _, r := range message[1:] {
 					switch {
 					// 'a' - 'z'
 					case 97 <= r && r <= 122:
 						ba := make([]byte, 1)
 						ba[0] = byte(r - 96)
-						context.openSerialPort.Write(ba)
+						context.serialPort.Write(ba)
 						// 'A' - 'Z'
 					case 65 <= r && r <= 90:
 						ba := make([]byte, 1)
 						ba[0] = byte(r - 64)
-						context.openSerialPort.Write(ba)
+						context.serialPort.Write(ba)
 					}
 				}
 			}
@@ -222,11 +222,11 @@ func inputHandler(context *Context) {
 		} else {
 
 			// Send the command to the module
-			if context.openSerialPort == nil {
+			if !context.serialPortIsOpen {
 				time.Sleep(250 * time.Millisecond)
 			} else {
-				context.openSerialPort.Write([]byte(message))
-				context.openSerialPort.Write([]byte("\n"))
+				context.serialPort.Write([]byte(message))
+				context.serialPort.Write([]byte("\n"))
 			}
 
 		}

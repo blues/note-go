@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/blues/note-go/note"
+	"github.com/gofrs/flock"
 )
 
 // The number of minutes that we'll round up so that card reservations don't thrash
@@ -155,12 +156,12 @@ func cardList(context *Context) (cards []RemoteCard, err error) {
 			err = fmt.Errorf("notefarm: not a device list")
 			return
 		}
-		err = fmt.Errorf("notefarm: can't unmarshal device list: %sn", err3)
+		err = fmt.Errorf("notefarm: can't unmarshal device list: %s", err3)
 		return
 	}
 
 	if len(remoteCards.Cards) == 0 {
-		err = fmt.Errorf("notefarm: empty farm")
+		err = fmt.Errorf("notefarm: empty farm: document: [\n%s\n]", string(rspbuf))
 		return
 	}
 
@@ -169,8 +170,31 @@ func cardList(context *Context) (cards []RemoteCard, err error) {
 
 }
 
-// Open or reopen the remote card
+// Open or reopen the remote card. Locked to prevent multiple processes on this
+// machine from stepping on eachother's toes. Doesn't prevent us from stepping
+// on the toes of processes running on different machines.
 func remoteReopen(context *Context) (err error) {
+	// Get Mutex file lock to prevent a race with other processes on this machine.
+	fileLock := flock.New("/var/lock/notefarm.lock")
+	err = fileLock.Lock()
+	if err != nil {
+		err = fmt.Errorf("notefarm reservation error: can not lock [%v]", fileLock.Path())
+		return
+	}
+
+	err = uRemoteReopen(context)
+
+	err2 := fileLock.Unlock()
+	if err2 != nil {
+		err = fmt.Errorf("notefarm reservation error: can not unlock [%v]: %s; inner error: %w",
+			fileLock.Path(), err2, err)
+	}
+
+	return
+}
+
+// Open or reopen the remote card. Unlocked.
+func uRemoteReopen(context *Context) (err error) {
 
 	// Wait indefinitely for a reservation
 	for {
