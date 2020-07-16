@@ -41,7 +41,7 @@ const CardI2CMax = 253
 // between each segment.
 
 // CardRequestSerialSegmentMaxLen (golint)
-const CardRequestSerialSegmentMaxLen = 1000
+const CardRequestSerialSegmentMaxLen = 250
 
 // CardRequestSerialSegmentDelayMs (golint)
 const CardRequestSerialSegmentDelayMs = 250
@@ -87,7 +87,8 @@ type Context struct {
 
 	// Serial instance state
 	isSerial         bool
-	openSerialPort   serial.Port
+	serialPortIsOpen bool
+	serialPort       serial.Port
 	serialUseDefault bool
 	serialName       string
 	serialConfig     serial.Mode
@@ -192,7 +193,7 @@ func cardSetConfigSerial(context *Context, portConfig int) (err error) {
 func cardResetSerial(context *Context) (err error) {
 
 	// Exit if not open
-	if context.openSerialPort == nil {
+	if !context.serialPortIsOpen {
 		err = fmt.Errorf("port not open " + note.ErrCardIo)
 		cardReportError(context, err)
 		return
@@ -211,7 +212,7 @@ func cardResetSerial(context *Context) (err error) {
 			fmt.Printf("cardResetSerial: about to write newline\n")
 		}
 		serialIOBegin(context)
-		_, err = context.openSerialPort.Write([]byte("\n"))
+		_, err = context.serialPort.Write([]byte("\n"))
 		err = serialIOEnd(context, err)
 		if debugSerialIO {
 			fmt.Printf("                 back with err = %v\n", err)
@@ -227,7 +228,7 @@ func cardResetSerial(context *Context) (err error) {
 		}
 		readBeganMs := int(time.Now().UnixNano() / 1000000)
 		serialIOBegin(context)
-		length, err = context.openSerialPort.Read(buf)
+		length, err = context.serialPort.Read(buf)
 		err = serialIOEnd(context, err)
 		readElapsedMs := int(time.Now().UnixNano()/1000000) - readBeganMs
 		if debugSerialIO {
@@ -288,7 +289,7 @@ func serialIOBegin(context *Context) {
 	timeoutMs := 10000
 	context.ioStartSignal <- timeoutMs
 	if debugSerialIO {
-		if context.openSerialPort == nil {
+		if !context.serialPortIsOpen {
 			fmt.Printf("serialIoBegin: WARNING: PORT NOT OPEN\n")
 		}
 		fmt.Printf("serialIOBegin: begin timeout of %d ms\n", timeoutMs)
@@ -449,7 +450,7 @@ func (context *Context) Close() {
 
 // Close serial
 func cardCloseSerial(context *Context) {
-	if context.openSerialPort == nil {
+	if !context.serialPortIsOpen {
 		if debugSerialIO {
 			fmt.Printf("cardCloseSerial: port not open\n")
 		}
@@ -457,8 +458,8 @@ func cardCloseSerial(context *Context) {
 		if debugSerialIO {
 			fmt.Printf("cardCloseSerial: closed\n")
 		}
-		context.openSerialPort.Close()
-		context.openSerialPort = nil
+		context.serialPort.Close()
+		context.serialPortIsOpen = false
 	}
 }
 
@@ -500,14 +501,14 @@ func cardReopenSerial(context *Context) (err error) {
 	if debugSerialIO {
 		fmt.Printf("cardReopenSerial: about to open '%s'\n", context.serialName)
 	}
-	context.openSerialPort, err = serial.Open(context.serialName, &context.serialConfig)
+	context.serialPort, err = serial.Open(context.serialName, &context.serialConfig)
 	if debugSerialIO {
 		fmt.Printf("                  back with err = %v\n", err)
 	}
 	if err != nil {
-		cardCloseSerial(context)
 		return fmt.Errorf("error opening serial port %s at %d: %s %s", context.serialName, context.serialConfig.BaudRate, err, note.ErrCardIo)
 	}
+	context.serialPortIsOpen = true
 
 	// Done with the reopen
 	context.reopenRequired = false
@@ -773,7 +774,7 @@ func (context *Context) transactionJSON(reqJSON []byte, multiport bool, portConf
 func cardTransactionSerial(context *Context, reqJSON []byte) (rspJSON []byte, err error) {
 
 	// Exit if not open
-	if context.openSerialPort == nil {
+	if !context.serialPortIsOpen {
 		err = fmt.Errorf("port not open " + note.ErrCardIo)
 		cardReportError(context, err)
 		return
@@ -794,7 +795,7 @@ func cardTransactionSerial(context *Context, reqJSON []byte) (rspJSON []byte, er
 				fmt.Printf("cardTransactionSerial: about to write %d bytes\n", segLen)
 			}
 			serialIOBegin(context)
-			_, err = context.openSerialPort.Write(reqJSON[segOff : segOff+segLen])
+			_, err = context.serialPort.Write(reqJSON[segOff : segOff+segLen])
 			err = serialIOEnd(context, err)
 			if debugSerialIO {
 				fmt.Printf("                       back with err = %v\n", err)
@@ -824,7 +825,7 @@ func cardTransactionSerial(context *Context, reqJSON []byte) (rspJSON []byte, er
 		}
 		readBeganMs := int(time.Now().UnixNano() / 1000000)
 		serialIOBegin(context)
-		length, err = context.openSerialPort.Read(buf)
+		length, err = context.serialPort.Read(buf)
 		err = serialIOEnd(context, err)
 		readElapsedMs := int(time.Now().UnixNano()/1000000) - readBeganMs
 		if debugSerialIO {

@@ -19,23 +19,20 @@ const ReqFileSet = "file.set"
 // ReqFileDelete (golint)
 const ReqFileDelete = "file.delete"
 
+// ReqFileGetL (golint)
+const ReqFileGetL = "file.get"
+
 // ReqFileChanges (golint)
 const ReqFileChanges = "file.changes"
 
 // ReqFileChangesPending (golint)
 const ReqFileChangesPending = "file.changes.pending"
 
-// ReqFileGetL (golint)
-const ReqFileGetL = "file.get"
-
 // ReqFileSync (golint)
 const ReqFileSync = "file.sync"
 
 // ReqFileStats (golint)
 const ReqFileStats = "file.stats"
-
-// ReqServiceSync (golint)
-const ReqServiceSync = "service.sync"
 
 // ReqNotesGetL (golint)
 const ReqNotesGetL = "notes.get"
@@ -69,9 +66,6 @@ const ReqCardContact = "card.contact"
 
 // ReqCardAttn (golint)
 const ReqCardAttn = "card.attn"
-
-// ReqCardVersion (golint)
-const ReqCardVersion = "card.version"
 
 // ReqCardStatus (golint)
 const ReqCardStatus = "card.status"
@@ -112,14 +106,17 @@ const ReqCardMotionTrack = "card.motion.track"
 // ReqCardIO (golint)
 const ReqCardIO = "card.io"
 
-// ReqCardTrace (golint)
-const ReqCardTrace = "card.trace"
-
-// ReqCardWireless (golint)
-const ReqCardWireless = "card.wireless"
-
 // ReqCardAUX (golint)
 const ReqCardAUX = "card.aux"
+
+// ReqCardCarrier (golint)
+const ReqCardCarrier = "card.carrier"
+
+// ReqCardReserve (golint)
+const ReqCardReserve = "card.reserve"
+
+// ReqCardTrace (golint)
+const ReqCardTrace = "card.trace"
 
 // ReqCardUsageGet (golint)
 const ReqCardUsageGet = "card.usage.get"
@@ -130,26 +127,14 @@ const ReqCardUsageTest = "card.usage.test"
 // ReqCardUsageRate (golint)
 const ReqCardUsageRate = "card.usage.rate"
 
-// ReqServiceEnvL (golint)
-const ReqServiceEnvL = "service.env"
-
-// ReqServiceSet (golint)
-const ReqServiceSet = "service.set"
-
-// ReqServiceGet (golint)
-const ReqServiceGet = "service.get"
-
-// ReqServiceStatus (golint)
-const ReqServiceStatus = "service.status"
-
-// ReqServiceSignal (golint)
-const ReqServiceSignal = "service.signal"
-
-// ReqServiceSyncStatus (golint)
-const ReqServiceSyncStatus = "service.sync.status"
-
 // ReqEnvGet (golint)
 const ReqEnvGet = "env.get"
+
+// ReqEnvSet (golint)
+const ReqEnvSet = "env.set"
+
+// ReqEnvDefault (golint)
+const ReqEnvDefault = "env.default"
 
 // ReqEnvTime (golint)
 const ReqEnvTime = "env.time"
@@ -172,8 +157,77 @@ const ReqDFUStatus = "dfu.status"
 // ReqDFUGet (golint)
 const ReqDFUGet = "dfu.get"
 
-// ReqDFUServiceGet (golint)
-const ReqDFUServiceGet = "dfu.service.get"
+// ReqEnvVersion (golint)
+const ReqEnvVersion = "env.version"
+
+// ReqEnvVersionL (golint)
+const ReqEnvVersionL = "card.version"
+
+// ReqCardBootloader (golint)
+const ReqCardBootloader = "card.bootloader"
+
+// ReqCardTest (golint)
+const ReqCardTest = "card.test"
+
+// ReqCardWireless (golint)
+const ReqCardWireless = "card.wireless"
+
+// ReqCardLog (golint)
+const ReqCardLog = "card.log"
+
+// ReqHubSync (golint)
+const ReqHubSync = "hub.sync"
+
+// ReqHubSyncL (golint)
+const ReqHubSyncL = "service.sync"
+
+// ReqHubLog (golint)
+const ReqHubLog = "hub.log"
+
+// ReqHubLogL (golint)
+const ReqHubLogL = "service.log"
+
+// ReqHubEnvL (golint)
+const ReqHubEnvL = "hub.env"
+
+// ReqHubEnvLL (golint)
+const ReqHubEnvLL = "service.env"
+
+// ReqHubSet (golint)
+const ReqHubSet = "hub.set"
+
+// ReqHubSetL (golint)
+const ReqHubSetL = "service.set"
+
+// ReqHubGet (golint)
+const ReqHubGet = "hub.get"
+
+// ReqHubGetL (golint)
+const ReqHubGetL = "service.get"
+
+// ReqHubStatus (golint)
+const ReqHubStatus = "hub.status"
+
+// ReqHubStatusL (golint)
+const ReqHubStatusL = "service.status"
+
+// ReqHubSignal (golint)
+const ReqHubSignal = "hub.signal"
+
+// ReqHubSignalL (golint)
+const ReqHubSignalL = "service.signal"
+
+// ReqHubSyncStatus (golint)
+const ReqHubSyncStatus = "hub.sync.status"
+
+// ReqHubSyncStatusL (golint)
+const ReqHubSyncStatusL = "service.sync.status"
+
+// ReqDFUHubGet (golint)
+const ReqDFUHubGet = "hub.dfu.get"
+
+// ReqDFUHubGetL (golint)
+const ReqDFUHubGetL = "dfu.service.get"
 
 // Request is the core API request/response data structure
 type Request struct {
@@ -254,6 +308,9 @@ type Request struct {
 	Align            bool                          `json:"align,omitempty"`
 	Limit            bool                          `json:"limit,omitempty"`
 	Pending          bool                          `json:"pending,omitempty"`
+	Charging         bool                          `json:"charging,omitempty"`
+	On               bool                          `json:"on,omitempty"`
+	Off              bool                          `json:"off,omitempty"`
 	ReqTime          bool                          `json:"reqtime,omitempty"`
 	ReqLoc           bool                          `json:"reqloc,omitempty"`
 	Trace            string                        `json:"trace,omitempty"`
