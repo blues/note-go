@@ -31,12 +31,27 @@ type ScannedDevice struct {
 }
 
 // Scan of a set of notecards, appending to JSON file.  Press ^C when done.
-func scan(reqfile string, outfile string) (err error) {
+func scan(debugEnabled bool, fnSetup string, fnSetupSKU string, outfile string) (err error) {
 
-	// Load the request file
-	var requests []notecard.Request
-	if reqfile != "" {
-		requests, err = loadRequests(reqfile)
+	// Only allow one of the two
+	if fnSetup != "" && fnSetupSKU != "" {
+		err = fmt.Errorf("only one of setup or sku setup can be performed at a time")
+		return
+	}
+
+	// Load the requests file
+	var requests []map[string]interface{}
+	if fnSetup != "" {
+		requests, err = loadRequests(fnSetup)
+		if err != nil {
+			return
+		}
+	}
+
+	// Load the requests string
+	var requestsString string
+	if fnSetupSKU != "" {
+		requestsString, err = loadRequestsString(fnSetupSKU)
 		if err != nil {
 			return
 		}
@@ -54,7 +69,7 @@ func scan(reqfile string, outfile string) (err error) {
 	go inputHandler()
 
 	// Turn off debug output
-	card.DebugOutput(false, false)
+	card.DebugOutput(debugEnabled, false)
 
 	// Read the file into an array that we'll keep ordered
 	var contents []byte
@@ -112,13 +127,25 @@ func scan(reqfile string, outfile string) (err error) {
 		// If requests were specified, process them
 		if len(requests) > 0 {
 			for _, req := range requests {
-				_, err = card.TransactionRequest(req)
+				var reqJSON []byte
+				reqJSON, err = note.JSONMarshal(req)
+				_, err = card.TransactionJSON(reqJSON)
 				if err != nil {
 					break
 				}
 			}
 			// Re-do the service.get because the setup script may have changed things
 			rsp, _ = card.TransactionRequest(notecard.Request{Req: "service.get"})
+		}
+
+		// If requests string was specified, process it
+		if requestsString != "" {
+			req := notecard.Request{Req: "card.setup"}
+			req.Text = requestsString
+			rsp, err = card.TransactionRequest(req)
+			if err != nil {
+				break
+			}
 		}
 
 		// Create a new inventory record
@@ -187,6 +214,9 @@ func scan(reqfile string, outfile string) (err error) {
 		fmt.Printf("\n*** please remove the notecard\n")
 
 	}
+
+	// Done
+	return
 }
 
 // Background input handler
@@ -218,7 +248,7 @@ func inputHandler() {
 }
 
 // Load requests from a JSON request file
-func loadRequests(filename string) (requests []notecard.Request, err error) {
+func loadRequests(filename string) (requests []map[string]interface{}, err error) {
 
 	// Require a json file
 	if !strings.HasSuffix(filename, ".json") {
@@ -240,13 +270,45 @@ func loadRequests(filename string) (requests []notecard.Request, err error) {
 		if len(line) == 0 {
 			continue
 		}
-		var req notecard.Request
+		// Allow comments in either C or Python style
+		if strings.HasPrefix(string(line), "/") || strings.HasPrefix(string(line), "#") {
+			continue
+		}
+		var req map[string]interface{}
 		err = json.Unmarshal(line, &req)
 		if err != nil {
 			err = fmt.Errorf("error: invalid request JSON: %s", line)
 			return
 		}
 		requests = append(requests, req)
+	}
+
+	// Done
+	return
+}
+
+// Load requests from a JSON request file, validating them and newline-separating into a string
+func loadRequestsString(filename string) (requests string, err error) {
+
+	// If the caller is resetting the requests, do it
+	if filename == "-" {
+		requests = filename
+		return
+	}
+
+	// Iterate over the requests, converting them into a newline-delimited string
+	var reqv []map[string]interface{}
+	reqv, err = loadRequests(filename)
+	for _, req := range reqv {
+		var jsondata []byte
+		jsondata, err = note.JSONMarshal(req)
+		if err != nil {
+			return
+		}
+		if requests != "" {
+			requests += "\n"
+		}
+		requests += string(jsondata)
 	}
 
 	// Done

@@ -703,7 +703,9 @@ func (context *Context) transactionJSON(reqJSON []byte, multiport bool, portConf
 		err = context.ReopenIfRequired()
 		if err != nil {
 			transLock.Unlock()
-			fmt.Printf("%s\n", err)
+			if context.Debug {
+				fmt.Printf("%s\n", err)
+			}
 			return
 		}
 
@@ -959,6 +961,11 @@ func OpenRemote(farmURL string, farmCheckoutMins int) (context *Context, err err
 
 	// Create the context structure
 	context = &Context{}
+	// Prevent accidental reservation for excessive durations e.g. 115200 minutes
+	if farmCheckoutMins > 120 {
+		err = fmt.Errorf("error, 120 minute limit on notefarm reservations")
+		return
+	}
 
 	// Set up class functions
 	context.isRemote = true

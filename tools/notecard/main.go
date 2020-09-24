@@ -40,8 +40,14 @@ func main() {
 	flag.BoolVar(&actionWhenDisconnected, "when-disconnected", false, "wait until disconnected")
 	var actionWhenDisarmed bool
 	flag.BoolVar(&actionWhenDisarmed, "when-disarmed", false, "wait until ATTN is disarmed")
+	var actionVerbose bool
+	flag.BoolVar(&actionVerbose, "verbose", false, "display notecard requests and responses")
 	var actionWhenSynced bool
 	flag.BoolVar(&actionWhenSynced, "when-synced", false, "sync if needed and wait until sync completed")
+	var actionFactory bool
+	flag.BoolVar(&actionFactory, "factory", false, "reset notecard to factory defaults")
+	var actionFormat bool
+	flag.BoolVar(&actionFormat, "format", false, "reset notecard's notefile storage but retain configuration")
 	var actionLog string
 	flag.StringVar(&actionLog, "log", "", "add a text string to the _log.qo notefile")
 	var actionTrace bool
@@ -66,8 +72,10 @@ func main() {
 	flag.BoolVar(&actionCommtest, "commtest", false, "perform repetitive request/response test to validate comms with the Notecard")
 	var actionSetup string
 	flag.StringVar(&actionSetup, "setup", "", "issue requests sequentially as stored in the specified .json file")
+	var actionSetupSKU string
+	flag.StringVar(&actionSetupSKU, "setup-sku", "", "configure a notecard for self-setup even after factory restore, with  requests stored in the specified .json file")
 	var actionScan string
-	flag.StringVar(&actionScan, "scan", "", "scan a batch of notecards to collect info into a json file")
+	flag.StringVar(&actionScan, "scan", "", "scan a batch of notecards to collect info or to set them up")
 
 	// Parse these flags and also the note tool config flags
 	err := noteutil.FlagParse(true, false)
@@ -214,7 +222,21 @@ func main() {
 	}
 
 	// Turn on Notecard library debug output
-	card.DebugOutput(true, false)
+	if actionSetup != "" {
+		actionVerbose = true
+	}
+	card.DebugOutput(actionVerbose, false)
+
+	// Factory reset & format
+	if err == nil && actionFormat {
+		req := notecard.Request{Req: "card.restore"}
+		_, err = card.TransactionRequest(req)
+	}
+	if err == nil && actionFactory {
+		req := notecard.Request{Req: "card.restore"}
+		req.Delete = true
+		_, err = card.TransactionRequest(req)
+	}
 
 	if err == nil && actionInfo {
 
@@ -228,6 +250,11 @@ func main() {
 			cardName = rsp.Name
 			cardDeviceUID = rsp.DeviceUID
 			cardVersion = rsp.Version
+		}
+
+		cardDefaultSN := ""
+		if cardDeviceUID != "" {
+			cardDefaultSN = note.WordsFromString(cardDeviceUID)
 		}
 
 		cardICCID := ""
@@ -388,8 +415,9 @@ func main() {
 
 		fmt.Printf("\n%s\n", cardName)
 		fmt.Printf("              ProductUID: %s\n", cardProductUID)
-		fmt.Printf("           Serial Number: %s\n", cardSN)
 		fmt.Printf("               DeviceUID: %s\n", cardDeviceUID)
+		fmt.Printf("           Serial Number: %s\n", cardSN)
+		fmt.Printf("     _default_sn [words]: %s\n", cardDefaultSN)
 		fmt.Printf("            Notehub Host: %s\n", cardHost)
 		fmt.Printf("                 Version: %s\n", cardVersion)
 		fmt.Printf("                   Modem: %s\n", cardModem)
@@ -443,8 +471,18 @@ func main() {
 		_, err = card.TransactionRequest(notecard.Request{Req: "service.sync"})
 	}
 
+	if err == nil && actionSetupSKU != "" && actionScan == "" {
+		var requestsString string
+		requestsString, err = loadRequestsString(actionSetupSKU)
+		if err == nil {
+			req := notecard.Request{Req: "card.setup"}
+			req.Text = requestsString
+			_, err = card.TransactionRequest(req)
+		}
+	}
+
 	if err == nil && actionSetup != "" && actionScan == "" {
-		var requests []notecard.Request
+		var requests []map[string]interface{}
 		requests, err = loadRequests(actionSetup)
 		if err == nil {
 			repeat := false
@@ -453,14 +491,14 @@ func main() {
 			done := false
 			for !done {
 				for _, req := range requests {
-					if req.Req == "delay" {
-						time.Sleep(time.Duration(req.Seconds) * time.Second)
+					if req["req"] == "delay" {
+						time.Sleep(time.Duration(req["seconds"].(int)) * time.Second)
 						continue
 					}
-					if req.Req == "repeat" {
+					if req["req"] == "repeat" {
 						if !repeat {
 							repeat = true
-							countLeft = req.Count
+							countLeft = req["count"].(uint32)
 							if countLeft == 0 {
 								repeatForever = true
 							}
@@ -474,7 +512,9 @@ func main() {
 						}
 						continue
 					}
-					_, err = card.TransactionRequest(req)
+					var reqJSON []byte
+					reqJSON, err = note.JSONMarshal(req)
+					_, err = card.TransactionJSON(reqJSON)
 					if err != nil {
 						break
 					}
@@ -487,7 +527,7 @@ func main() {
 	}
 
 	if err == nil && actionScan != "" {
-		err = scan(actionSetup, actionScan)
+		err = scan(actionVerbose, actionSetup, actionSetupSKU, actionScan)
 	}
 
 	if err == nil && actionCommtest {

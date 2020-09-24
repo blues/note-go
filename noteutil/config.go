@@ -22,11 +22,12 @@ type ConfigSettings struct {
 	When       string `json:"when,omitempty"`
 	Hub        string `json:"hub,omitempty"`
 	App        string `json:"app,omitempty"`
+	Product    string `json:"product,omitempty"`
 	Device     string `json:"device,omitempty"`
 	Root       string `json:"root,omitempty"`
 	Cert       string `json:"cert,omitempty"`
 	Key        string `json:"key,omitempty"`
-	Secure     bool   `json:"secure,omitempty"`
+	Unsecure   bool   `json:"unsecure,omitempty"`
 	Interface  string `json:"interface,omitempty"`
 	Port       string `json:"port,omitempty"`
 	PortConfig int    `json:"port_config,omitempty"`
@@ -107,10 +108,10 @@ func ConfigShow() error {
 
 	fmt.Printf("\nCurrently saved values:\n")
 
-	if Config.Secure {
-		fmt.Printf("   -https\n")
-	} else {
+	if Config.Unsecure {
 		fmt.Printf("   -http\n")
+	} else {
+		fmt.Printf("   -https\n")
 	}
 
 	if Config.Hub != "" && Config.Hub != notehub.DefaultAPIService {
@@ -118,6 +119,9 @@ func ConfigShow() error {
 	}
 	if Config.App != "" {
 		fmt.Printf("   -app %s\n", Config.App)
+	}
+	if Config.Product != "" {
+		fmt.Printf("   -product %s\n", Config.Product)
 	}
 	if Config.Device != "" {
 		fmt.Printf("   -device %s\n", Config.Device)
@@ -164,12 +168,12 @@ func ConfigFlagsProcess() (err error) {
 
 	// Set the flags as desired
 	if flagConfigHTTP {
-		configFlags.Secure = false
-		Config.Secure = false
+		configFlags.Unsecure = true
+		Config.Unsecure = true
 	}
 	if flagConfigHTTPS {
-		configFlags.Secure = true
-		Config.Secure = true
+		configFlags.Unsecure = false
+		Config.Unsecure = false
 	}
 	if configFlags.Hub == "-" {
 		Config.Hub = notehub.DefaultAPIService
@@ -195,6 +199,11 @@ func ConfigFlagsProcess() (err error) {
 		Config.App = ""
 	} else if configFlags.App != "" {
 		Config.App = configFlags.App
+	}
+	if configFlags.Product == "-" {
+		Config.Product = ""
+	} else if configFlags.Product != "" {
+		Config.Product = configFlags.Product
 	}
 	if configFlags.Device == "-" {
 		Config.Device = ""
@@ -256,7 +265,8 @@ func ConfigFlagsRegister(notecardFlags bool, notehubFlags bool) {
 		flag.BoolVar(&flagConfigHTTPS, "https", false, "use https instead of http")
 		flag.StringVar(&configFlags.Hub, "hub", "", "set notehub request service URL")
 		flag.StringVar(&configFlags.Device, "device", "", "set DeviceUID")
-		flag.StringVar(&configFlags.App, "app", "", "set AppUID (the Project UID)")
+		flag.StringVar(&configFlags.App, "app", "", "set AppUID")
+		flag.StringVar(&configFlags.Product, "product", "", "set ProductUID")
 		flag.StringVar(&configFlags.Root, "root", "", "set path to service's root CA certificate file")
 		flag.StringVar(&configFlags.Key, "key", "", "set path to local private key file")
 		flag.StringVar(&configFlags.Cert, "cert", "", "set path to local cert file")

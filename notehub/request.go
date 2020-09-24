@@ -71,6 +71,7 @@ type HubRequest struct {
 	Contact          *note.EventContact `json:"contact,omitempty"`
 	AppUID           string             `json:"app,omitempty"`
 	FleetUID         string             `json:"fleet,omitempty"`
+	EventSerials     []string           `json:"events,omitempty"`
 	DbQuery          *DbQuery           `json:"query,omitempty"`
 	Uploads          *[]HubRequestFile  `json:"uploads,omitempty"`
 	Contains         string             `json:"contains,omitempty"`
@@ -78,6 +79,8 @@ type HubRequest struct {
 	FileType         string             `json:"type,omitempty"`
 	FileTags         string             `json:"tags,omitempty"`
 	FileNotes        string             `json:"notes,omitempty"`
+	Provision        bool               `json:"provision,omitempty"`
+	Scope            string             `json:"scope,omitempty"`
 	Env              *map[string]string `json:"env,omitempty"`
 }
 
