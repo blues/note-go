@@ -32,4 +32,9 @@ type CardTest struct {
 	FirmwarePatch   uint32 `json:"ver_patch,omitempty"`
 	FirmwareBuild   uint32 `json:"ver_build,omitempty"`
 	FirmwareBuilt   string `json:"built,omitempty"`
+	// Certificate info
+	CertSN string `json:"certsn,omitempty"`
+	Cert   string `json:"cert,omitempty"`
+	// Setup requests
+	SetupRequests string `json:"setup,omitempty"`
 }

@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -65,6 +66,22 @@ func remoteSetConfig(context *Context, portConfig int) (err error) {
 
 // Close a remote notecard
 func remoteClose(context *Context) {
+
+	// Reset the remote card to release the reservation
+	// 'https://DirectURL&reset=true'
+	var req *http.Request
+	resetURL := context.farmCard.DirectURL + `&reset=true`
+
+	req, err := http.NewRequest("GET", resetURL, nil)
+	if err != nil {
+		fmt.Printf("remoteClose NewReq Fail %v", err)
+		return
+	}
+	httpclient := &http.Client{Timeout: time.Second * 90}
+	_, err = httpclient.Do(req)
+	if err != nil {
+		fmt.Printf("remoteClose http.Do Fail %v", err)
+	}
 	return
 }
 
@@ -175,7 +192,7 @@ func cardList(context *Context) (cards []RemoteCard, err error) {
 // on the toes of processes running on different machines.
 func remoteReopen(context *Context) (err error) {
 	// Get Mutex file lock to prevent a race with other processes on this machine.
-	fileLock := flock.New("/var/lock/notefarm.lock")
+	fileLock := flock.New(filepath.Join(os.TempDir(), "notefarm.lock"))
 	err = fileLock.Lock()
 	if err != nil {
 		err = fmt.Errorf("notefarm reservation error: can not lock [%v]", fileLock.Path())
@@ -384,9 +401,21 @@ func remoteTransaction(context *Context, reqJSON []byte) (rspJSON []byte, err er
 			}
 
 		} else {
+			// Sometimes the response will not unmarshal because it's html from Balena
+			// Balena error message embedded in html as shown below:
+			// <p>UUID xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</p><p>ERROR MESSAGE WE WANT</p>
+			errstring := string(rspbuf)
+			if strings.Contains(errstring, "<html>") && strings.Contains(errstring, "UUID") {
+				uuid := strings.Split(errstring, "UUID")
+				// take everything after UUID and split by paragraph
+				errmsg := strings.Split(uuid[1], "</p><p>")
+				err = fmt.Errorf("notefarm controller error: %s", errmsg[1])
+			}
+
+			// Retry
 			err = fmt.Errorf("hit max retries: %s", err)
 			if i > maxRetries {
-				rspJSON = []byte(fmt.Sprintf("{\"err\":\"hit max retries: %s\"}", err))
+				rspJSON = []byte(fmt.Sprintf("{\"err\":\"%s\"}", err))
 				break
 			}
 

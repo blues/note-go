@@ -72,7 +72,10 @@ func reqHubJSON(hub string, request []byte, requestFile string, filetype string,
 	}
 
 	httpurl := fmt.Sprintf("%s://%s%s", scheme, hub, notehub.DefaultAPITopicReq)
-	query := addQuery("", "app", noteutil.Config.App)
+	query := addQuery("", "product", noteutil.Config.Product)
+	if noteutil.Config.Product == "" {
+		query = addQuery("", "app", noteutil.Config.App)
+	}
 	query = addQuery(query, "device", noteutil.Config.Device)
 	query = addQuery(query, "upload", fn)
 	if overwrite {
@@ -118,7 +121,9 @@ func reqHubJSON(hub string, request []byte, requestFile string, filetype string,
 
 	httpClient := &http.Client{}
 
-	if secure {
+	// 2020-08-19 disable this so we can use HTTPS against the new service with default go certs.
+	// This is all we need for now, and we will update all of this when we change notehub auth.
+	if secure && (false) {
 
 		if noteutil.Config.Cert == "" || noteutil.Config.Key == "" {
 			err = fmt.Errorf("HTTPS client cert (-cert) and key (-key) are required for secure API access")

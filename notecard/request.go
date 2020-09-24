@@ -85,6 +85,9 @@ const ReqCardLocationMode = "card.location.mode"
 // ReqCardLocationTrack (golint)
 const ReqCardLocationTrack = "card.location.track"
 
+// ReqCardTriangulate (golint)
+const ReqCardTriangulate = "card.triangulate"
+
 // ReqCardTemp (golint)
 const ReqCardTemp = "card.temp"
 
@@ -168,6 +171,9 @@ const ReqCardBootloader = "card.bootloader"
 
 // ReqCardTest (golint)
 const ReqCardTest = "card.test"
+
+// ReqCardSetup (golint)
+const ReqCardSetup = "card.setup"
 
 // ReqCardWireless (golint)
 const ReqCardWireless = "card.wireless"
@@ -332,6 +338,7 @@ type Request struct {
 	Count            uint32                        `json:"count,omitempty"`
 	Sync             bool                          `json:"sync,omitempty"`
 	Live             bool                          `json:"live,omitempty"`
+	Now              bool                          `json:"now,omitempty"`
 	Type             int32                         `json:"type,omitempty"`
 	Number           int64                         `json:"number,omitempty"`
 	SKU              string                        `json:"sku,omitempty"`
@@ -339,6 +346,8 @@ type Request struct {
 	Sensitivity      int32                         `json:"sensitivity,omitempty"`
 	Requested        int32                         `json:"requested,omitempty"`
 	Completed        int32                         `json:"completed,omitempty"`
+	WiFi             bool                          `json:"wifi,omitempty"`
+	Cell             bool                          `json:"cell,omitempty"`
 }
 
 // PinState describes the state of an AUX pin for hardware-related Notecard requests

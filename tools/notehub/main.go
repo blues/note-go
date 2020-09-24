@@ -13,7 +13,6 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/blues/note-go/notehub"
 	"github.com/blues/note-go/noteutil"
 )
 
@@ -30,12 +29,8 @@ func main() {
 	// Process command line
 	var flagReq string
 	flag.StringVar(&flagReq, "req", "", "{json for device-like request}")
-	var flagMonitorJq bool
-	flag.BoolVar(&flagMonitorJq, "jq", false, "strip all // lines from monitor output so that jq can be used")
-	var flagMonitorApp bool
-	flag.BoolVar(&flagMonitorApp, "appmon", false, "monitor an app's device output in real-time")
-	var flagMonitorDevice bool
-	flag.BoolVar(&flagMonitorDevice, "monitor", false, "monitor device output in real-time")
+	var flagJq bool
+	flag.BoolVar(&flagJq, "jq", false, "strip all non json lines from output so that jq can be used")
 	var flagIn string
 	flag.StringVar(&flagIn, "in", "", "input filename, enabling request to be contained in a file")
 	var flagUpload string
@@ -99,53 +94,9 @@ func main() {
 		flagReq = string(contents)
 	}
 
-	// Process device monitor commands
-	if flagMonitorDevice {
-		if noteutil.Config.Device == "" {
-			fmt.Printf("You must specify which device UID to monitor\n")
-			os.Exit(exitFail)
-		}
-		req := notehub.HubRequest{}
-		req.Req = "hub.device.monitor"
-		reqHub(noteutil.Config.Hub, req, "", req.FileType, req.FileTags, req.FileNotes, false, noteutil.Config.Secure, flagMonitorJq, outq)
-	}
-
-	// Process app monitor commands
-	if flagMonitorApp {
-		if noteutil.Config.App == "" {
-			fmt.Printf("You must specify which app UID to monitor\n")
-			os.Exit(exitFail)
-		}
-		req := notehub.HubRequest{}
-		req.Req = "hub.app.handlers"
-		rsp, err := reqHub(noteutil.Config.Hub, req, "", req.FileType, req.FileTags, req.FileNotes, false, noteutil.Config.Secure, flagMonitorJq, nil)
-		if err != nil {
-			fmt.Printf("%s\n", err)
-			os.Exit(exitFail)
-		}
-		if rsp.Err != "" {
-			os.Exit(exitFail)
-		}
-		if rsp.Handlers == nil || len(*rsp.Handlers) == 0 {
-			fmt.Printf("no handlers\n")
-			os.Exit(exitFail)
-		}
-		for i, handler := range *rsp.Handlers {
-			req := notehub.HubRequest{}
-			req.Req = "hub.app.monitor"
-			req.FleetUID = ""           // Monitor all fleets in the app
-			noteutil.Config.Device = "" // DeviceUID must be "" to prevent http-req.go from redirecting to handler
-			if i+1 == len(*rsp.Handlers) {
-				reqHub(handler, req, "", req.FileType, req.FileTags, req.FileNotes, false, noteutil.Config.Secure, flagMonitorJq, outq)
-			} else {
-				go reqHub(handler, req, "", req.FileType, req.FileTags, req.FileNotes, false, noteutil.Config.Secure, flagMonitorJq, outq)
-			}
-		}
-	}
-
 	// Process requests
 	if flagReq != "" || flagUpload != "" {
-		rsp, err := reqHubJSON(noteutil.Config.Hub, []byte(flagReq), flagUpload, flagType, flagTags, flagNotes, flagOverwrite, noteutil.Config.Secure, flagMonitorJq, nil)
+		rsp, err := reqHubJSON(noteutil.Config.Hub, []byte(flagReq), flagUpload, flagType, flagTags, flagNotes, flagOverwrite, !noteutil.Config.Unsecure, flagJq, nil)
 		if err != nil {
 			fmt.Printf("Error processing request: %s\n", err)
 			os.Exit(exitFail)

@@ -88,8 +88,29 @@ const ErrIdle = "{idle}"
 // ErrDeviceNotFound (golint)
 const ErrDeviceNotFound = "{device-noexist}"
 
+// ErrDeviceNotSpecified (golint)
+const ErrDeviceNotSpecified = "{device-none}"
+
 // ErrProductNotFound (golint)
 const ErrProductNotFound = "{product-noexist}"
+
+// ErrProductNotSpecified (golint)
+const ErrProductNotSpecified = "{product-none}"
+
+// ErrAppNotFound (golint)
+const ErrAppNotFound = "{app-noexist}"
+
+// ErrAppNotSpecified (golint)
+const ErrAppNotSpecified = "{app-none}"
+
+// ErrAppDeleted (golint)
+const ErrAppDeleted = "{app-deleted}"
+
+// ErrAppExists (golint)
+const ErrAppExists = "{app-exists}"
+
+// ErrFleetNotFound (golint)
+const ErrFleetNotFound = "{fleet-noexist}"
 
 // ErrCardIo (golint)
 const ErrCardIo = "{io}"
