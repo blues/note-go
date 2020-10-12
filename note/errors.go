@@ -147,3 +147,13 @@ func ErrorString(err error) string {
 	}
 	return fmt.Sprintf("%s", err)
 }
+
+// ErrorJSON returns a JSON object with nothing but an error code, and with an optional message
+func ErrorJSON(message string, err error) (rspJSON []byte) {
+	if message == "" {
+		rspJSON = []byte(fmt.Sprintf("{\"err\":\"%q\"}", err))
+	} else {
+		rspJSON = []byte(fmt.Sprintf("{\"err\":\"%q: %q\"}", message, err))
+	}
+	return
+}
