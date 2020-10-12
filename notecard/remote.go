@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -178,7 +179,7 @@ func cardList(context *Context) (cards []RemoteCard, err error) {
 	}
 
 	if len(remoteCards.Cards) == 0 {
-		err = fmt.Errorf("notefarm: empty farm: document: [\n%s\n]", string(rspbuf))
+		err = fmt.Errorf("notefarm: empty farm: document: %s", url.QueryEscape(string(rspbuf)))
 		return
 	}
 
@@ -347,7 +348,7 @@ func remoteTransaction(context *Context, reqJSON []byte) (rspJSON []byte, err er
 			var req *http.Request
 			req, err = http.NewRequest("POST", context.farmCard.DirectURL, bytes.NewBuffer(reqJSON))
 			if err != nil {
-				rspJSON = []byte(fmt.Sprintf("{\"err\":\"create request failure: %s\"}", err))
+				rspJSON = note.ErrorJSON("create request", err)
 				break
 			}
 			httpclient := &http.Client{Timeout: time.Second * 90}
@@ -361,16 +362,16 @@ func remoteTransaction(context *Context, reqJSON []byte) (rspJSON []byte, err er
 			// Note that we need to detect EOF in this hacky way because
 			// it is embedded at the end of a very long "Post:" message.
 			if !strings.HasSuffix(fmt.Sprintf("%s", err), "EOF") {
-				err = fmt.Errorf("http transmit after %d retries: %s", i+1, err)
-				rspJSON = []byte(fmt.Sprintf("{\"err\":\"%s\"}", strconv.Quote(fmt.Sprintf("%s", err))))
+				err = fmt.Errorf("http transmit after %d retries %s: %s", i+1, note.ErrCardIo, err)
+				rspJSON = note.ErrorJSON("", err)
 				break
 			}
 
 			// Handle service rate-limiting by delaying for a moment, then retrying.  we
 			// preset the response in case we exceed the maximum retries.
 			time.Sleep(2 * time.Second)
-			err = fmt.Errorf("rate limited after %d retries", i+1)
-			rspJSON = []byte(fmt.Sprintf("{\"err\":\"%s\"}", strconv.Quote(fmt.Sprintf("%s", err))))
+			err = fmt.Errorf("rate limited after %d retries "+note.ErrCardIo, i+1)
+			rspJSON = note.ErrorJSON("", err)
 
 		}
 		if !success {
@@ -380,8 +381,8 @@ func remoteTransaction(context *Context, reqJSON []byte) (rspJSON []byte, err er
 		// Success, so now we read the response
 		rspbuf, err = ioutil.ReadAll(resp.Body)
 		if err != nil {
-			err = fmt.Errorf("reading response failed: %s", err)
-			rspJSON = []byte(fmt.Sprintf("{\"err\":\"err reading response: %s\"}", err))
+			err = fmt.Errorf("reading response %s: %s", note.ErrCardIo, err)
+			rspJSON = note.ErrorJSON("", err)
 			break
 		}
 
@@ -391,12 +392,12 @@ func remoteTransaction(context *Context, reqJSON []byte) (rspJSON []byte, err er
 		if err == nil {
 
 			// See if there was an I/O error to the card, and retry if so
-			if !strings.Contains(string(rspbuf), "{io}") {
+			if !strings.Contains(string(rspbuf), note.ErrCardIo) {
 				rspJSON = rspbuf
 				break
 			}
 			if i > maxRetries {
-				rspJSON = []byte(fmt.Sprintf("{\"err\":\"proxy: cannot communicate with notecard {io}\"}"))
+				rspJSON = note.ErrorJSON("proxy: cannot communicate with notecard "+note.ErrCardIo, err)
 				break
 			}
 
@@ -409,13 +410,13 @@ func remoteTransaction(context *Context, reqJSON []byte) (rspJSON []byte, err er
 				uuid := strings.Split(errstring, "UUID")
 				// take everything after UUID and split by paragraph
 				errmsg := strings.Split(uuid[1], "</p><p>")
-				err = fmt.Errorf("notefarm controller error: %s", errmsg[1])
+				err = fmt.Errorf("notefarm controller error: %s", url.QueryEscape(errmsg[1]))
 			}
 
 			// Retry
-			err = fmt.Errorf("hit max retries: %s", err)
+			err = fmt.Errorf("hit max retries %s: %s", note.ErrCardIo, err)
 			if i > maxRetries {
-				rspJSON = []byte(fmt.Sprintf("{\"err\":\"%s\"}", err))
+				rspJSON = note.ErrorJSON("", err)
 				break
 			}
 
