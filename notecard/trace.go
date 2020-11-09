@@ -15,6 +15,10 @@ import (
 	"github.com/blues/note-go/note"
 )
 
+// 2020-11-01 turned off prompt because there were timing problems (particularly evident when
+// a session is over and "modem: user" never was displayed) that caused lines to be suppressed
+const prompt = false
+
 // The time when the last read began
 var readBeganMs = 0
 var promptedMs = 0
@@ -128,7 +132,7 @@ func (context *Context) Trace() (err error) {
 	if !inputHandlerActive {
 		go inputHandler(context)
 	}
-	if !promptHandlerActive {
+	if prompt && !promptHandlerActive {
 		go promptHandler(context)
 	}
 
@@ -156,6 +160,10 @@ func (context *Context) Trace() (err error) {
 			// On Linux, hardware port failures come back simply as immediate EOF
 			err = fmt.Errorf("hardware failure")
 		}
+		if readElapsedMs == 0 && length == 0 {
+			// On Linux, sudden unplug comes back simply as immediate ''
+			err = fmt.Errorf("hardware unplugged or rebooted probably")
+		}
 		if err != nil {
 			if err == io.EOF {
 				// Just a read timeout
@@ -165,16 +173,23 @@ func (context *Context) Trace() (err error) {
 			break
 		}
 
-		// Overwrite prompt
-		if prompted {
-			prompted = false
-			fmt.Printf("\r")
-		}
+		if !prompt {
 
-		// Echo
-		text := string(buf[:length])
-		if text != "\n" && text != "\r\n" {
-			fmt.Printf("%s", text)
+			fmt.Printf("%s", buf[:length])
+
+		} else {
+
+			// Overwrite prompt
+			if prompted {
+				prompted = false
+				fmt.Printf("\r")
+			}
+
+			// Echo
+			text := string(buf[:length])
+			if text != "\n" && text != "\r\n" {
+				fmt.Printf("%s", text)
+			}
 		}
 
 	}

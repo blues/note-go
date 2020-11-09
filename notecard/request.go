@@ -73,6 +73,9 @@ const ReqCardStatus = "card.status"
 // ReqCardRestart (golint)
 const ReqCardRestart = "card.restart"
 
+// ReqCardCheckpoint (golint)
+const ReqCardCheckpoint = "card.checkpoint"
+
 // ReqCardRestore (golint)
 const ReqCardRestore = "card.restore"
 
@@ -112,6 +115,9 @@ const ReqCardIO = "card.io"
 // ReqCardAUX (golint)
 const ReqCardAUX = "card.aux"
 
+// ReqCardMonitor (golint)
+const ReqCardMonitor = "card.monitor"
+
 // ReqCardCarrier (golint)
 const ReqCardCarrier = "card.carrier"
 
@@ -144,6 +150,9 @@ const ReqEnvTime = "env.time"
 
 // ReqEnvLocation (golint)
 const ReqEnvLocation = "env.location"
+
+// ReqEnvSync (golint)
+const ReqEnvSync = "env.sync"
 
 // ReqWebGet (golint)
 const ReqWebGet = "web.get"
@@ -238,6 +247,7 @@ const ReqDFUHubGetL = "dfu.service.get"
 // Request is the core API request/response data structure
 type Request struct {
 	Req              string                        `json:"req,omitempty"`
+	Cmd              string                        `json:"cmd,omitempty"`
 	Err              string                        `json:"err,omitempty"`
 	RequestID        uint32                        `json:"id,omitempty"`
 	NotefileID       string                        `json:"file,omitempty"`
@@ -293,6 +303,7 @@ type Request struct {
 	Value            float64                       `json:"value,omitempty"`
 	ValueV           string                        `json:"vvalue,omitempty"`
 	SN               string                        `json:"sn,omitempty"`
+	APN              string                        `json:"apn,omitempty"`
 	Text             string                        `json:"text,omitempty"`
 	Offset           int32                         `json:"offset,omitempty"`
 	Length           int32                         `json:"length,omitempty"`
@@ -323,6 +334,7 @@ type Request struct {
 	Usage            *[]string                     `json:"usage,omitempty"`
 	State            *[]PinState                   `json:"state,omitempty"`
 	Time             int64                         `json:"time,omitempty"`
+	Motion           int64                         `json:"motion,omitempty"`
 	VMin             float64                       `json:"vmin,omitempty"`
 	VMax             float64                       `json:"vmax,omitempty"`
 	VAvg             float64                       `json:"vavg,omitempty"`

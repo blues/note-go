@@ -16,6 +16,9 @@ const NotecardResponseNotefile = "_rsp.qos"
 // LogNotefile is the hard-wired notefile that the notecard uses for debug logging
 const LogNotefile = "_log.qo"
 
+// SessionNotefile is the hard-wired notefile that the notehub uses when starting a session
+const SessionNotefile = "_session.qo"
+
 // HealthNotefile is the hard-wired notefile that the notecard uses for health-related info
 const HealthNotefile = "_health.qo"
 

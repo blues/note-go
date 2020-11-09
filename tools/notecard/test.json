@@ -1,0 +1,4 @@
+# harmless setup script test
+{"req":"card.version"}
+{"req":"card.status"}
+{"req":"hub.get"}

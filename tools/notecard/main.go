@@ -72,6 +72,8 @@ func main() {
 	flag.BoolVar(&actionCommtest, "commtest", false, "perform repetitive request/response test to validate comms with the Notecard")
 	var actionSetup string
 	flag.StringVar(&actionSetup, "setup", "", "issue requests sequentially as stored in the specified .json file")
+	var actionInit string
+	flag.StringVar(&actionInit, "init", "", "same as setup, but first perform a factory reset")
 	var actionSetupSKU string
 	flag.StringVar(&actionSetupSKU, "setup-sku", "", "configure a notecard for self-setup even after factory restore, with  requests stored in the specified .json file")
 	var actionScan string
@@ -222,7 +224,7 @@ func main() {
 	}
 
 	// Turn on Notecard library debug output
-	if actionSetup != "" {
+	if actionSetup != "" || actionInit != "" {
 		actionVerbose = true
 	}
 	card.DebugOutput(actionVerbose, false)
@@ -481,15 +483,27 @@ func main() {
 		}
 	}
 
-	if err == nil && actionSetup != "" && actionScan == "" {
+	if err == nil && (actionSetup != "" || actionInit != "") && actionScan == "" {
 		var requests []map[string]interface{}
-		requests, err = loadRequests(actionSetup)
+		if actionSetup != "" {
+			requests, err = loadRequests(actionSetup)
+		} else {
+			requests, err = loadRequests(actionInit)
+		}
 		if err == nil {
 			repeat := false
 			repeatForever := false
 			countLeft := uint32(0)
 			done := false
 			for !done {
+				if actionInit != "" {
+					req := notecard.Request{Req: "card.restore"}
+					req.Delete = true
+					_, err = card.TransactionRequest(req)
+					if err != nil {
+						break
+					}
+				}
 				for _, req := range requests {
 					if req["req"] == "delay" {
 						time.Sleep(time.Duration(req["seconds"].(int)) * time.Second)
@@ -518,6 +532,10 @@ func main() {
 					if err != nil {
 						break
 					}
+				}
+				_, err = card.TransactionRequest(notecard.Request{Req: "card.checkpoint"})
+				if err != nil {
+					break
 				}
 				if !repeat {
 					break
