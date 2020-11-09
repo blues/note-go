@@ -82,6 +82,7 @@ type HubRequest struct {
 	Provision        bool               `json:"provision,omitempty"`
 	Scope            string             `json:"scope,omitempty"`
 	Env              *map[string]string `json:"env,omitempty"`
+	PIN              string             `json:"pin,omitempty"`
 }
 
 // File Types
@@ -108,7 +109,7 @@ type HubRequestFileFirmware struct {
 	Product string `json:"product,omitempty"`
 	// The identifier of the only firmware that will be acceptable and downloaded to this device
 	Firmware string `json:"firmware,omitempty"`
-	// The composite version number of the firmware, generally major.minor as a string
+	// The composite version number of the firmware, generally major.minor.patch as a string
 	Version string `json:"version,omitempty"`
 	// The build number of the firmware, for numeric comparison
 	Major uint16 `json:"ver_major,omitempty"`
