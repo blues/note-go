@@ -136,6 +136,9 @@ const ReqCardUsageTest = "card.usage.test"
 // ReqCardUsageRate (golint)
 const ReqCardUsageRate = "card.usage.rate"
 
+// ReqEnvModified (golint)
+const ReqEnvModified = "env.modified"
+
 // ReqEnvGet (golint)
 const ReqEnvGet = "env.get"
 
