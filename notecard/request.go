@@ -367,6 +367,7 @@ type Request struct {
 	InboundV         string                        `json:"vinbound,omitempty"`
 	Outbound         int32                         `json:"outbound,omitempty"`
 	OutboundV        string                        `json:"voutbound,omitempty"`
+	Duration         int32                         `json:"duration,omitempty"`
 }
 
 // PinState describes the state of an AUX pin for hardware-related Notecard requests

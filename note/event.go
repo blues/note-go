@@ -40,6 +40,7 @@ type Event struct {
 	DeviceSN   string                  `json:"sn,omitempty"`
 	ProductUID string                  `json:"product,omitempty"`
 	EndpointID string                  `json:"endpoint,omitempty"`
+	Received   float64                 `json:"received,omitempty"`
 	Routed     int64                   `json:"routed,omitempty"`
 	Req        string                  `json:"req,omitempty"`
 	Rsp        string                  `json:"rsp,omitempty"`
@@ -91,6 +92,8 @@ type Event struct {
 	Temp    float64 `json:"temp,omitempty"`
 	// Triangulation
 	Triangulate *map[string]interface{} `json:"triangulate,omitempty"`
+	// "Routed" environment variables beginning with a "$" prefix
+	Env *map[string]string `json:"environment,omitempty"`
 	// App and device meta info
 	App           *EventApp     `json:"project,omitempty"`
 	DeviceContact *EventContact `json:"device_contact,omitempty"`
