@@ -23,6 +23,7 @@ type CardTest struct {
 	Station    string `json:"station,omitempty"`
 	Operator   string `json:"operator,omitempty"`
 	Check      uint32 `json:"check,omitempty"`
+	Key        string `json:"key,omitempty"`
 	// Firmware info
 	FirmwareOrg     string `json:"org,omitempty"`
 	FirmwareProduct string `json:"product,omitempty"`

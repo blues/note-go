@@ -17,6 +17,7 @@ package notecard
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"periph.io/x/periph"
@@ -40,11 +41,15 @@ type I2C struct {
 // The open I2C port
 var hostInitialized bool
 var openI2CPort *I2C
+var i2cLock sync.RWMutex
+
+// Our default I2C address
+const notecardDefaultI2CAddress = 0x17
 
 // Get the default i2c device
 func i2cDefault() (port string, portConfig int) {
 	port = "" // Null string opens first available bus
-	portConfig = 0x17
+	portConfig = notecardDefaultI2CAddress
 	return
 }
 
@@ -61,30 +66,29 @@ func i2cOpen(port string, portConfig int) (err error) {
 	}
 
 	// Open the I2C instance
+	i2cLock.Lock()
 	openI2CPort.bus, err = i2creg.Open(port)
+	i2cLock.Unlock()
 	if err != nil {
 		return
 	}
 
-	// Instantiate the device
-	openI2CPort.device = &i2c.Dev{Bus: openI2CPort.bus, Addr: uint16(portConfig)}
-
 	return nil
 }
 
-// Set the port config of the open port
-func i2cSetConfig(portConfig int) (err error) {
-	openI2CPort.device = &i2c.Dev{Bus: openI2CPort.bus, Addr: uint16(portConfig)}
-	return
-}
-
 // WriteBytes writes a buffer to I2C
-func i2cWriteBytes(buf []byte) (err error) {
+func i2cWriteBytes(buf []byte, i2cAddr int) (err error) {
+	if i2cAddr == 0 {
+		i2cAddr = notecardDefaultI2CAddress
+	}
 	time.Sleep(1 * time.Millisecond) // By design, must not send more than once every 1Ms
 	reg := make([]byte, 1)
 	reg[0] = byte(len(buf))
 	reg = append(reg, buf...)
+	i2cLock.Lock()
+	openI2CPort.device = &i2c.Dev{Bus: openI2CPort.bus, Addr: uint16(i2cAddr)}
 	err = openI2CPort.device.Tx(reg, nil)
+	i2cLock.Unlock()
 	if err != nil {
 		err = fmt.Errorf("wb: %s", err)
 	}
@@ -92,14 +96,20 @@ func i2cWriteBytes(buf []byte) (err error) {
 }
 
 // ReadBytes reads a buffer from I2C and returns how many are still pending
-func i2cReadBytes(datalen int) (outbuf []byte, available int, err error) {
+func i2cReadBytes(datalen int, i2cAddr int) (outbuf []byte, available int, err error) {
+	if i2cAddr == 0 {
+		i2cAddr = notecardDefaultI2CAddress
+	}
 	time.Sleep(1 * time.Millisecond) // By design, must not send more than once every 1Ms
 	readbuf := make([]byte, datalen+2)
 	for i := 0; ; i++ { // Retry just for robustness
 		reg := make([]byte, 2)
 		reg[0] = byte(0)
 		reg[1] = byte(datalen)
+		i2cLock.Lock()
+		openI2CPort.device = &i2c.Dev{Bus: openI2CPort.bus, Addr: uint16(i2cAddr)}
 		err = openI2CPort.device.Tx(reg, readbuf)
+		i2cLock.Unlock()
 		if err == nil {
 			break
 		}
@@ -135,8 +145,11 @@ func i2cReadBytes(datalen int) (outbuf []byte, available int, err error) {
 }
 
 // Close I2C
-func i2cClose() error {
-	return openI2CPort.bus.Close()
+func i2cClose() (err error) {
+	i2cLock.Lock()
+	err = openI2CPort.bus.Close()
+	i2cLock.Unlock()
+	return
 }
 
 // Enum I2C ports

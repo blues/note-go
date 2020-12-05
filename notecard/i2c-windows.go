@@ -28,12 +28,12 @@ func i2cOpen(port string, portConfig int) (err error) {
 }
 
 // WriteBytes writes a buffer to I2C
-func i2cWriteBytes(buf []byte) (err error) {
+func i2cWriteBytes(buf []byte, i2cAddr int) (err error) {
 	return fmt.Errorf("i2c not yet implemented")
 }
 
 // ReadBytes reads a buffer from I2C and returns how many are still pending
-func i2cReadBytes(datalen int) (outbuf []byte, available int, err error) {
+func i2cReadBytes(datalen int, i2cAddr int) (outbuf []byte, available int, err error) {
 	err = fmt.Errorf("i2c not yet implemented")
 	return
 }

@@ -30,8 +30,14 @@ type ScannedDevice struct {
 	BytesUsed   uint32            `json:"bytes_used,omitempty"`
 }
 
+// ScannedSIM data structure
+type ScannedSIM struct {
+	ICCID string `json:"iccid,omitempty"`
+	Key   string `json:"key,omitempty"`
+}
+
 // Scan of a set of notecards, appending to JSON file.  Press ^C when done.
-func scan(debugEnabled bool, fnSetup string, fnSetupSKU string, outfile string) (err error) {
+func scan(debugEnabled bool, init bool, fnSetup string, fnSetupSKU string, outfile string) (err error) {
 
 	// Only allow one of the two
 	if fnSetup != "" && fnSetupSKU != "" {
@@ -65,6 +71,9 @@ func scan(debugEnabled bool, fnSetup string, fnSetupSKU string, outfile string) 
 		outfile += ".json"
 	}
 
+	// Generate a SIM file with a CSV extension
+	simfile := strings.TrimSuffix(outfile, ".json") + ".csv"
+
 	// Start the input handler
 	go inputHandler()
 
@@ -73,7 +82,7 @@ func scan(debugEnabled bool, fnSetup string, fnSetupSKU string, outfile string) 
 
 	// Read the file into an array that we'll keep ordered
 	var contents []byte
-	var records []ScannedDevice
+	var scannedDevices []ScannedDevice
 	contents, err = ioutil.ReadFile(outfile)
 	if err != nil {
 		fmt.Printf("*** new file: %s\n", outfile)
@@ -88,7 +97,30 @@ func scan(debugEnabled bool, fnSetup string, fnSetupSKU string, outfile string) 
 			if err != nil {
 				fmt.Printf("*** error converting record into inventory JSON: %s\n%s\n", err, line)
 			} else {
-				records = append(records, v)
+				scannedDevices = append(scannedDevices, v)
+			}
+		}
+	}
+
+	// Read the SIM file into an array that we'll keep ordered
+	var scannedSIMs []ScannedSIM
+	contents, err = ioutil.ReadFile(simfile)
+	if err != nil {
+		fmt.Printf("*** new file: %s\n", simfile)
+	} else {
+		jrecs := bytes.Split(contents, []byte("\n"))
+		for _, line := range jrecs {
+			if len(line) == 0 {
+				continue
+			}
+			var v ScannedSIM
+			cols := strings.Split(string(line), ",")
+			v.ICCID = cols[0]
+			if v.ICCID != "" {
+				if len(cols) > 0 {
+					v.Key = cols[1]
+				}
+				scannedSIMs = append(scannedSIMs, v)
 			}
 		}
 	}
@@ -103,7 +135,9 @@ func scan(debugEnabled bool, fnSetup string, fnSetupSKU string, outfile string) 
 
 		// See if it's available
 		var rsp notecard.Request
+		card.DebugOutput(false, false)
 		rsp, err = card.TransactionRequest(notecard.Request{Req: "service.get"})
+		card.DebugOutput(debugEnabled, false)
 		if note.ErrorContains(err, note.ErrCardIo) {
 			if !sawDisconnected || first {
 				first = false
@@ -126,16 +160,15 @@ func scan(debugEnabled bool, fnSetup string, fnSetupSKU string, outfile string) 
 
 		// If requests were specified, process them
 		if len(requests) > 0 {
-			for _, req := range requests {
-				var reqJSON []byte
-				reqJSON, err = note.JSONMarshal(req)
-				_, err = card.TransactionJSON(reqJSON)
-				if err != nil {
-					break
-				}
+			// Process the requests
+			err = processRequests(init, requests)
+			if err != nil {
+				break
 			}
 			// Re-do the service.get because the setup script may have changed things
+			card.DebugOutput(false, false)
 			rsp, _ = card.TransactionRequest(notecard.Request{Req: "service.get"})
+			card.DebugOutput(debugEnabled, false)
 		}
 
 		// If requests string was specified, process it
@@ -149,11 +182,16 @@ func scan(debugEnabled bool, fnSetup string, fnSetupSKU string, outfile string) 
 		}
 
 		// Create a new inventory record
+		sir := ScannedSIM{}
 		ir := ScannedDevice{}
 		ir.DeviceUID = rsp.DeviceUID
 		ir.Hub = rsp.Host
 		ir.SN = rsp.SN
 		ir.ProductUID = rsp.ProductUID
+
+		// Take inventory
+
+		card.DebugOutput(false, false)
 
 		rsp, err = card.TransactionRequest(notecard.Request{Req: "card.version"})
 		if err == nil {
@@ -171,9 +209,14 @@ func scan(debugEnabled bool, fnSetup string, fnSetupSKU string, outfile string) 
 			note.BodyToObject(rsp.Body, &ir.Factory)
 		}
 
-		// Delete this card from the array if it's there
+		sir.ICCID = ir.Factory.ICCID
+		sir.Key = ir.Factory.Key
+
+		card.DebugOutput(debugEnabled, false)
+
+		// Delete this card from the array if it's there, and append it
 		found := false
-		for _, v := range records {
+		for _, v := range scannedDevices {
 			if v.DeviceUID == ir.DeviceUID {
 				found = true
 				break
@@ -181,16 +224,23 @@ func scan(debugEnabled bool, fnSetup string, fnSetupSKU string, outfile string) 
 		}
 		if found {
 			rnew := []ScannedDevice{}
-			for _, v := range records {
+			for _, v := range scannedDevices {
 				if v.DeviceUID != ir.DeviceUID {
 					rnew = append(rnew, v)
 				}
 			}
-			records = rnew
+			scannedDevices = rnew
 		}
+		scannedDevices = append(scannedDevices, ir)
 
-		// Append this record
-		records = append(records, ir)
+		// Delete this card from the SIM array if it's there, and append it
+		for i, v := range scannedSIMs {
+			if v.ICCID == sir.ICCID {
+				scannedSIMs = append(scannedSIMs[0:i], scannedSIMs[i+1:]...)
+				break
+			}
+		}
+		scannedSIMs = append(scannedSIMs, sir)
 
 		// Write the file
 		f, err2 := os.Create(outfile)
@@ -199,13 +249,26 @@ func scan(debugEnabled bool, fnSetup string, fnSetupSKU string, outfile string) 
 			return
 		}
 		w := bufio.NewWriter(f)
-		for _, v := range records {
+		for _, v := range scannedDevices {
 			vj, err := json.Marshal(v)
 			if err != nil {
 				continue
 			}
 			f.Write(vj)
-			f.Write([]byte("\n"))
+			f.Write([]byte("\r\n"))
+		}
+		w.Flush()
+		f.Close()
+
+		// Write the SIM file
+		f, err2 = os.Create(simfile)
+		if err2 != nil {
+			err = err2
+			return
+		}
+		w = bufio.NewWriter(f)
+		for _, v := range scannedSIMs {
+			f.WriteString(fmt.Sprintf("%s,%s\r\n", v.ICCID, v.Key))
 		}
 		w.Flush()
 		f.Close()
@@ -312,5 +375,60 @@ func loadRequestsString(filename string) (requests string, err error) {
 	}
 
 	// Done
+	return
+}
+
+// Process a set of requests
+func processRequests(init bool, requests []map[string]interface{}) (err error) {
+	repeat := false
+	repeatForever := false
+	countLeft := uint32(0)
+	done := false
+	for !done {
+		if init {
+			req := notecard.Request{Req: "card.restore"}
+			req.Delete = true
+			_, err = card.TransactionRequest(req)
+			if err != nil {
+				break
+			}
+		}
+		for _, req := range requests {
+			if req["req"] == "delay" {
+				time.Sleep(time.Duration(req["seconds"].(int)) * time.Second)
+				continue
+			}
+			if req["req"] == "repeat" {
+				if !repeat {
+					repeat = true
+					countLeft = req["count"].(uint32)
+					if countLeft == 0 {
+						repeatForever = true
+					}
+				} else {
+					if countLeft > 0 {
+						countLeft--
+					}
+					if countLeft == 0 && !repeatForever {
+						done = true
+					}
+				}
+				continue
+			}
+			var reqJSON []byte
+			reqJSON, err = note.JSONMarshal(req)
+			_, err = card.TransactionJSON(reqJSON)
+			if err != nil {
+				break
+			}
+		}
+		_, err = card.TransactionRequest(notecard.Request{Req: "card.checkpoint"})
+		if err != nil {
+			break
+		}
+		if !repeat {
+			break
+		}
+	}
 	return
 }

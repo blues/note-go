@@ -59,6 +59,9 @@ const HubEnvGet = "hub.env.get"
 // HubEnvScopeApp (golint)
 const HubEnvScopeApp = "app"
 
+// HubEnvScopeProject (golint)
+const HubEnvScopeProject = "project"
+
 // HubEnvScopeFleet (golint)
 const HubEnvScopeFleet = "fleet"
 

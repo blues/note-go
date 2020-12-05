@@ -6,8 +6,6 @@ package main
 
 import (
 	"bytes"
-	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -38,7 +36,7 @@ func addQuery(in string, key string, value string) (out string) {
 }
 
 // Perform an HTTP requet, but do so using structs rather than bytes
-func reqHub(hub string, request notehub.HubRequest, requestFile string, filetype string, filetags string, filenotes string, overwrite bool, secure bool, dropNonJSON bool, outq chan string) (response notehub.HubRequest, err error) {
+func reqHub(hub string, request notehub.HubRequest, requestFile string, filetype string, filetags string, filenotes string, overwrite bool, dropNonJSON bool, outq chan string) (response notehub.HubRequest, err error) {
 
 	reqJSON, err2 := note.JSONMarshal(request)
 	if err2 != nil {
@@ -46,7 +44,7 @@ func reqHub(hub string, request notehub.HubRequest, requestFile string, filetype
 		return
 	}
 
-	rspJSON, err2 := reqHubJSON(hub, reqJSON, requestFile, filetype, filetags, filenotes, overwrite, secure, dropNonJSON, outq)
+	rspJSON, err2 := reqHubJSON(hub, reqJSON, requestFile, filetype, filetags, filenotes, overwrite, dropNonJSON, outq)
 	if err2 != nil {
 		err = err2
 		return
@@ -58,12 +56,7 @@ func reqHub(hub string, request notehub.HubRequest, requestFile string, filetype
 }
 
 // Perform an HTTP request
-func reqHubJSON(hub string, request []byte, requestFile string, filetype string, filetags string, filenotes string, overwrite bool, secure bool, dropNonJSON bool, outq chan string) (response []byte, err error) {
-
-	scheme := "http"
-	if secure {
-		scheme = "https"
-	}
+func reqHubJSON(hub string, request []byte, requestFile string, filetype string, filetags string, filenotes string, overwrite bool, dropNonJSON bool, outq chan string) (response []byte, err error) {
 
 	fn := ""
 	path := strings.Split(requestFile, "/")
@@ -71,7 +64,7 @@ func reqHubJSON(hub string, request []byte, requestFile string, filetype string,
 		fn = path[len(path)-1]
 	}
 
-	httpurl := fmt.Sprintf("%s://%s%s", scheme, hub, notehub.DefaultAPITopicReq)
+	httpurl := fmt.Sprintf("https://%s", hub)
 	query := addQuery("", "product", noteutil.Config.Product)
 	if noteutil.Config.Product == "" {
 		query = addQuery("", "app", noteutil.Config.App)
@@ -104,9 +97,6 @@ func reqHubJSON(hub string, request []byte, requestFile string, filetype string,
 		buffer = bytes.NewBuffer(fileContents)
 	}
 
-	if false {
-		fmt.Printf("secure: %t\n%s\n", secure, httpurl)
-	}
 	httpReq, err := http.NewRequest("POST", httpurl, buffer)
 	if err != nil {
 		return
@@ -119,58 +109,12 @@ func reqHubJSON(hub string, request []byte, requestFile string, filetype string,
 		httpReq.Header.Set("Content-Type", "application/json")
 	}
 
-	httpClient := &http.Client{}
-
-	// 2020-08-19 disable this so we can use HTTPS against the new service with default go certs.
-	// This is all we need for now, and we will update all of this when we change notehub auth.
-	if secure && (false) {
-
-		if noteutil.Config.Cert == "" || noteutil.Config.Key == "" {
-			err = fmt.Errorf("HTTPS client cert (-cert) and key (-key) are required for secure API access")
-			return
-		}
-
-		clientCert, err2 := tls.LoadX509KeyPair(noteutil.Config.Cert, noteutil.Config.Key)
-		if err2 != nil {
-			err = err2
-			return
-		}
-
-		tlsConfig := &tls.Config{
-			Certificates:       []tls.Certificate{clientCert},
-			InsecureSkipVerify: true,
-		}
-
-		if noteutil.Config.Root != "" {
-
-			caCert, err2 := ioutil.ReadFile(noteutil.Config.Root)
-			if err2 != nil {
-				err = err2
-				return
-			}
-
-			caCertPool := x509.NewCertPool()
-			caCertPool.AppendCertsFromPEM(caCert)
-
-			tlsConfig = &tls.Config{
-				Certificates: []tls.Certificate{clientCert},
-				RootCAs:      caCertPool,
-			}
-
-		}
-
-		tlsConfig.BuildNameToCertificate()
-
-		transport := &http.Transport{
-			TLSClientConfig: tlsConfig,
-		}
-
-		httpClient = &http.Client{
-			Transport: transport,
-		}
-
+	err = noteutil.ConfigAuthenticationHeader(httpReq)
+	if err != nil {
+		return
 	}
 
+	httpClient := &http.Client{}
 	httpRsp, err2 := httpClient.Do(httpReq)
 	if err2 != nil {
 		err = err2

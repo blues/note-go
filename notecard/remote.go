@@ -56,12 +56,7 @@ func remotePortEnum() (allFarms []string, unused []string, notecardFarms []strin
 }
 
 // Reset communications with the remote notecard
-func remoteReset(context *Context) (err error) {
-	return
-}
-
-// Set config on the remote port
-func remoteSetConfig(context *Context, portConfig int) (err error) {
+func remoteReset(context *Context, portConfig int) (err error) {
 	return
 }
 
@@ -75,13 +70,17 @@ func remoteClose(context *Context) {
 
 	req, err := http.NewRequest("GET", resetURL, nil)
 	if err != nil {
-		fmt.Printf("remoteClose NewReq Fail %v", err)
+		if context.Debug {
+			fmt.Printf("notefarm: remoteClose NewReq Fail %v", err)
+		}
 		return
 	}
 	httpclient := &http.Client{Timeout: time.Second * 90}
 	_, err = httpclient.Do(req)
 	if err != nil {
-		fmt.Printf("remoteClose http.Do Fail %v", err)
+		if context.Debug {
+			fmt.Printf("notefarm: remoteClose http.Do Fail %v", err)
+		}
 	}
 	return
 }
@@ -191,7 +190,7 @@ func cardList(context *Context) (cards []RemoteCard, err error) {
 // Open or reopen the remote card. Locked to prevent multiple processes on this
 // machine from stepping on eachother's toes. Doesn't prevent us from stepping
 // on the toes of processes running on different machines.
-func remoteReopen(context *Context) (err error) {
+func remoteReopen(context *Context, portConfig int) (err error) {
 	// Get Mutex file lock to prevent a race with other processes on this machine.
 	fileLock := flock.New(filepath.Join(os.TempDir(), "notefarm.lock"))
 	err = fileLock.Lock()
@@ -200,7 +199,7 @@ func remoteReopen(context *Context) (err error) {
 		return
 	}
 
-	err = uRemoteReopen(context)
+	err = uRemoteReopen(context, portConfig)
 
 	err2 := fileLock.Unlock()
 	if err2 != nil {
@@ -212,7 +211,7 @@ func remoteReopen(context *Context) (err error) {
 }
 
 // Open or reopen the remote card. Unlocked.
-func uRemoteReopen(context *Context) (err error) {
+func uRemoteReopen(context *Context, portConfig int) (err error) {
 
 	// Wait indefinitely for a reservation
 	for {
@@ -237,12 +236,15 @@ func uRemoteReopen(context *Context) (err error) {
 					now := time.Now().Unix()
 					secs := int(expires-now) % 60
 					mins := int(expires-now) / 60
-					fmt.Printf("%s reserved for %dm %2ds\n", c.DeviceUID, mins, secs)
+					if context.Debug {
+						fmt.Printf("notefarm: %s reserved for %dm %2ds\n", c.DeviceUID, mins, secs)
+					}
 					return
 				}
 				ourCard = c
-				// fmt.Printf("notefarm: trying to extend our reservation of %s from %v to %v\n",
-				// 	ourCard.DeviceUID, expires, context.farmCheckoutExpires)
+				if context.Debug {
+					fmt.Printf("notefarm: trying to extend our reservation of %s by %d seconds\n", ourCard.DeviceUID, context.farmCheckoutExpires-expires)
+				}
 				break
 			}
 		}
@@ -260,7 +262,9 @@ func uRemoteReopen(context *Context) (err error) {
 				}
 				// We found a card that's not reserved.
 				if first || expires < oursExpires {
-					// fmt.Printf("%v looks unreserved because its expire time %v <= %v [now].\n", c.DeviceUID, expires, now)
+					if context.Debug {
+						fmt.Printf("notefarm: %v looks unreserved because its expire time %v <= %v [now].\n", c.DeviceUID, expires, now)
+					}
 					// Let's plan on this being our card until we find a less recently used one.
 					first = false
 					ourCard = c
@@ -271,7 +275,9 @@ func uRemoteReopen(context *Context) (err error) {
 				err = fmt.Errorf("notefarm: all cards are currently reserved")
 				return
 			}
-			// fmt.Printf("notefarm: trying to reserve a new card %v.\n", ourCard.DeviceUID)
+			if context.Debug {
+				fmt.Printf("notefarm: trying to reserve a new card %v.\n", ourCard.DeviceUID)
+			}
 		}
 
 		// On an interim basis claim the card
@@ -286,8 +292,10 @@ func uRemoteReopen(context *Context) (err error) {
 			err = err1
 			return
 		}
-		// fmt.Printf("Sending reservation request: %v\n", string(reqJSON))
-		_, err = remoteTransaction(context, reqJSON)
+		if context.Debug {
+			fmt.Printf("notefarm: sending reservation request\n")
+		}
+		_, err = remoteTransaction(context, portConfig, reqJSON)
 		if err != nil {
 			err = fmt.Errorf("notefarm reservation error: %s", err)
 			return
@@ -306,13 +314,17 @@ func uRemoteReopen(context *Context) (err error) {
 			for _, c := range cards {
 				if c.DeviceUID == ourCard.DeviceUID {
 					if c.Reservation == reservation {
-						fmt.Printf("%s reserved for %d minutes\n", c.DeviceUID, context.farmCheckoutMins)
+						if context.Debug {
+							fmt.Printf("notefarm: %s reserved for %d minutes\n", c.DeviceUID, context.farmCheckoutMins)
+						}
 						return
 					}
 				}
 			}
 
-			fmt.Printf("waiting for reservation confirmation\n")
+			if context.Debug {
+				fmt.Printf("notefarm: waiting for reservation confirmation of %s\n", ourCard.DeviceUID)
+			}
 
 		}
 
@@ -325,7 +337,7 @@ func uRemoteReopen(context *Context) (err error) {
 }
 
 // Perform a remote transaction
-func remoteTransaction(context *Context, reqJSON []byte) (rspJSON []byte, err error) {
+func remoteTransaction(context *Context, portConfig int, reqJSON []byte) (rspJSON []byte, err error) {
 
 	// If our reservation has expired, fail the transaction
 	if time.Now().Unix() > context.farmCheckoutExpires {
@@ -364,9 +376,15 @@ func remoteTransaction(context *Context, reqJSON []byte) (rspJSON []byte, err er
 			if !strings.HasSuffix(fmt.Sprintf("%s", err), "EOF") {
 				err = fmt.Errorf("http transmit after %d retries %s: %s", i+1, note.ErrCardIo, err)
 				rspJSON = note.ErrorJSON("", err)
+				if context.Debug {
+					fmt.Printf("notefarm: send request err: %s\n", err)
+				}
 				break
 			}
 
+			if context.Debug {
+				fmt.Printf("notefarm: send request SERVICE RATE LIMITING\n")
+			}
 			// Handle service rate-limiting by delaying for a moment, then retrying.  we
 			// preset the response in case we exceed the maximum retries.
 			time.Sleep(2 * time.Second)
@@ -400,6 +418,9 @@ func remoteTransaction(context *Context, reqJSON []byte) (rspJSON []byte, err er
 				rspJSON = note.ErrorJSON("proxy: cannot communicate with notecard "+note.ErrCardIo, err)
 				break
 			}
+			if context.Debug {
+				fmt.Printf("notefarm: send request read response I/O error\n")
+			}
 
 		} else {
 			// Sometimes the response will not unmarshal because it's html from Balena
@@ -407,10 +428,17 @@ func remoteTransaction(context *Context, reqJSON []byte) (rspJSON []byte, err er
 			// <p>UUID xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</p><p>ERROR MESSAGE WE WANT</p>
 			errstring := string(rspbuf)
 			if strings.Contains(errstring, "<html>") && strings.Contains(errstring, "UUID") {
+				if context.Debug {
+					fmt.Printf("notefarm: send request read response IS HTML\n")
+				}
 				uuid := strings.Split(errstring, "UUID")
 				// take everything after UUID and split by paragraph
 				errmsg := strings.Split(uuid[1], "</p><p>")
 				err = fmt.Errorf("notefarm controller error: %s", url.QueryEscape(errmsg[1]))
+			} else {
+				if context.Debug {
+					fmt.Printf("notefarm: send request read response is not HTML but NOT JSON: %s\n", errstring)
+				}
 			}
 
 			// Retry

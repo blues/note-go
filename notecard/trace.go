@@ -37,7 +37,7 @@ func (context *Context) TraceCapture(toSend string, toEnd string) (captured stri
 	}
 
 	// Reopen if required
-	err = context.ReopenIfRequired()
+	err = context.ReopenIfRequired(context.portConfig)
 	if err != nil {
 		cardReportError(context, err)
 		return
@@ -57,7 +57,7 @@ func (context *Context) TraceCapture(toSend string, toEnd string) (captured stri
 
 		// Reopen if error
 		if context.reopenRequired {
-			err = context.Reopen()
+			err = context.Reopen(context.portConfig)
 			if err != nil {
 				continue
 			}
@@ -109,7 +109,7 @@ func (context *Context) Trace() (err error) {
 	}
 
 	// Exit if not open
-	err = context.ReopenIfRequired()
+	err = context.ReopenIfRequired(context.portConfig)
 	if err != nil {
 		cardReportError(context, err)
 		return
@@ -119,14 +119,6 @@ func (context *Context) Trace() (err error) {
 		cardReportError(context, err)
 		return
 	}
-
-	// Turn on tracing on the current port
-	debugWas := context.Debug
-	context.Debug = false
-	req := Request{Req: ReqCardIO}
-	req.Mode = "trace-on"
-	context.TransactionRequest(req)
-	context.Debug = debugWas
 
 	// Spawn the input handler
 	if !inputHandlerActive {

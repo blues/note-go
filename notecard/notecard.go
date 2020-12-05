@@ -18,12 +18,15 @@ import (
 // Debug serial I/O
 var debugSerialIO = false
 
+// InitialDebugMode is the debug mode that the context is initialized with
+var InitialDebugMode = false
+
 // Protect against multiple concurrent callers, because across different operating systems it is
-// not at all clear that concurrency is allowed on a single I/O device.  Clearly it can't be
-// allowed on serial, but even with I2C it isn't clear that multiple people could be writing to
-// and reading from the same device handle.  We just try to keep it locked for as brief a period
-// as possible.
+// not at all clear that concurrency is allowed on a single I/O device.  An exception is made
+// for I2C because of Notefarm, where we only serialize transactions destined for a single I2C
+// device.  Note that for I2C there is a deeper mutex protecting the physical device.
 var transLock sync.RWMutex
+var multiportTransLock [128]sync.RWMutex
 
 // Module communication interfaces
 const (
@@ -80,10 +83,13 @@ type Context struct {
 	PortEnumFn     func() (allports []string, usbports []string, notecardports []string, err error)
 	PortDefaultsFn func() (port string, portConfig int)
 	CloseFn        func(context *Context)
-	ReopenFn       func(context *Context) (err error)
-	ResetFn        func(context *Context) (err error)
-	TransactionFn  func(context *Context, reqJSON []byte) (rspJSON []byte, err error)
-	SetConfigFn    func(context *Context, portConfig int) (err error)
+	ReopenFn       func(context *Context, portConfig int) (err error)
+	ResetFn        func(context *Context, portConfig int) (err error)
+	TransactionFn  func(context *Context, portConfig int, reqJSON []byte) (rspJSON []byte, err error)
+
+	// Port data
+	port       string
+	portConfig int
 
 	// Serial instance state
 	isSerial         bool
@@ -92,13 +98,14 @@ type Context struct {
 	serialUseDefault bool
 	serialName       string
 	serialConfig     serial.Mode
-	i2cName          string
-	i2cAddress       int
 
 	// Serial I/O timeout helpers
 	ioStartSignal    chan int
 	ioCompleteSignal chan bool
 	ioTimeoutSignal  chan bool
+
+	// I2C
+	i2cMultiport bool
 
 	// Remote instance state
 	isRemote            bool
@@ -143,7 +150,7 @@ func (context *Context) Identify() (protocol string, port string, portConfig int
 	if context.isSerial {
 		return "serial", context.serialName, context.serialConfig.BaudRate
 	}
-	return "I2C", context.i2cName, context.i2cAddress
+	return "I2C", context.port, context.portConfig
 }
 
 // Defaults gets the default interface, port, and config
@@ -184,13 +191,8 @@ func Open(moduleInterface string, port string, portConfig int) (context *Context
 
 }
 
-// Set config on the port
-func cardSetConfigSerial(context *Context, portConfig int) (err error) {
-	return
-}
-
 // Reset serial to a known state
-func cardResetSerial(context *Context) (err error) {
+func cardResetSerial(context *Context, portConfig int) (err error) {
 
 	// Exit if not open
 	if !context.serialPortIsOpen {
@@ -265,7 +267,7 @@ func cardResetSerial(context *Context) (err error) {
 }
 
 // Serial I/O timeout helper function for Windows
-func serialTimeoutHelper(context *Context) {
+func serialTimeoutHelper(context *Context, portConfig int) {
 	for {
 		timeoutMs := <-context.ioStartSignal
 		timeout := false
@@ -322,6 +324,9 @@ func OpenSerial(port string, portConfig int) (context *Context, err error) {
 
 	// Create the context structure
 	context = &Context{}
+	context.Debug = InitialDebugMode
+	context.port = port
+	context.portConfig = portConfig
 
 	// Set up class functions
 	context.PortEnumFn = serialPortEnum
@@ -330,7 +335,6 @@ func OpenSerial(port string, portConfig int) (context *Context, err error) {
 	context.ReopenFn = cardReopenSerial
 	context.ResetFn = cardResetSerial
 	context.TransactionFn = cardTransactionSerial
-	context.SetConfigFn = cardSetConfigSerial
 
 	// Record serial configuration, and whether or not we are using the default
 	context.isSerial = true
@@ -346,7 +350,7 @@ func OpenSerial(port string, portConfig int) (context *Context, err error) {
 	context.ioStartSignal = make(chan int, 1)
 	context.ioCompleteSignal = make(chan bool, 1)
 	context.ioTimeoutSignal = make(chan bool, 1)
-	go serialTimeoutHelper(context)
+	go serialTimeoutHelper(context, portConfig)
 
 	// For serial, we defer the port open until the first transaction so that we can
 	// support the concept of dynamically inserted devices, as in "notecard -scan" mode.
@@ -357,14 +361,8 @@ func OpenSerial(port string, portConfig int) (context *Context, err error) {
 
 }
 
-// Set config on the port
-func cardSetConfigI2C(context *Context, portConfig int) (err error) {
-	err = i2cSetConfig(portConfig)
-	return
-}
-
 // Reset I2C to a known good state
-func cardResetI2C(context *Context) (err error) {
+func cardResetI2C(context *Context, portConfig int) (err error) {
 
 	// Synchronize by guaranteeing not only that I2C works, but that we drain the remainder of any
 	// pending partial reply from a previously-aborted session.
@@ -372,7 +370,7 @@ func cardResetI2C(context *Context) (err error) {
 	for {
 
 		// Read the next chunk of available data
-		_, available, err2 := i2cReadBytes(chunklen)
+		_, available, err2 := i2cReadBytes(chunklen, portConfig)
 		if err2 != nil {
 			err = fmt.Errorf("error reading chunk: %s %s", err2, note.ErrCardIo)
 			return
@@ -401,6 +399,9 @@ func OpenI2C(port string, portConfig int) (context *Context, err error) {
 
 	// Create the context structure
 	context = &Context{}
+	context.Debug = InitialDebugMode
+	context.port = port
+	context.portConfig = portConfig
 
 	// Use default if not specified
 	if port == "" {
@@ -414,12 +415,9 @@ func OpenI2C(port string, portConfig int) (context *Context, err error) {
 	context.ReopenFn = cardReopenI2C
 	context.ResetFn = cardResetI2C
 	context.TransactionFn = cardTransactionI2C
-	context.SetConfigFn = cardSetConfigI2C
 
 	// Record I2C configuration
 	context.isSerial = false
-	context.i2cName = port
-	context.i2cAddress = portConfig
 
 	// Open the I2C port
 	err = i2cOpen(port, portConfig)
@@ -438,9 +436,9 @@ func OpenI2C(port string, portConfig int) (context *Context, err error) {
 }
 
 // Reset the port
-func (context *Context) Reset() (err error) {
+func (context *Context) Reset(portConfig int) (err error) {
 	context.resetRequired = false
-	return context.ResetFn(context)
+	return context.ResetFn(context, portConfig)
 }
 
 // Close the port
@@ -469,22 +467,22 @@ func cardCloseI2C(context *Context) {
 }
 
 // ReopenIfRequired reopens the port but only if required
-func (context *Context) ReopenIfRequired() (err error) {
+func (context *Context) ReopenIfRequired(portConfig int) (err error) {
 	if context.reopenRequired {
-		err = context.ReopenFn(context)
+		err = context.ReopenFn(context, portConfig)
 	}
 	return
 }
 
 // Reopen the port
-func (context *Context) Reopen() (err error) {
+func (context *Context) Reopen(portConfig int) (err error) {
 	context.reopenRequired = false
-	err = context.ReopenFn(context)
+	err = context.ReopenFn(context, portConfig)
 	return
 }
 
 // Reopen serial
-func cardReopenSerial(context *Context) (err error) {
+func cardReopenSerial(context *Context, portConfig int) (err error) {
 
 	// Close if open
 	cardCloseSerial(context)
@@ -514,11 +512,11 @@ func cardReopenSerial(context *Context) (err error) {
 	context.reopenRequired = false
 
 	// Reset serial to a known good state
-	return cardResetSerial(context)
+	return cardResetSerial(context, portConfig)
 }
 
 // Reopen I2C
-func cardReopenI2C(context *Context) (err error) {
+func cardReopenI2C(context *Context, portConfig int) (err error) {
 	fmt.Printf("error i2c reopen not yet supported since I can't test it yet\n")
 	return
 }
@@ -651,6 +649,11 @@ func (context *Context) TransactionJSONToPort(reqJSON []byte, portConfig int) (r
 // transactionJSON performs a card transaction using raw JSON []bytes, to the current or specified port
 func (context *Context) transactionJSON(reqJSON []byte, multiport bool, portConfig int) (rspJSON []byte, err error) {
 
+	// Remember in the context if we've ever seen multiport I/O, for timeout computation
+	if multiport {
+		context.i2cMultiport = true
+	}
+
 	// Handle the special case where we are just processing a response (used by test fixture)
 	var req Request
 	if len(reqJSON) > 0 {
@@ -689,20 +692,15 @@ func (context *Context) transactionJSON(reqJSON []byte, multiport bool, portConf
 	}
 
 	// Only one caller at a time accessing the I/O port
-	transLock.Lock()
-
-	// Set the port destination in the multiport case
-	if multiport {
-		context.SetConfigFn(context, portConfig)
-	}
+	lockTrans(multiport, portConfig)
 
 	// Only do reopen/reset in the single-port case, because we may not be talking to the port in error
 	if !multiport {
 
 		// Reopen if error
-		err = context.ReopenIfRequired()
+		err = context.ReopenIfRequired(portConfig)
 		if err != nil {
-			transLock.Unlock()
+			unlockTrans(multiport, portConfig)
 			if context.Debug {
 				fmt.Printf("%s\n", err)
 			}
@@ -711,17 +709,17 @@ func (context *Context) transactionJSON(reqJSON []byte, multiport bool, portConf
 
 		// Do a reset if one was pending
 		if context.resetRequired {
-			context.Reset()
+			context.Reset(portConfig)
 		}
 
 	}
 
 	// Perform the transaction
-	rspJSON, err = context.TransactionFn(context, reqJSON)
+	rspJSON, err = context.TransactionFn(context, portConfig, reqJSON)
 	if err != nil {
 		// We can defer the error if a single port, but we need to reset it NOW if multiport
 		if multiport {
-			context.ResetFn(context)
+			context.ResetFn(context, portConfig)
 		} else {
 			context.resetRequired = true
 		}
@@ -731,15 +729,15 @@ func (context *Context) transactionJSON(reqJSON []byte, multiport bool, portConf
 	// isn't a multiport case.  But in multiport, we only want to hold this caller back.
 	if !context.isRemote && (req.Req == ReqCardRestore || req.Req == ReqCardRestart) {
 		if multiport {
-			transLock.Unlock()
-			time.Sleep(8 * time.Second)
+			unlockTrans(multiport, portConfig)
+			time.Sleep(12 * time.Second)
 		} else {
 			context.reopenRequired = true
 			time.Sleep(8 * time.Second)
-			transLock.Unlock()
+			unlockTrans(multiport, portConfig)
 		}
 	} else {
-		transLock.Unlock()
+		unlockTrans(multiport, portConfig)
 	}
 
 	// Decode the response to create an error if the transaction returned an error.  We
@@ -773,7 +771,7 @@ func (context *Context) transactionJSON(reqJSON []byte, multiport bool, portConf
 }
 
 // Perform a card transaction over serial under the assumption that request already has '\n' terminator
-func cardTransactionSerial(context *Context, reqJSON []byte) (rspJSON []byte, err error) {
+func cardTransactionSerial(context *Context, portConfig int, reqJSON []byte) (rspJSON []byte, err error) {
 
 	// Exit if not open
 	if !context.serialPortIsOpen {
@@ -870,7 +868,7 @@ func cardTransactionSerial(context *Context, reqJSON []byte) (rspJSON []byte, er
 }
 
 // Perform a card transaction over I2C under the assumption that request already has '\n' terminator
-func cardTransactionI2C(context *Context, reqJSON []byte) (rspJSON []byte, err error) {
+func cardTransactionI2C(context *Context, portConfig int, reqJSON []byte) (rspJSON []byte, err error) {
 
 	// Transmit the request in chunks, but also in segments so as not to overwhelm the notecard's interrupt buffers
 	chunkoffset := 0
@@ -881,7 +879,7 @@ func cardTransactionI2C(context *Context, reqJSON []byte) (rspJSON []byte, err e
 		if jsonbufLen < chunklen {
 			chunklen = jsonbufLen
 		}
-		err = i2cWriteBytes(reqJSON[chunkoffset : chunkoffset+chunklen])
+		err = i2cWriteBytes(reqJSON[chunkoffset:chunkoffset+chunklen], portConfig)
 		if err != nil {
 			err = fmt.Errorf("write error: %s %s", err, note.ErrCardIo)
 			return
@@ -901,11 +899,14 @@ func cardTransactionI2C(context *Context, reqJSON []byte) (rspJSON []byte, err e
 	jsonbufLen = 0
 	receivedNewline := false
 	chunklen := 0
-	expires := time.Now().Add(time.Duration(10 * time.Second))
+	expireSecs := 60
+	expires := time.Now().Add(time.Duration(expireSecs) * time.Second)
+	longExpireSecs := 240
+	longexpires := time.Now().Add(time.Duration(longExpireSecs) * time.Second)
 	for {
 
 		// Read the next chunk
-		readbuf, available, err2 := i2cReadBytes(chunklen)
+		readbuf, available, err2 := i2cReadBytes(chunklen, portConfig)
 		if err2 != nil {
 			err = fmt.Errorf("read error: %s %s", err2, note.ErrCardIo)
 			return
@@ -916,9 +917,9 @@ func cardTransactionI2C(context *Context, reqJSON []byte) (rspJSON []byte, err e
 		readlen := len(readbuf)
 		jsonbufLen += readlen
 
-		// If we received something, don't time out
+		// If we received something, reset the expiration
 		if readlen > 0 {
-			expires = time.Now().Add(time.Duration(10 * time.Second))
+			expires = time.Now().Add(time.Duration(90) * time.Second)
 		}
 
 		// If the last byte of the chunk is \n, chances are that we're done.  However, just so
@@ -945,8 +946,17 @@ func cardTransactionI2C(context *Context, reqJSON []byte) (rspJSON []byte, err e
 		}
 
 		// If we've timed out and nothing's available, exit
-		if time.Now().After(expires) {
-			err = fmt.Errorf("transaction timeout")
+		expired := false
+		timeoutSecs := 0
+		if !context.i2cMultiport || jsonbufLen == 0 {
+			expired = time.Now().After(expires)
+			timeoutSecs = expireSecs
+		} else {
+			expired = time.Now().After(longexpires)
+			timeoutSecs = longExpireSecs
+		}
+		if expired {
+			err = fmt.Errorf("transaction timeout (received %d bytes in %d secs) %s", jsonbufLen, timeoutSecs, note.ErrCardIo+note.ErrTimeout)
 			return
 		}
 
@@ -961,6 +971,10 @@ func OpenRemote(farmURL string, farmCheckoutMins int) (context *Context, err err
 
 	// Create the context structure
 	context = &Context{}
+	context.Debug = InitialDebugMode
+	context.port = farmURL
+	context.portConfig = 0
+
 	// Prevent accidental reservation for excessive durations e.g. 115200 minutes
 	if farmCheckoutMins > 120 {
 		err = fmt.Errorf("error, 120 minute limit on notefarm reservations")
@@ -975,7 +989,6 @@ func OpenRemote(farmURL string, farmCheckoutMins int) (context *Context, err err
 	context.ReopenFn = remoteReopen
 	context.ResetFn = remoteReset
 	context.TransactionFn = remoteTransaction
-	context.SetConfigFn = remoteSetConfig
 
 	// Record serial configuration
 	context.farmURL = farmURL
@@ -987,7 +1000,7 @@ func OpenRemote(farmURL string, farmCheckoutMins int) (context *Context, err err
 	context.farmCheckoutExpires = time.Now().Unix() + int64(context.farmCheckoutMins*60)
 
 	// Open the port
-	err = context.ReopenFn(context)
+	err = context.ReopenFn(context, context.portConfig)
 	if err != nil {
 		err = fmt.Errorf("error opening remote %s: %s %s", farmURL, err, note.ErrCardIo)
 		return
@@ -996,4 +1009,22 @@ func OpenRemote(farmURL string, farmCheckoutMins int) (context *Context, err err
 	// All set
 	return
 
+}
+
+// Lock the appropriate mutex for the transaction
+func lockTrans(multiport bool, portConfig int) {
+	if multiport && portConfig >= 0 && portConfig < 128 {
+		multiportTransLock[portConfig].Lock()
+	} else {
+		transLock.Lock()
+	}
+}
+
+// Unlock the appropriate mutex for the transaction
+func unlockTrans(multiport bool, portConfig int) {
+	if multiport && portConfig >= 0 && portConfig < 128 {
+		multiportTransLock[portConfig].Unlock()
+	} else {
+		transLock.Unlock()
+	}
 }
