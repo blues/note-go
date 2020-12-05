@@ -9,9 +9,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/signal"
 	"strings"
-	"syscall"
 
 	"github.com/blues/note-go/noteutil"
 )
@@ -22,9 +20,6 @@ const exitFail = 1
 
 // Main entry point
 func main() {
-
-	// Spawn our signal handler
-	go signalHandler()
 
 	// Process command line
 	var flagReq string
@@ -45,6 +40,10 @@ func main() {
 	flag.BoolVar(&flagOverwrite, "overwrite", false, "use exact filename in upload and overwrite it on service")
 	var flagOut string
 	flag.StringVar(&flagOut, "out", "", "output filename")
+	var flagSignIn bool
+	flag.BoolVar(&flagSignIn, "signin", false, "sign into the notehub API and receive an authentication token")
+	var flagSignOut bool
+	flag.BoolVar(&flagSignOut, "signout", false, "sign out of the notehub API")
 
 	// Parse these flags and also the note tool config flags
 	err := noteutil.FlagParse(false, true)
@@ -57,12 +56,27 @@ func main() {
 	if len(os.Args) == 1 {
 		fmt.Printf("\nCommand options:\n")
 		flag.PrintDefaults()
-		fmt.Printf("\nCurrent settings:\n")
 		noteutil.ConfigShow()
 		os.Exit(exitOk)
 	}
 
-	// Misc state flags
+	// Process the sign-in request
+	if flagSignIn {
+		err = authSignIn()
+		if err != nil {
+			fmt.Printf("%s\n", err)
+			os.Exit(exitFail)
+		}
+	}
+	if flagSignOut {
+		err = authSignOut()
+		if err != nil {
+			fmt.Printf("%s\n", err)
+			os.Exit(exitFail)
+		}
+	}
+
+	// Create an output function that will be used during -req processing
 	outq := make(chan string)
 	go func() {
 		for {
@@ -96,7 +110,7 @@ func main() {
 
 	// Process requests
 	if flagReq != "" || flagUpload != "" {
-		rsp, err := reqHubJSON(noteutil.Config.Hub, []byte(flagReq), flagUpload, flagType, flagTags, flagNotes, flagOverwrite, !noteutil.Config.Unsecure, flagJq, nil)
+		rsp, err := reqHubJSON(noteutil.ConfigAPIHub(), []byte(flagReq), flagUpload, flagType, flagTags, flagNotes, flagOverwrite, flagJq, nil)
 		if err != nil {
 			fmt.Printf("Error processing request: %s\n", err)
 			os.Exit(exitFail)
@@ -133,21 +147,4 @@ func stringOrReset(str string) string {
 
 	return str
 
-}
-
-// Our app's signal handler
-func signalHandler() {
-	ch := make(chan os.Signal)
-	signal.Notify(ch, syscall.SIGTERM)
-	signal.Notify(ch, syscall.SIGINT)
-	signal.Notify(ch, syscall.SIGSEGV)
-	for {
-		switch <-ch {
-		case syscall.SIGINT:
-			fmt.Printf(" (interrupted)\n")
-			os.Exit(exitFail)
-		case syscall.SIGTERM:
-			break
-		}
-	}
 }

@@ -363,6 +363,7 @@ type Request struct {
 	Completed        int32                         `json:"completed,omitempty"`
 	WiFi             bool                          `json:"wifi,omitempty"`
 	Cell             bool                          `json:"cell,omitempty"`
+	GPS              bool                          `json:"gps,omitempty"`
 	Inbound          int32                         `json:"inbound,omitempty"`
 	InboundV         string                        `json:"vinbound,omitempty"`
 	Outbound         int32                         `json:"outbound,omitempty"`

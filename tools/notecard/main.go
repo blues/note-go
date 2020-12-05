@@ -62,18 +62,16 @@ func main() {
 	flag.StringVar(&actionProduct, "product", "", "set product UID")
 	var actionSN string
 	flag.StringVar(&actionSN, "sn", "", "set serial number")
-	var actionHost string
-	flag.StringVar(&actionHost, "host", "", "set notehub to be used")
 	var actionInfo bool
 	flag.BoolVar(&actionInfo, "info", false, "show information about the Notecard")
+	var actionHub string
+	flag.StringVar(&actionHub, "hub", "", "set notehub domain")
 	var actionWatchLevel int
 	flag.IntVar(&actionWatchLevel, "watch", -1, "watch ongoing sync status of a given level (0-5)")
 	var actionCommtest bool
 	flag.BoolVar(&actionCommtest, "commtest", false, "perform repetitive request/response test to validate comms with the Notecard")
 	var actionSetup string
 	flag.StringVar(&actionSetup, "setup", "", "issue requests sequentially as stored in the specified .json file")
-	var actionInit string
-	flag.StringVar(&actionInit, "init", "", "same as setup, but first perform a factory reset")
 	var actionSetupSKU string
 	flag.StringVar(&actionSetupSKU, "setup-sku", "", "configure a notecard for self-setup even after factory restore, with  requests stored in the specified .json file")
 	var actionScan string
@@ -133,6 +131,7 @@ func main() {
 		configVal = actionPlaytime
 		actionPlayground = true
 	}
+	notecard.InitialDebugMode = actionVerbose
 	card, err = notecard.Open(noteutil.Config.Interface, noteutil.Config.Port, configVal)
 	if err != nil {
 		fmt.Printf("%s\n", err)
@@ -224,9 +223,6 @@ func main() {
 	}
 
 	// Turn on Notecard library debug output
-	if actionSetup != "" || actionInit != "" {
-		actionVerbose = true
-	}
 	card.DebugOutput(actionVerbose, false)
 
 	// Factory reset & format
@@ -234,7 +230,7 @@ func main() {
 		req := notecard.Request{Req: "card.restore"}
 		_, err = card.TransactionRequest(req)
 	}
-	if err == nil && actionFactory {
+	if err == nil && actionFactory && (actionScan == "" && actionSetup == "") {
 		req := notecard.Request{Req: "card.restore"}
 		req.Delete = true
 		_, err = card.TransactionRequest(req)
@@ -457,8 +453,9 @@ func main() {
 		_, err = card.TransactionRequest(notecard.Request{Req: "service.set", SN: actionSN})
 	}
 
-	if err == nil && actionHost != "" {
-		_, err = card.TransactionRequest(notecard.Request{Req: "service.set", Host: actionHost})
+	if err == nil && actionHub != "" {
+		_, err = card.TransactionRequest(notecard.Request{Req: "service.set", Host: actionHub})
+		noteutil.ConfigSetHub(actionHub)
 	}
 
 	if err == nil && actionRequest != "" {
@@ -483,69 +480,17 @@ func main() {
 		}
 	}
 
-	if err == nil && (actionSetup != "" || actionInit != "") && actionScan == "" {
+	if err == nil && actionSetup != "" && actionScan == "" {
 		var requests []map[string]interface{}
-		if actionSetup != "" {
-			requests, err = loadRequests(actionSetup)
-		} else {
-			requests, err = loadRequests(actionInit)
-		}
+		requests, err = loadRequests(actionSetup)
 		if err == nil {
-			repeat := false
-			repeatForever := false
-			countLeft := uint32(0)
-			done := false
-			for !done {
-				if actionInit != "" {
-					req := notecard.Request{Req: "card.restore"}
-					req.Delete = true
-					_, err = card.TransactionRequest(req)
-					if err != nil {
-						break
-					}
-				}
-				for _, req := range requests {
-					if req["req"] == "delay" {
-						time.Sleep(time.Duration(req["seconds"].(int)) * time.Second)
-						continue
-					}
-					if req["req"] == "repeat" {
-						if !repeat {
-							repeat = true
-							countLeft = req["count"].(uint32)
-							if countLeft == 0 {
-								repeatForever = true
-							}
-						} else {
-							if countLeft > 0 {
-								countLeft--
-							}
-							if countLeft == 0 && !repeatForever {
-								done = true
-							}
-						}
-						continue
-					}
-					var reqJSON []byte
-					reqJSON, err = note.JSONMarshal(req)
-					_, err = card.TransactionJSON(reqJSON)
-					if err != nil {
-						break
-					}
-				}
-				_, err = card.TransactionRequest(notecard.Request{Req: "card.checkpoint"})
-				if err != nil {
-					break
-				}
-				if !repeat {
-					break
-				}
-			}
+			card.DebugOutput(true, false)
+			err = processRequests(actionFactory, requests)
 		}
 	}
 
 	if err == nil && actionScan != "" {
-		err = scan(actionVerbose, actionSetup, actionSetupSKU, actionScan)
+		err = scan(actionVerbose, actionFactory, actionSetup, actionSetupSKU, actionScan)
 	}
 
 	if err == nil && actionCommtest {

@@ -9,8 +9,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/rand"
+	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/blues/note-go/note"
@@ -21,14 +23,12 @@ import (
 type ConfigSettings struct {
 	When       string `json:"when,omitempty"`
 	Hub        string `json:"hub,omitempty"`
-	App        string `json:"app,omitempty"`
+	App        string `json:"project,omitempty"`
 	Product    string `json:"product,omitempty"`
 	Device     string `json:"device,omitempty"`
-	Root       string `json:"root,omitempty"`
-	Cert       string `json:"cert,omitempty"`
-	Key        string `json:"key,omitempty"`
-	Unsecure   bool   `json:"unsecure,omitempty"`
 	Interface  string `json:"interface,omitempty"`
+	TokenUser  string `json:"token_user,omitempty"`
+	Token      string `json:"token,omitempty"`
 	Port       string `json:"port,omitempty"`
 	PortConfig int    `json:"port_config,omitempty"`
 }
@@ -36,8 +36,6 @@ type ConfigSettings struct {
 // Config is the active copy of our configuration file, never dirty.
 var flagConfigReset bool
 var flagConfigSave bool
-var flagConfigHTTP bool
-var flagConfigHTTPS bool
 
 // Config are the master config settings
 var Config ConfigSettings
@@ -90,15 +88,13 @@ func ConfigWrite() error {
 
 // Reset the comms to default
 func configResetInterface() {
-	Config.Interface = ""
-	Config.Port = ""
-	Config.PortConfig = 0
+	Config = ConfigSettings{}
 }
 
 // ConfigReset updates the file with the default info
 func ConfigReset() {
 	configResetInterface()
-	Config.Hub = notehub.DefaultAPIService
+	ConfigSetHub("-")
 	Config.When = time.Now().UTC().Format("2006-01-02T15:04:05Z")
 	return
 }
@@ -108,32 +104,20 @@ func ConfigShow() error {
 
 	fmt.Printf("\nCurrently saved values:\n")
 
-	if Config.Unsecure {
-		fmt.Printf("   -http\n")
-	} else {
-		fmt.Printf("   -https\n")
+	if Config.TokenUser != "" && Config.Token != "" {
+		fmt.Printf("   account: %s\n", Config.TokenUser)
 	}
-
-	if Config.Hub != "" && Config.Hub != notehub.DefaultAPIService {
-		fmt.Printf("   -hub %s\n", Config.Hub)
+	if Config.Hub != "" {
+		fmt.Printf("       hub: %s\n", Config.Hub)
 	}
 	if Config.App != "" {
-		fmt.Printf("   -app %s\n", Config.App)
+		fmt.Printf("   project: %s\n", Config.App)
 	}
 	if Config.Product != "" {
-		fmt.Printf("   -product %s\n", Config.Product)
+		fmt.Printf("   product: %s\n", Config.Product)
 	}
 	if Config.Device != "" {
-		fmt.Printf("   -device %s\n", Config.Device)
-	}
-	if Config.Root != "" {
-		fmt.Printf("   -root %s\n", Config.Root)
-	}
-	if Config.Cert != "" {
-		fmt.Printf("   -cert %s\n", Config.Cert)
-	}
-	if Config.Key != "" {
-		fmt.Printf("   -key %s\n", Config.Key)
+		fmt.Printf("    device: %s\n", Config.Device)
 	}
 	if Config.Interface != "" {
 		fmt.Printf("   -interface %s\n", Config.Interface)
@@ -167,33 +151,8 @@ func ConfigFlagsProcess() (err error) {
 	}
 
 	// Set the flags as desired
-	if flagConfigHTTP {
-		configFlags.Unsecure = true
-		Config.Unsecure = true
-	}
-	if flagConfigHTTPS {
-		configFlags.Unsecure = false
-		Config.Unsecure = false
-	}
-	if configFlags.Hub == "-" {
-		Config.Hub = notehub.DefaultAPIService
-	} else if configFlags.Hub != "" {
-		Config.Hub = configFlags.Hub
-	}
-	if configFlags.Root == "-" {
-		Config.Root = ""
-	} else if configFlags.Root != "" {
-		Config.Root = configFlags.Root
-	}
-	if configFlags.Key == "-" {
-		Config.Key = ""
-	} else if configFlags.Key != "" {
-		Config.Key = configFlags.Key
-	}
-	if configFlags.Cert == "-" {
-		Config.Cert = ""
-	} else if configFlags.Cert != "" {
-		Config.Cert = configFlags.Cert
+	if configFlags.Hub != "" {
+		ConfigSetHub(configFlags.Hub)
 	}
 	if configFlags.App == "-" {
 		Config.App = ""
@@ -261,20 +220,17 @@ func ConfigFlagsRegister(notecardFlags bool, notehubFlags bool) {
 		flag.IntVar(&configFlags.PortConfig, "portconfig", 0, "set serial device speed or i2c address for notecard")
 	}
 	if notehubFlags {
-		flag.BoolVar(&flagConfigHTTP, "http", false, "use http instead of https")
-		flag.BoolVar(&flagConfigHTTPS, "https", false, "use https instead of http")
-		flag.StringVar(&configFlags.Hub, "hub", "", "set notehub request service URL")
 		flag.StringVar(&configFlags.Device, "device", "", "set DeviceUID")
-		flag.StringVar(&configFlags.App, "app", "", "set AppUID")
+		if false { // no longer necessary because of universal support for productUID
+			flag.StringVar(&configFlags.App, "project", "", "set AppUID")
+		}
 		flag.StringVar(&configFlags.Product, "product", "", "set ProductUID")
-		flag.StringVar(&configFlags.Root, "root", "", "set path to service's root CA certificate file")
-		flag.StringVar(&configFlags.Key, "key", "", "set path to local private key file")
-		flag.StringVar(&configFlags.Cert, "cert", "", "set path to local cert file")
+		flag.StringVar(&configFlags.Hub, "hub", "", "set notehub domain")
 	}
 
 	// Write the config if asked to do so
-	flag.BoolVar(&flagConfigReset, "config-reset", false, "reset the note tool config to its defaults")
-	flag.BoolVar(&flagConfigSave, "config-save", false, "save changes to note tool config")
+	flag.BoolVar(&flagConfigReset, "config-reset", false, "reset the cross-tool saved configuration to its defaults")
+	flag.BoolVar(&flagConfigSave, "config-save", false, "save changes to the cross-tool saved configuration")
 
 }
 
@@ -283,4 +239,73 @@ func FlagParse(notecardFlags bool, notehubFlags bool) (err error) {
 	ConfigFlagsRegister(notecardFlags, notehubFlags)
 	flag.Parse()
 	return ConfigFlagsProcess()
+}
+
+// ConfigSignedIn returns info about whether or not we're signed in
+func ConfigSignedIn() (username string, authenticated bool) {
+
+	if Config.Token != "" && Config.TokenUser != "" {
+		authenticated = true
+		username = Config.TokenUser
+	}
+
+	return
+
+}
+
+// ConfigAuthenticationHeader sets the authorization field in the header as appropriate
+func ConfigAuthenticationHeader(httpReq *http.Request) (err error) {
+
+	// Read config if not yet read
+	if Config.When == "" {
+		err = ConfigRead()
+		if err != nil {
+			return
+		}
+	}
+
+	// Exit if not signed in
+	if Config.Token == "" || Config.TokenUser == "" {
+		err = fmt.Errorf("not authenticated: please use 'notehub -signin' to sign into the notehub service")
+		return
+	}
+
+	// Set the header
+	httpReq.Header.Set("X-Session-Token", Config.Token)
+
+	// Done
+	return
+
+}
+
+// ConfigAPIHub returns the configured notehub, for use by the HTTP API.  If none is configured it returns
+// the default Blues API service.  Regardless, it always makes sure that the host has "api." as a prefix.
+// This enables flexibility in what's configured.
+func ConfigAPIHub() (hub string) {
+	hub = Config.Hub
+	if hub == "" {
+		hub = notehub.DefaultAPIService
+	}
+	if !strings.HasPrefix(hub, "api.") {
+		hub = "api." + hub
+	}
+	return
+}
+
+// ConfigNotecardHub returns the configured notehub, for use as the Notecard host.  If none is configured
+// it returns "".  Regardless, it always makes sure that the host does NOT have "api." as a prefix.
+func ConfigNotecardHub() (hub string) {
+	hub = Config.Hub
+	if strings.HasPrefix(hub, "api.") {
+		hub = strings.TrimPrefix(hub, "api.")
+	}
+	return
+}
+
+// ConfigSetHub clears the hub
+func ConfigSetHub(hub string) {
+	if Config.Hub == "-" {
+		hub = ""
+	}
+	Config.Hub = hub
 }
