@@ -295,7 +295,7 @@ func uRemoteReopen(context *Context, portConfig int) (err error) {
 		if context.Debug {
 			fmt.Printf("notefarm: sending reservation request\n")
 		}
-		_, err = remoteTransaction(context, portConfig, reqJSON)
+		_, err = remoteTransaction(context, portConfig, true, reqJSON)
 		if err != nil {
 			err = fmt.Errorf("notefarm reservation error: %s", err)
 			return
@@ -337,7 +337,7 @@ func uRemoteReopen(context *Context, portConfig int) (err error) {
 }
 
 // Perform a remote transaction
-func remoteTransaction(context *Context, portConfig int, reqJSON []byte) (rspJSON []byte, err error) {
+func remoteTransaction(context *Context, portConfig int, noResponse bool, reqJSON []byte) (rspJSON []byte, err error) {
 
 	// If our reservation has expired, fail the transaction
 	if time.Now().Unix() > context.farmCheckoutExpires {

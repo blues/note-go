@@ -85,7 +85,7 @@ type Context struct {
 	CloseFn        func(context *Context)
 	ReopenFn       func(context *Context, portConfig int) (err error)
 	ResetFn        func(context *Context, portConfig int) (err error)
-	TransactionFn  func(context *Context, portConfig int, reqJSON []byte) (rspJSON []byte, err error)
+	TransactionFn  func(context *Context, portConfig int, noResponse bool, reqJSON []byte) (rspJSON []byte, err error)
 
 	// Port data
 	port       string
@@ -565,11 +565,17 @@ func (context *Context) transactionRequest(req Request, multiport bool, portConf
 	return
 }
 
-// NewRequest creates a new request.  Note that this method is provided
-// merely as syntactic sugar, as of the form
+// NewRequest creates a new request that is guaranteed to get a response
+// from the Notecard.  Note that this method is provided merely as syntactic sugar, as of the form
 // req := note.NewRequest("note.add")
 func NewRequest(reqType string) (req map[string]interface{}) {
 	req["req"] = reqType
+	return
+}
+
+// NewCommand creates a new command that requires no response from the notecard.
+func NewCommand(reqType string) (req map[string]interface{}) {
+	req["cmd"] = reqType
 	return
 }
 
@@ -654,8 +660,10 @@ func (context *Context) transactionJSON(reqJSON []byte, multiport bool, portConf
 		context.i2cMultiport = true
 	}
 
-	// Handle the special case where we are just processing a response (used by test fixture)
+	// Unmarshal the request to peek inside it.  Also, accept a zero-length request as a valid case
+	// because we use this in the test fixture where  we just accept pure responses w/o requests.
 	var req Request
+	var noResponseRequested bool
 	if len(reqJSON) > 0 {
 
 		// Make sure that it is valid JSON, because the transports won't validate this
@@ -664,6 +672,10 @@ func (context *Context) transactionJSON(reqJSON []byte, multiport bool, portConf
 		if err != nil {
 			return
 		}
+
+		// Determine whether or not a response will be expected from the notecard by
+		// examining the req and cmd fields
+		noResponseRequested = req.Req == "" && req.Cmd != ""
 
 		// Make sure that the JSON has a single \n terminator
 		for {
@@ -715,7 +727,7 @@ func (context *Context) transactionJSON(reqJSON []byte, multiport bool, portConf
 	}
 
 	// Perform the transaction
-	rspJSON, err = context.TransactionFn(context, portConfig, reqJSON)
+	rspJSON, err = context.TransactionFn(context, portConfig, noResponseRequested, reqJSON)
 	if err != nil {
 		// We can defer the error if a single port, but we need to reset it NOW if multiport
 		if multiport {
@@ -738,6 +750,12 @@ func (context *Context) transactionJSON(reqJSON []byte, multiport bool, portConf
 		}
 	} else {
 		unlockTrans(multiport, portConfig)
+	}
+
+	// If no response, we're done
+	if noResponseRequested {
+		rspJSON = []byte("{}")
+		return
 	}
 
 	// Decode the response to create an error if the transaction returned an error.  We
@@ -771,7 +789,7 @@ func (context *Context) transactionJSON(reqJSON []byte, multiport bool, portConf
 }
 
 // Perform a card transaction over serial under the assumption that request already has '\n' terminator
-func cardTransactionSerial(context *Context, portConfig int, reqJSON []byte) (rspJSON []byte, err error) {
+func cardTransactionSerial(context *Context, portConfig int, noResponse bool, reqJSON []byte) (rspJSON []byte, err error) {
 
 	// Exit if not open
 	if !context.serialPortIsOpen {
@@ -813,6 +831,11 @@ func cardTransactionSerial(context *Context, portConfig int, reqJSON []byte) (rs
 			time.Sleep(CardRequestSerialSegmentDelayMs * time.Millisecond)
 		}
 
+	}
+
+	// If no response, we're done
+	if noResponse {
+		return
 	}
 
 	// Read the reply until we get '\n' at the end
@@ -868,7 +891,7 @@ func cardTransactionSerial(context *Context, portConfig int, reqJSON []byte) (rs
 }
 
 // Perform a card transaction over I2C under the assumption that request already has '\n' terminator
-func cardTransactionI2C(context *Context, portConfig int, reqJSON []byte) (rspJSON []byte, err error) {
+func cardTransactionI2C(context *Context, portConfig int, noResponse bool, reqJSON []byte) (rspJSON []byte, err error) {
 
 	// Transmit the request in chunks, but also in segments so as not to overwhelm the notecard's interrupt buffers
 	chunkoffset := 0
@@ -892,6 +915,11 @@ func cardTransactionI2C(context *Context, portConfig int, reqJSON []byte) (rspJS
 			time.Sleep(CardRequestI2CSegmentDelayMs * time.Millisecond)
 		}
 		time.Sleep(CardRequestI2CChunkDelayMs * time.Millisecond)
+	}
+
+	// If no response, we're done
+	if noResponse {
+		return
 	}
 
 	// Loop, building a reply buffer out of received chunks.  We'll build the reply in the same

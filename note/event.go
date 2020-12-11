@@ -109,6 +109,7 @@ type EventLogEntry struct {
 	Attn   bool   `json:"attn,omitempty"`
 	Status string `json:"status,omitempty"`
 	Text   string `json:"text,omitempty"`
+	URL    string `json:"url,omitempty"`
 }
 
 // EventContact has the basic contact info structure

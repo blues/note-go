@@ -111,18 +111,65 @@ func authSignIn() (err error) {
 
 // Sign out of the API
 func authSignOut() (err error) {
+
+	// Exit if not signed in
 	if noteutil.Config.Token == "" || noteutil.Config.TokenUser == "" {
-		fmt.Printf("not currently signed in\n")
+		err = fmt.Errorf("not currently signed in")
 		return
 	}
-	// TODO hit the logout endpoint in the API to revoke the session
-	fmt.Printf("%s signed out successfully\n", noteutil.Config.TokenUser)
+
+	// Get the token, and clear it
+	token := noteutil.Config.Token
 	noteutil.ConfigRead()
 	noteutil.Config.Token = ""
 	err = noteutil.ConfigWrite()
 	if err != nil {
 		return
 	}
+
+	// Hit the logout endpoint in the API to revoke the session
+	httpURL := "https://" + noteutil.ConfigAPIHub() + "/auth/logout"
+	httpReq, err2 := http.NewRequest("POST", httpURL, bytes.NewBuffer([]byte{}))
+	if err != nil {
+		err = err2
+		return
+	}
+	httpReq.Header.Set("User-Agent", "notehub-client")
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("X-Session-Token", token)
+	httpClient := &http.Client{}
+	httpRsp, err2 := httpClient.Do(httpReq)
+	if err2 != nil {
+		err = err2
+		return
+	}
+	if httpRsp.StatusCode == http.StatusUnauthorized {
+		err = fmt.Errorf("unrecognized username or password")
+		return
+	}
+	rspJSON, err2 := ioutil.ReadAll(httpRsp.Body)
+	if err2 != nil {
+		err = err2
+		return
+	}
+
+	response := string(rspJSON)
+	if response == "" {
+		fmt.Printf("%s signed out successfully\n", noteutil.Config.TokenUser)
+	} else {
+		fmt.Printf("%s signed out successfully: %s\n", noteutil.Config.TokenUser, response)
+	}
+	return
+}
+
+// Get the token for use in the API
+func authToken() (user string, token string, err error) {
+	if noteutil.Config.Token == "" || noteutil.Config.TokenUser == "" {
+		err = fmt.Errorf("not currently signed in")
+		return
+	}
+	user = noteutil.Config.TokenUser
+	token = noteutil.Config.Token
 	return
 }
 
