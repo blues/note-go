@@ -1,0 +1,74 @@
+;---------------------------------------------------------------------------------
+;Generic serial port driver for Windows versions prior to Windows 10
+;---------------------------------------------------------------------------------
+
+[Version] 
+Signature="$Windows NT$" 
+Class=Ports
+;Standard Windows serial/parallel port class
+ClassGuid={4D36E978-E325-11CE-BFC1-08002BE10318} 
+Provider=%MFGNAME% 
+CatalogFile=%MFGFILENAME%.cat
+DriverVer=12/06/2012,5.1.2600.7
+
+[Manufacturer] 
+%MFGNAME%=DeviceList,NTamd64
+
+[DeviceList]
+%DESCRIPTION%=DriverInstall,USB\VID_30A4&PID_0001
+
+[DeviceList.NTamd64] 
+%DESCRIPTION%=DriverInstall,USB\VID_30A4&PID_0001
+
+[DriverInstall.nt] 
+include=mdmcpq.inf
+CopyFiles=FakeModemCopyFileSection 
+AddReg=DriverInstall.nt.AddReg 
+
+[DriverInstall.nt.AddReg] 
+HKR,,DevLoader,,*ntkern 
+HKR,,NTMPDriver,,%DRIVERFILENAME%.sys 
+HKR,,EnumPropPages32,,"MsPorts.dll,SerialPortPropPageProvider" 
+
+[DriverInstall.NT.Services]
+include=mdmcpq.inf 
+AddService=usbser, 0x00000002, LowerFilter_Service_Inst 
+
+[DriverInstall.NTamd64]
+include=mdmcpq.inf
+CopyFiles=FakeModemCopyFileSection
+AddReg=DriverInstall.NTamd64.AddReg 
+
+[DriverInstall.NTamd64.AddReg] 
+HKR,,DevLoader,,*ntkern 
+HKR,,NTMPDriver,,%DRIVERFILENAME%.sys 
+HKR,,EnumPropPages32,,"MsPorts.dll,SerialPortPropPageProvider" 
+
+[DriverInstall.NTamd64.Services] 
+include=mdmcpq.inf 
+AddService=usbser, 0x00000002, LowerFilter_Service_Inst 
+
+[DestinationDirs] 
+DefaultDestDir=12 
+
+[SourceDisksNames]
+
+[SourceDisksFiles]
+
+[FakeModemCopyFileSection]
+
+[LowerFilter_Service_Inst]
+DisplayName= %SERVICE%
+ServiceType= 1
+StartType  = 3
+ErrorControl = 0
+ServiceBinary = %12%\usbser.sys
+
+[Strings]
+MFGFILENAME="notecard"
+DRIVERFILENAME ="usbser"
+MFGNAME="Blues Wireless"
+DESCRIPTION="Notecard"
+SERVICE="USB Driver"
+
+

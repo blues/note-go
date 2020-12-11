@@ -41,9 +41,11 @@ func main() {
 	var flagOut string
 	flag.StringVar(&flagOut, "out", "", "output filename")
 	var flagSignIn bool
-	flag.BoolVar(&flagSignIn, "signin", false, "sign into the notehub API and receive an authentication token")
+	flag.BoolVar(&flagSignIn, "signin", false, "sign-in to the notehub so that API requests may be made")
 	var flagSignOut bool
-	flag.BoolVar(&flagSignOut, "signout", false, "sign out of the notehub API")
+	flag.BoolVar(&flagSignOut, "signout", false, "sign out of the notehub")
+	var flagToken bool
+	flag.BoolVar(&flagToken, "token", false, "obtain the signed-in account's Authentication Token")
 
 	// Parse these flags and also the note tool config flags
 	err := noteutil.FlagParse(false, true)
@@ -73,6 +75,15 @@ func main() {
 		if err != nil {
 			fmt.Printf("%s\n", err)
 			os.Exit(exitFail)
+		}
+	}
+	if flagToken {
+		var token, username string
+		username, token, err = authToken()
+		if err != nil {
+			fmt.Printf("%s\n", err)
+		} else {
+			fmt.Printf("To issue HTTP API requests on behalf of %s set header field X-Session-Token to:\n%s\n", username, token)
 		}
 	}
 

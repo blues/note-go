@@ -35,8 +35,9 @@ mkdir -p "$BUILD_PACKAGE_DIR"
 # compress the build products into an archive
 cd "$BUILD_EXE_DIR"
 if [ "${GOOS}" = "windows" ]; then
-  zip "$BUILD_PACKAGE_DIR/notecardcli_${GOOS}_${GOARCH}.zip" ./notecard.exe
-  zip "$BUILD_PACKAGE_DIR/notehubcli_${GOOS}_${GOARCH}.zip" ./notehub.exe
+  # -j means don't store directory names, just file names. Basically flattens everything into the root of the zip.
+  zip -j "$BUILD_PACKAGE_DIR/notecardcli_${GOOS}_${GOARCH}.zip" ./notecard.exe "$SCRIPT_DIR/notecard-driver-windows7.inf"
+  zip -j "$BUILD_PACKAGE_DIR/notehubcli_${GOOS}_${GOARCH}.zip" ./notehub.exe
 elif [ "${GOOS}" = "darwin" ]; then
   tar -czvf "$BUILD_PACKAGE_DIR/notecardcli_macos_${GOARCH}.tar.gz" ./notecard
   tar -czvf "$BUILD_PACKAGE_DIR/notehubcli_macos_${GOARCH}.tar.gz" ./notehub
