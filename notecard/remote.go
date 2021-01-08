@@ -415,7 +415,8 @@ func remoteTransaction(context *Context, portConfig int, noResponse bool, reqJSO
 				break
 			}
 			if i > maxRetries {
-				rspJSON = note.ErrorJSON("proxy: cannot communicate with notecard "+note.ErrCardIo, err)
+				rsperr := fmt.Errorf("%s", string(rspbuf))
+				rspJSON = note.ErrorJSON("proxy: cannot communicate with notecard", rsperr)
 				break
 			}
 			if context.Debug {

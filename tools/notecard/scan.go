@@ -7,7 +7,6 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -37,7 +36,7 @@ type ScannedSIM struct {
 }
 
 // Scan of a set of notecards, appending to JSON file.  Press ^C when done.
-func scan(debugEnabled bool, init bool, fnSetup string, fnSetupSKU string, outfile string) (err error) {
+func scan(debugEnabled bool, init bool, fnSetup string, fnSetupSKU string, factoryReset bool, outfile string) (err error) {
 
 	// Only allow one of the two
 	if fnSetup != "" && fnSetupSKU != "" {
@@ -93,7 +92,7 @@ func scan(debugEnabled bool, init bool, fnSetup string, fnSetupSKU string, outfi
 				continue
 			}
 			var v ScannedDevice
-			err = json.Unmarshal(line, &v)
+			err = note.JSONUnmarshal(line, &v)
 			if err != nil {
 				fmt.Printf("*** error converting record into inventory JSON: %s\n%s\n", err, line)
 			} else {
@@ -136,7 +135,7 @@ func scan(debugEnabled bool, init bool, fnSetup string, fnSetupSKU string, outfi
 		// See if it's available
 		var rsp notecard.Request
 		card.DebugOutput(false, false)
-		rsp, err = card.TransactionRequest(notecard.Request{Req: "service.get"})
+		rsp, err = card.TransactionRequest(notecard.Request{Req: "hub.get"})
 		card.DebugOutput(debugEnabled, false)
 		if note.ErrorContains(err, note.ErrCardIo) {
 			if !sawDisconnected || first {
@@ -158,19 +157,6 @@ func scan(debugEnabled bool, init bool, fnSetup string, fnSetupSKU string, outfi
 		sawDisconnected = false
 		fmt.Printf("\n%s\n", rsp.DeviceUID)
 
-		// If requests were specified, process them
-		if len(requests) > 0 {
-			// Process the requests
-			err = processRequests(init, requests)
-			if err != nil {
-				break
-			}
-			// Re-do the service.get because the setup script may have changed things
-			card.DebugOutput(false, false)
-			rsp, _ = card.TransactionRequest(notecard.Request{Req: "service.get"})
-			card.DebugOutput(debugEnabled, false)
-		}
-
 		// If requests string was specified, process it
 		if requestsString != "" {
 			req := notecard.Request{Req: "card.setup"}
@@ -179,6 +165,48 @@ func scan(debugEnabled bool, init bool, fnSetup string, fnSetupSKU string, outfi
 			if err != nil {
 				break
 			}
+			if !factoryReset {
+				card.TransactionRequest(notecard.Request{Req: "card.restart"})
+				for i := 0; i < 5; i++ {
+					_, err = card.TransactionRequest(notecard.Request{Req: "hub.get"})
+					if err == nil {
+						break
+					}
+				}
+				if err != nil {
+					break
+				}
+			}
+		}
+
+		// If they desired a factory reset, do so.  Note that this must be after the
+		// card.setup so that we do the reset in the context of post-script execution
+		if factoryReset {
+			req := notecard.Request{Req: "card.restore"}
+			req.Delete = true
+			card.TransactionRequest(req)
+			for i := 0; i < 5; i++ {
+				_, err = card.TransactionRequest(notecard.Request{Req: "hub.get"})
+				if err == nil {
+					break
+				}
+			}
+			if err != nil {
+				break
+			}
+		}
+
+		// If requests were specified, process them
+		if len(requests) > 0 {
+			// Process the requests
+			err = processRequests(init, requests)
+			if err != nil {
+				break
+			}
+			// Re-do the hub.get because the setup script may have changed things
+			card.DebugOutput(false, false)
+			rsp, _ = card.TransactionRequest(notecard.Request{Req: "hub.get"})
+			card.DebugOutput(debugEnabled, false)
 		}
 
 		// Create a new inventory record
@@ -250,7 +278,7 @@ func scan(debugEnabled bool, init bool, fnSetup string, fnSetupSKU string, outfi
 		}
 		w := bufio.NewWriter(f)
 		for _, v := range scannedDevices {
-			vj, err := json.Marshal(v)
+			vj, err := note.JSONMarshal(v)
 			if err != nil {
 				continue
 			}
@@ -338,7 +366,7 @@ func loadRequests(filename string) (requests []map[string]interface{}, err error
 			continue
 		}
 		var req map[string]interface{}
-		err = json.Unmarshal(line, &req)
+		err = note.JSONUnmarshal(line, &req)
 		if err != nil {
 			err = fmt.Errorf("error: invalid request JSON: %s", line)
 			return

@@ -152,6 +152,8 @@ func ErrorString(err error) string {
 func ErrorJSON(message string, err error) (rspJSON []byte) {
 	if message == "" {
 		rspJSON = []byte(fmt.Sprintf("{\"err\":\"%q\"}", err))
+	} else if err == nil {
+		rspJSON = []byte(fmt.Sprintf("{\"err\":\"%q\"}", message))
 	} else {
 		rspJSON = []byte(fmt.Sprintf("{\"err\":\"%q: %q\"}", message, err))
 	}

@@ -357,6 +357,7 @@ type Request struct {
 	Type             int32                         `json:"type,omitempty"`
 	Number           int64                         `json:"number,omitempty"`
 	SKU              string                        `json:"sku,omitempty"`
+	Board            string                        `json:"board,omitempty"`
 	Net              *NetInfo                      `json:"net,omitempty"`
 	Sensitivity      int32                         `json:"sensitivity,omitempty"`
 	Requested        int32                         `json:"requested,omitempty"`
