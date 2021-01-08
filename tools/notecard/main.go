@@ -140,13 +140,13 @@ func main() {
 	}
 
 	// Process non-config commands
-
 	err = nil
+	var rsp notecard.Request
 
 	// Wait until disconnected
 	if err == nil && actionWhenDisconnected {
 		for {
-			rsp, err := card.TransactionRequest(notecard.Request{Req: "service.status", NotefileID: notecard.SyncLogNotefile, Delete: true})
+			rsp, err := card.TransactionRequest(notecard.Request{Req: "hub.status", NotefileID: notecard.SyncLogNotefile, Delete: true})
 			if err != nil {
 				fmt.Printf("%s\n", err)
 				break
@@ -188,7 +188,7 @@ func main() {
 	// Wait until disarmed
 	if err == nil && actionWhenDisarmed {
 		for {
-			rsp, err := card.TransactionRequest(notecard.Request{Req: "card.attn"})
+			rsp, err = card.TransactionRequest(notecard.Request{Req: "card.attn"})
 			if err != nil {
 				fmt.Printf("%s\n", err)
 			} else if rsp.Set {
@@ -200,12 +200,11 @@ func main() {
 
 	// Wait until synced
 	if err == nil && actionWhenSynced {
-		var rsp notecard.Request
-		req := notecard.Request{Req: "service.sync.status"}
+		req := notecard.Request{Req: "hub.sync.status"}
 		req.Sync = true // Initiate sync if sync is needed
 		rsp, err = card.TransactionRequest(req)
 		for err == nil {
-			rsp, err = card.TransactionRequest(notecard.Request{Req: "service.sync.status"})
+			rsp, err = card.TransactionRequest(notecard.Request{Req: "hub.sync.status"})
 			if err != nil {
 				fmt.Printf("%s\n", err)
 				break
@@ -225,15 +224,49 @@ func main() {
 	// Turn on Notecard library debug output
 	card.DebugOutput(actionVerbose, false)
 
+	// Do SKU setup before anything else, particularly because if we are going
+	// to do a factory reset it needs to be done after we set up the SKU
+	if err == nil && actionSetupSKU != "" && actionScan == "" {
+		var requestsString string
+		requestsString, err = loadRequestsString(actionSetupSKU)
+		if err == nil {
+			req := notecard.Request{Req: "card.setup"}
+			req.Text = requestsString
+			_, err = card.TransactionRequest(req)
+		}
+		if err == nil && !(actionFactory || actionFormat) {
+			_, err = card.TransactionRequest(notecard.Request{Req: "card.restart"})
+			if err == nil {
+				for i := 0; i < 5; i++ {
+					_, err = card.TransactionRequest(notecard.Request{Req: "hub.get"})
+					if err == nil {
+						break
+					}
+				}
+			}
+		}
+	}
+
 	// Factory reset & format
+	verifyCompletion := false
 	if err == nil && actionFormat {
 		req := notecard.Request{Req: "card.restore"}
-		_, err = card.TransactionRequest(req)
+		card.TransactionRequest(req)
+		verifyCompletion = true
 	}
 	if err == nil && actionFactory && (actionScan == "" && actionSetup == "") {
 		req := notecard.Request{Req: "card.restore"}
 		req.Delete = true
 		_, err = card.TransactionRequest(req)
+		verifyCompletion = true
+	}
+	if err == nil && verifyCompletion {
+		for i := 0; i < 5; i++ {
+			rsp, err = card.TransactionRequest(notecard.Request{Req: "hub.get"})
+			if err == nil {
+				break
+			}
+		}
 	}
 
 	if err == nil && actionInfo {
@@ -243,7 +276,7 @@ func main() {
 		cardVersion := ""
 		cardDeviceUID := ""
 		cardName := ""
-		rsp, err := card.TransactionRequest(notecard.Request{Req: "card.version"})
+		rsp, err = card.TransactionRequest(notecard.Request{Req: "card.version"})
 		if err == nil {
 			cardName = rsp.Name
 			cardDeviceUID = rsp.DeviceUID
@@ -278,7 +311,7 @@ func main() {
 		cardUploadMins := 60
 		cardDownloadHrs := 0
 		if err == nil {
-			rsp, err = card.TransactionRequest(notecard.Request{Req: "service.get"})
+			rsp, err = card.TransactionRequest(notecard.Request{Req: "hub.get"})
 			if err == nil {
 				cardSN = rsp.SN
 				cardHost = rsp.Host
@@ -353,7 +386,7 @@ func main() {
 
 		cardSyncedTime := ""
 		if err == nil {
-			rsp, err = card.TransactionRequest(notecard.Request{Req: "service.sync.status"})
+			rsp, err = card.TransactionRequest(notecard.Request{Req: "hub.sync.status"})
 			if err == nil {
 				cardSyncedTime = time.Unix(int64(rsp.Time), 0).Format("2006-01-02T15:04:05Z") + " (" +
 					time.Unix(int64(rsp.Time), 0).Local().Format("2006-01-02 3:04:05 PM MST") + ")"
@@ -362,7 +395,7 @@ func main() {
 
 		cardServiceStatus := ""
 		if err == nil {
-			rsp, err = card.TransactionRequest(notecard.Request{Req: "service.status"})
+			rsp, err = card.TransactionRequest(notecard.Request{Req: "hub.status"})
 			if err == nil {
 				cardServiceStatus = rsp.Status
 				if rsp.Connected {
@@ -446,15 +479,15 @@ func main() {
 	}
 
 	if err == nil && actionProduct != "" {
-		_, err = card.TransactionRequest(notecard.Request{Req: "service.set", ProductUID: actionProduct})
+		_, err = card.TransactionRequest(notecard.Request{Req: "hub.set", ProductUID: actionProduct})
 	}
 
 	if err == nil && actionSN != "" {
-		_, err = card.TransactionRequest(notecard.Request{Req: "service.set", SN: actionSN})
+		_, err = card.TransactionRequest(notecard.Request{Req: "hub.set", SN: actionSN})
 	}
 
 	if err == nil && actionHub != "" {
-		_, err = card.TransactionRequest(notecard.Request{Req: "service.set", Host: actionHub})
+		_, err = card.TransactionRequest(notecard.Request{Req: "hub.set", Host: actionHub})
 		noteutil.ConfigSetHub(actionHub)
 	}
 
@@ -463,21 +496,11 @@ func main() {
 	}
 
 	if err == nil && actionLog != "" {
-		_, err = card.TransactionRequest(notecard.Request{Req: "service.log", Text: actionLog})
+		_, err = card.TransactionRequest(notecard.Request{Req: "hub.log", Text: actionLog})
 	}
 
 	if err == nil && actionSync {
-		_, err = card.TransactionRequest(notecard.Request{Req: "service.sync"})
-	}
-
-	if err == nil && actionSetupSKU != "" && actionScan == "" {
-		var requestsString string
-		requestsString, err = loadRequestsString(actionSetupSKU)
-		if err == nil {
-			req := notecard.Request{Req: "card.setup"}
-			req.Text = requestsString
-			_, err = card.TransactionRequest(req)
-		}
+		_, err = card.TransactionRequest(notecard.Request{Req: "hub.sync"})
 	}
 
 	if err == nil && actionSetup != "" && actionScan == "" {
@@ -490,7 +513,7 @@ func main() {
 	}
 
 	if err == nil && actionScan != "" {
-		err = scan(actionVerbose, actionFactory, actionSetup, actionSetupSKU, actionScan)
+		err = scan(actionVerbose, actionFactory, actionSetup, actionSetupSKU, actionFactory, actionScan)
 	}
 
 	if err == nil && actionCommtest {

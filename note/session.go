@@ -73,8 +73,8 @@ type TowerLocation struct {
 	MNC         int     `json:"mnc,omitempty"`
 	LAC         int     `json:"lac,omitempty"`
 	CID         int     `json:"cid,omitempty"`
-	OLC         string  `json:"l,omitempty"`     // open location code
-	TimeZoneID  int     `json:"z,omitempty"`     // timezone id (see tz.go)
-	Count       int64   `json:"count,omitempty"` // number of times this location was recently used
-	Towers      int     // number of triangulation points, not persistent
+	OLC         string  `json:"l,omitempty"`      // open location code
+	TimeZoneID  int     `json:"z,omitempty"`      // timezone id (see tz.go)
+	Count       int64   `json:"count,omitempty"`  // number of times this location was recently used
+	Towers      int     `json:"towers,omitempty"` // number of triangulation points
 }
