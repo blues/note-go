@@ -332,8 +332,6 @@ func uRemoteReopen(context *Context, portConfig int) (err error) {
 		context.farmCard = RemoteCard{}
 
 	}
-
-	return
 }
 
 // Perform a remote transaction

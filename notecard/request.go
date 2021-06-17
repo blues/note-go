@@ -61,6 +61,9 @@ const ReqNoteDelete = "note.delete"
 // ReqCardTime (golint)
 const ReqCardTime = "card.time"
 
+// ReqCardRandom (golint)
+const ReqCardRandom = "card.random"
+
 // ReqCardContact (golint)
 const ReqCardContact = "card.contact"
 
@@ -157,6 +160,9 @@ const ReqEnvLocation = "env.location"
 // ReqEnvSync (golint)
 const ReqEnvSync = "env.sync"
 
+// ReqWeb (golint)
+const ReqWeb = "web"
+
 // ReqWebGet (golint)
 const ReqWebGet = "web.get"
 
@@ -165,6 +171,9 @@ const ReqWebPut = "web.put"
 
 // ReqWebPost (golint)
 const ReqWebPost = "web.post"
+
+// ReqWebDelete (golint)
+const ReqWebDelete = "web.delete"
 
 // ReqDFUStatus (golint)
 const ReqDFUStatus = "dfu.status"
@@ -189,6 +198,9 @@ const ReqCardSetup = "card.setup"
 
 // ReqCardWireless (golint)
 const ReqCardWireless = "card.wireless"
+
+// ReqCardWiFi (golint)
+const ReqCardWiFi = "card.wifi"
 
 // ReqCardLog (golint)
 const ReqCardLog = "card.log"
@@ -370,6 +382,16 @@ type Request struct {
 	Outbound         int32                         `json:"outbound,omitempty"`
 	OutboundV        string                        `json:"voutbound,omitempty"`
 	Duration         int32                         `json:"duration,omitempty"`
+	Temperature      float64                       `json:"temperature,omitempty"`
+	Pressure         float64                       `json:"pressure,omitempty"`
+	Humidity         float64                       `json:"humidity,omitempty"`
+	API              uint32                        `json:"api,omitempty"`
+	SSID             string                        `json:"ssid,omitempty"`
+	Password         string                        `json:"password,omitempty"`
+	Security         string                        `json:"security,omitempty"`
+	Key              string                        `json:"key,omitempty"`
+	Method           string                        `json:"method,omitempty"`
+	Content          string                        `json:"content,omitempty"`
 }
 
 // PinState describes the state of an AUX pin for hardware-related Notecard requests

@@ -7,6 +7,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/signal"
 	"strings"
@@ -44,10 +45,18 @@ func main() {
 	flag.BoolVar(&actionVerbose, "verbose", false, "display notecard requests and responses")
 	var actionWhenSynced bool
 	flag.BoolVar(&actionWhenSynced, "when-synced", false, "sync if needed and wait until sync completed")
+	var actionReserved bool
+	flag.BoolVar(&actionReserved, "reserved", false, "when exploring, include reserved notefiles")
+	var actionExplore bool
+	flag.BoolVar(&actionExplore, "explore", false, "explore the contents of the device")
 	var actionFactory bool
 	flag.BoolVar(&actionFactory, "factory", false, "reset notecard to factory defaults")
 	var actionFormat bool
 	flag.BoolVar(&actionFormat, "format", false, "reset notecard's notefile storage but retain configuration")
+	var actionInput string
+	flag.StringVar(&actionInput, "input", "", "add the contents of this file as a payload to the request")
+	var actionOutput string
+	flag.StringVar(&actionOutput, "output", "", "if the response has a payload, place it in this file")
 	var actionLog string
 	flag.StringVar(&actionLog, "log", "", "add a text string to the _log.qo notefile")
 	var actionTrace bool
@@ -73,9 +82,11 @@ func main() {
 	var actionSetup string
 	flag.StringVar(&actionSetup, "setup", "", "issue requests sequentially as stored in the specified .json file")
 	var actionSetupSKU string
-	flag.StringVar(&actionSetupSKU, "setup-sku", "", "configure a notecard for self-setup even after factory restore, with  requests stored in the specified .json file")
+	flag.StringVar(&actionSetupSKU, "setup-sku", "", "configure a notecard for self-setup even after factory restore, with  requests in the specified .json file")
 	var actionScan string
 	flag.StringVar(&actionScan, "scan", "", "scan a batch of notecards to collect info or to set them up")
+	var actionProvision string
+	flag.StringVar(&actionProvision, "provision", "", "provision into carrier account using AccountSID:AuthTOKEN")
 
 	// Parse these flags and also the note tool config flags
 	err := noteutil.FlagParse(true, false)
@@ -121,7 +132,7 @@ func main() {
 		actionRequest = flag.Args()[0]
 	} else if argsLeft != 0 {
 		remainingArgs := strings.Join(flag.Args()[1:], " ")
-		fmt.Printf("Switches must be placed on the command line prior to the request: %s\n", remainingArgs)
+		fmt.Printf("These switches must be placed on the command line prior to the request: %s\n", remainingArgs)
 		os.Exit(exitFail)
 	}
 
@@ -492,7 +503,24 @@ func main() {
 	}
 
 	if err == nil && actionRequest != "" {
-		_, err = card.TransactionJSON([]byte(actionRequest))
+		var req notecard.Request
+		err = note.JSONUnmarshal([]byte(actionRequest), &req)
+		if err == nil {
+			var rsp notecard.Request
+			if actionInput == "" {
+				rsp, err = card.TransactionRequest(req)
+			} else {
+				var contents []byte
+				contents, err = ioutil.ReadFile(actionInput)
+				if err == nil {
+					req.Payload = &contents
+					rsp, err = card.TransactionRequest(req)
+				}
+			}
+			if err == nil && actionOutput != "" && rsp.Payload != nil {
+				err = ioutil.WriteFile(actionOutput, *rsp.Payload, 0644)
+			}
+		}
 	}
 
 	if err == nil && actionLog != "" {
@@ -513,7 +541,7 @@ func main() {
 	}
 
 	if err == nil && actionScan != "" {
-		err = scan(actionVerbose, actionFactory, actionSetup, actionSetupSKU, actionFactory, actionScan)
+		err = scan(actionVerbose, actionFactory, actionSetup, actionSetupSKU, actionProvision, actionFactory, actionScan)
 	}
 
 	if err == nil && actionCommtest {
@@ -554,6 +582,10 @@ func main() {
 				break
 			}
 		}
+	}
+
+	if err == nil && actionExplore {
+		err = explore(actionReserved)
 	}
 
 	// Process errors

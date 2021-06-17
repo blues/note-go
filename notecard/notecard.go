@@ -28,6 +28,12 @@ var InitialDebugMode = false
 var transLock sync.RWMutex
 var multiportTransLock [128]sync.RWMutex
 
+// SerialTimeoutMs is the response timeout for Notecard serial communications.
+var SerialTimeoutMs = 10000
+
+// IgnoreWindowsHWErrSecs is the amount of time to ignore a Windows serial communiction error.
+var IgnoreWindowsHWErrSecs = 2
+
 // Module communication interfaces
 const (
 	NotecardInterfaceSerial = "serial"
@@ -55,8 +61,11 @@ const CardRequestI2CSegmentMaxLen = 250
 // CardRequestI2CSegmentDelayMs (golint)
 const CardRequestI2CSegmentDelayMs = 250
 
-// CardRequestI2CChunkDelayMs (golint)
-const CardRequestI2CChunkDelayMs = 20
+// RequestSegmentMaxLen (golint)
+var RequestSegmentMaxLen = -1
+
+// RequestSegmentDelayMs (golint)
+var RequestSegmentDelayMs = -1
 
 // IoErrorIsRecoverable is a configuration parameter describing library capabilities.
 // Set this to true if the error recovery of the implementation supports re-open.  On all implementations
@@ -170,16 +179,12 @@ func Open(moduleInterface string, port string, portConfig int) (context *Context
 	switch moduleInterface {
 	case NotecardInterfaceSerial:
 		context, err = OpenSerial(port, portConfig)
-		break
 	case NotecardInterfaceI2C:
 		context, err = OpenI2C(port, portConfig)
-		break
 	case NotecardInterfaceRemote:
 		context, err = OpenRemote(port, portConfig)
-		break
 	default:
 		err = fmt.Errorf("unknown interface: %s", moduleInterface)
-		break
 	}
 	if err != nil {
 		cardReportError(nil, err)
@@ -288,7 +293,7 @@ func serialTimeoutHelper(context *Context, portConfig int) {
 
 // Begin a serial I/O
 func serialIOBegin(context *Context) {
-	timeoutMs := 10000
+	timeoutMs := SerialTimeoutMs
 	context.ioStartSignal <- timeoutMs
 	if debugSerialIO {
 		if !context.serialPortIsOpen {
@@ -567,23 +572,25 @@ func (context *Context) transactionRequest(req Request, multiport bool, portConf
 
 // NewRequest creates a new request that is guaranteed to get a response
 // from the Notecard.  Note that this method is provided merely as syntactic sugar, as of the form
-// req := note.NewRequest("note.add")
+// req := notecard.NewRequest("note.add")
 func NewRequest(reqType string) (req map[string]interface{}) {
-	req["req"] = reqType
-	return
+	return map[string]interface{}{
+		"req": reqType,
+	}
 }
 
 // NewCommand creates a new command that requires no response from the notecard.
-func NewCommand(reqType string) (req map[string]interface{}) {
-	req["cmd"] = reqType
-	return
+func NewCommand(reqType string) (cmd map[string]interface{}) {
+	return map[string]interface{}{
+		"cmd": reqType,
+	}
 }
 
 // NewBody creates a new body.  Note that this method is provided
 // merely as syntactic sugar, as of the form
 // body := note.NewBody()
 func NewBody() (body map[string]interface{}) {
-	return
+	return make(map[string]interface{})
 }
 
 // Request performs a card transaction with a JSON structure and doesn't return a response
@@ -798,6 +805,14 @@ func cardTransactionSerial(context *Context, portConfig int, noResponse bool, re
 		return
 	}
 
+	// Initialize timing parameters
+	if RequestSegmentMaxLen < 0 {
+		RequestSegmentMaxLen = CardRequestSerialSegmentMaxLen
+	}
+	if RequestSegmentDelayMs < 0 {
+		RequestSegmentDelayMs = CardRequestSerialSegmentDelayMs
+	}
+
 	// Handle the special case where we are looking only for a reply
 	if len(reqJSON) > 0 {
 
@@ -806,8 +821,8 @@ func cardTransactionSerial(context *Context, portConfig int, noResponse bool, re
 		segLeft := len(reqJSON)
 		for {
 			segLen := segLeft
-			if segLen > CardRequestSerialSegmentMaxLen {
-				segLen = CardRequestSerialSegmentMaxLen
+			if segLen > RequestSegmentMaxLen {
+				segLen = RequestSegmentMaxLen
 			}
 			if debugSerialIO {
 				fmt.Printf("cardTransactionSerial: about to write %d bytes\n", segLen)
@@ -828,7 +843,7 @@ func cardTransactionSerial(context *Context, portConfig int, noResponse bool, re
 			if segLeft == 0 {
 				break
 			}
-			time.Sleep(CardRequestSerialSegmentDelayMs * time.Millisecond)
+			time.Sleep(time.Duration(RequestSegmentDelayMs) * time.Millisecond)
 		}
 
 	}
@@ -871,7 +886,7 @@ func cardTransactionSerial(context *Context, portConfig int, noResponse bool, re
 				continue
 			}
 			// Ignore [flaky, rare, Windows] hardware errors for up to several seconds
-			if (time.Now().Unix() - waitBeganSecs) > 2 {
+			if (time.Now().Unix() - waitBeganSecs) > int64(IgnoreWindowsHWErrSecs) {
 				err = fmt.Errorf("error reading from module: %s %s", err, note.ErrCardIo)
 				cardReportError(context, err)
 				return
@@ -893,6 +908,14 @@ func cardTransactionSerial(context *Context, portConfig int, noResponse bool, re
 // Perform a card transaction over I2C under the assumption that request already has '\n' terminator
 func cardTransactionI2C(context *Context, portConfig int, noResponse bool, reqJSON []byte) (rspJSON []byte, err error) {
 
+	// Initialize timing parameters
+	if RequestSegmentMaxLen < 0 {
+		RequestSegmentMaxLen = CardRequestI2CSegmentMaxLen
+	}
+	if RequestSegmentDelayMs < 0 {
+		RequestSegmentDelayMs = CardRequestI2CSegmentDelayMs
+	}
+
 	// Transmit the request in chunks, but also in segments so as not to overwhelm the notecard's interrupt buffers
 	chunkoffset := 0
 	jsonbufLen := len(reqJSON)
@@ -910,11 +933,11 @@ func cardTransactionI2C(context *Context, portConfig int, noResponse bool, reqJS
 		chunkoffset += chunklen
 		jsonbufLen -= chunklen
 		sentInSegment += chunklen
-		if sentInSegment > CardRequestI2CSegmentMaxLen {
+		if sentInSegment > RequestSegmentMaxLen {
 			sentInSegment = 0
-			time.Sleep(CardRequestI2CSegmentDelayMs * time.Millisecond)
+			time.Sleep(time.Duration(RequestSegmentDelayMs) * time.Millisecond)
 		}
-		time.Sleep(CardRequestI2CChunkDelayMs * time.Millisecond)
+		time.Sleep(time.Duration(RequestSegmentDelayMs) * time.Millisecond)
 	}
 
 	// If no response, we're done

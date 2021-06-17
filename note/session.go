@@ -44,6 +44,8 @@ type DeviceSession struct {
 	Next DeviceUsage `json:"next,omitempty"`
 	// Usage during the period - initially estimated, but then corrected when we get to the next period
 	Period DeviceUsage `json:"period,omitempty"`
+	// Flag indicating whether the usage data is based on actual stats from the device
+	IsUsageActual bool `json:"usage_actual,omitempty"`
 	// Physical device info
 	Voltage float64 `json:"voltage,omitempty"`
 	Temp    float64 `json:"temp,omitempty"`

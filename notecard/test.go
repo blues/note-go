@@ -6,24 +6,27 @@ package notecard
 
 // CardTest is a structure that is returned by the notecard after completing its self-test
 type CardTest struct {
-	DeviceUID  string `json:"device,omitempty"`
-	Error      string `json:"err,omitempty"`
-	Status     string `json:"status,omitempty"`
-	Tests      string `json:"tests,omitempty"`
-	FailTest   string `json:"fail_test,omitempty"`
-	FailReason string `json:"fail_reason,omitempty"`
-	Info       string `json:"info,omitempty"`
-	Board      uint32 `json:"board,omitempty"`
-	Modem      string `json:"modem,omitempty"`
-	ICCID      string `json:"iccid,omitempty"`
-	IMSI       string `json:"imsi,omitempty"`
-	IMEI       string `json:"imei,omitempty"`
-	When       int64  `json:"when,omitempty"`
-	SKU        string `json:"sku,omitempty"`
-	Station    string `json:"station,omitempty"`
-	Operator   string `json:"operator,omitempty"`
-	Check      uint32 `json:"check,omitempty"`
-	Key        string `json:"key,omitempty"`
+	DeviceUID           string `json:"device,omitempty"`
+	Error               string `json:"err,omitempty"`
+	Status              string `json:"status,omitempty"`
+	Tests               string `json:"tests,omitempty"`
+	FailTest            string `json:"fail_test,omitempty"`
+	FailReason          string `json:"fail_reason,omitempty"`
+	Info                string `json:"info,omitempty"`
+	BoardVersion        uint32 `json:"board,omitempty"`
+	BoardType           uint32 `json:"board_type,omitempty"`
+	Modem               string `json:"modem,omitempty"`
+	ICCID               string `json:"iccid,omitempty"`
+	IMSI                string `json:"imsi,omitempty"`
+	IMEI                string `json:"imei,omitempty"`
+	When                uint32 `json:"when,omitempty"`
+	SKU                 string `json:"sku,omitempty"`
+	SIMActivationKey    string `json:"key,omitempty"`
+	Station             string `json:"station,omitempty"`
+	Operator            string `json:"operator,omitempty"`
+	Check               uint32 `json:"check,omitempty"`
+	CellUsageBytes      uint32 `json:"cell_used,omitempty"`
+	CellProvisionedTime uint32 `json:"cell_provisioned,omitempty"`
 	// Firmware info
 	FirmwareOrg     string `json:"org,omitempty"`
 	FirmwareProduct string `json:"product,omitempty"`
@@ -33,9 +36,9 @@ type CardTest struct {
 	FirmwarePatch   uint32 `json:"ver_patch,omitempty"`
 	FirmwareBuild   uint32 `json:"ver_build,omitempty"`
 	FirmwareBuilt   string `json:"built,omitempty"`
-	// Certificate info
+	// Certificate and cert info
 	CertSN string `json:"certsn,omitempty"`
 	Cert   string `json:"cert,omitempty"`
-	// Setup requests
+	// Card initialization requests
 	SetupRequests string `json:"setup,omitempty"`
 }

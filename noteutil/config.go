@@ -19,23 +19,21 @@ import (
 	"github.com/blues/note-go/notehub"
 )
 
-// ConfigSettings defines the config file that maintains the command processor's state
-type ConfigSettings struct {
-	When       string `json:"when,omitempty"`
-	Hub        string `json:"hub,omitempty"`
-	App        string `json:"project,omitempty"`
-	Product    string `json:"product,omitempty"`
-	Device     string `json:"device,omitempty"`
-	Interface  string `json:"interface,omitempty"`
-	TokenUser  string `json:"token_user,omitempty"`
-	Token      string `json:"token,omitempty"`
-	Port       string `json:"port,omitempty"`
-	PortConfig int    `json:"port_config,omitempty"`
+// ConfigCreds are the credentials for a given notehub
+type ConfigCreds struct {
+	User  string `json:"user,omitempty"`
+	Token string `json:"token,omitempty"`
 }
 
-// Config is the active copy of our configuration file, never dirty.
-var flagConfigReset bool
-var flagConfigSave bool
+// ConfigSettings defines the config file that maintains the command processor's state
+type ConfigSettings struct {
+	When       string                 `json:"when,omitempty"`
+	Hub        string                 `json:"hub,omitempty"`
+	HubCreds   map[string]ConfigCreds `json:"creds,omitempty"`
+	Interface  string                 `json:"interface,omitempty"`
+	Port       string                 `json:"port,omitempty"`
+	PortConfig int                    `json:"port_config,omitempty"`
+}
 
 // Config are the master config settings
 var Config ConfigSettings
@@ -104,20 +102,20 @@ func ConfigShow() error {
 
 	fmt.Printf("\nCurrently saved values:\n")
 
-	if Config.TokenUser != "" && Config.Token != "" {
-		fmt.Printf("   account: %s\n", Config.TokenUser)
-	}
 	if Config.Hub != "" {
 		fmt.Printf("       hub: %s\n", Config.Hub)
 	}
-	if Config.App != "" {
-		fmt.Printf("   project: %s\n", Config.App)
+	if Config.HubCreds == nil {
+		Config.HubCreds = map[string]ConfigCreds{}
 	}
-	if Config.Product != "" {
-		fmt.Printf("   product: %s\n", Config.Product)
-	}
-	if Config.Device != "" {
-		fmt.Printf("    device: %s\n", Config.Device)
+	if len(Config.HubCreds) != 0 {
+		fmt.Printf("     creds:\n")
+		for hub, cred := range Config.HubCreds {
+			if hub == "" {
+				hub = "api.notefile.net"
+			}
+			fmt.Printf("            %s: %s\n", hub, cred.User)
+		}
 	}
 	if Config.Interface != "" {
 		fmt.Printf("   -interface %s\n", Config.Interface)
@@ -145,36 +143,18 @@ func ConfigFlagsProcess() (err error) {
 		}
 	}
 
-	// Reset if requested
-	if flagConfigReset {
-		ConfigReset()
-	}
-
-	// Set the flags as desired
+	// Set or reset the flags as desired
 	if configFlags.Hub != "" {
 		ConfigSetHub(configFlags.Hub)
-	}
-	if configFlags.App == "-" {
-		Config.App = ""
-	} else if configFlags.App != "" {
-		Config.App = configFlags.App
-	}
-	if configFlags.Product == "-" {
-		Config.Product = ""
-	} else if configFlags.Product != "" {
-		Config.Product = configFlags.Product
-	}
-	if configFlags.Device == "-" {
-		Config.Device = ""
-	} else if configFlags.Device != "" {
-		Config.Device = configFlags.Device
 	}
 	if configFlags.Interface == "-" {
 		configResetInterface()
 	} else if configFlags.Interface != "" {
 		Config.Interface = configFlags.Interface
 	}
-	if configFlags.Port != "" {
+	if configFlags.Port == "-" {
+		Config.Port = ""
+	} else if configFlags.Port != "" {
 		Config.Port = configFlags.Port
 	}
 	if configFlags.PortConfig < 0 {
@@ -182,27 +162,9 @@ func ConfigFlagsProcess() (err error) {
 	} else if configFlags.PortConfig != 0 {
 		Config.PortConfig = configFlags.PortConfig
 	}
-
-	// Save if requested
-	if flagConfigSave {
-		ConfigWrite()
-		ConfigShow()
-	}
-
-	// Override, just for this session, with env vars
-	str := os.Getenv("NOTE_INTERFACE")
-	if str != "" {
-		Config.Interface = str
-	}
-	str = os.Getenv("NOTE_PORT")
-	if str != "" {
-		Config.Port = str
-		str := os.Getenv("NOTE_PORT_CONFIG")
-		strint, err2 := strconv.Atoi(str)
-		if err2 != nil {
-			strint = Config.PortConfig
-		}
-		Config.PortConfig = strint
+	if Config.Interface == "" {
+		configFlags.Port = ""
+		configFlags.PortConfig = 0
 	}
 
 	// Done
@@ -220,33 +182,88 @@ func ConfigFlagsRegister(notecardFlags bool, notehubFlags bool) {
 		flag.IntVar(&configFlags.PortConfig, "portconfig", 0, "set serial device speed or i2c address for notecard")
 	}
 	if notehubFlags {
-		flag.StringVar(&configFlags.Device, "device", "", "set DeviceUID")
-		if false { // no longer necessary because of universal support for productUID
-			flag.StringVar(&configFlags.App, "project", "", "set AppUID")
-		}
-		flag.StringVar(&configFlags.Product, "product", "", "set ProductUID")
 		flag.StringVar(&configFlags.Hub, "hub", "", "set notehub domain")
 	}
-
-	// Write the config if asked to do so
-	flag.BoolVar(&flagConfigReset, "config-reset", false, "reset the cross-tool saved configuration to its defaults")
-	flag.BoolVar(&flagConfigSave, "config-save", false, "save changes to the cross-tool saved configuration")
 
 }
 
 // FlagParse is a wrapper around flag.Parse that handles our config flags
 func FlagParse(notecardFlags bool, notehubFlags bool) (err error) {
+
+	// Register our flags
 	ConfigFlagsRegister(notecardFlags, notehubFlags)
+
+	// Parse them
 	flag.Parse()
-	return ConfigFlagsProcess()
+
+	// Process our flags
+	err = ConfigFlagsProcess()
+	if err != nil {
+		return
+	}
+
+	// If our flags were the only ones present, save them
+	configOnly := true
+	if len(os.Args) == 1 {
+		configOnly = false
+	} else {
+		for i, arg := range os.Args {
+			// Even arguments are parameters, odd args are flags
+			if (i & 1) != 0 {
+				switch arg {
+				case "-interface":
+				case "-port":
+				case "-portconfig":
+				case "-hub":
+				// any odd argument that isn't one of our switches
+				default:
+					configOnly = false
+					break
+				}
+			}
+		}
+	}
+	if configOnly {
+		fmt.Printf("*** saving configuration ***")
+		ConfigWrite()
+		ConfigShow()
+	}
+
+	// Override, just for this session, with env vars
+	str := os.Getenv("NOTE_INTERFACE")
+	if str != "" {
+		Config.Interface = str
+	}
+
+	// Override via env vars if specified
+	str = os.Getenv("NOTE_PORT")
+	if str != "" {
+		Config.Port = str
+		str := os.Getenv("NOTE_PORT_CONFIG")
+		strint, err2 := strconv.Atoi(str)
+		if err2 != nil {
+			strint = Config.PortConfig
+		}
+		Config.PortConfig = strint
+	}
+
+	// Done
+	return
+
 }
 
 // ConfigSignedIn returns info about whether or not we're signed in
-func ConfigSignedIn() (username string, authenticated bool) {
-
-	if Config.Token != "" && Config.TokenUser != "" {
-		authenticated = true
-		username = Config.TokenUser
+func ConfigSignedIn() (username string, token string, authenticated bool) {
+	if Config.HubCreds == nil {
+		Config.HubCreds = map[string]ConfigCreds{}
+	}
+	creds, present := Config.HubCreds[Config.Hub]
+	if present {
+		if creds.Token != "" && creds.User != "" {
+			authenticated = true
+			username = creds.User
+			token = creds.Token
+		}
 	}
 
 	return
@@ -256,22 +273,15 @@ func ConfigSignedIn() (username string, authenticated bool) {
 // ConfigAuthenticationHeader sets the authorization field in the header as appropriate
 func ConfigAuthenticationHeader(httpReq *http.Request) (err error) {
 
-	// Read config if not yet read
-	if Config.When == "" {
-		err = ConfigRead()
-		if err != nil {
-			return
-		}
-	}
-
 	// Exit if not signed in
-	if Config.Token == "" || Config.TokenUser == "" {
-		err = fmt.Errorf("not authenticated: please use 'notehub -signin' to sign into the notehub service")
+	_, token, authenticated := ConfigSignedIn()
+	if !authenticated {
+		err = fmt.Errorf("not authenticated to %s: please use 'notehub -signin' to sign into the notehub service", Config.Hub)
 		return
 	}
 
 	// Set the header
-	httpReq.Header.Set("X-Session-Token", Config.Token)
+	httpReq.Header.Set("X-Session-Token", token)
 
 	// Done
 	return
@@ -283,7 +293,7 @@ func ConfigAuthenticationHeader(httpReq *http.Request) (err error) {
 // This enables flexibility in what's configured.
 func ConfigAPIHub() (hub string) {
 	hub = Config.Hub
-	if hub == "" {
+	if hub == "" || hub == "-" {
 		hub = notehub.DefaultAPIService
 	}
 	if !strings.HasPrefix(hub, "api.") {
@@ -296,6 +306,9 @@ func ConfigAPIHub() (hub string) {
 // it returns "".  Regardless, it always makes sure that the host does NOT have "api." as a prefix.
 func ConfigNotecardHub() (hub string) {
 	hub = Config.Hub
+	if hub == "" || hub == "-" {
+		hub = notehub.DefaultAPIService
+	}
 	if strings.HasPrefix(hub, "api.") {
 		hub = strings.TrimPrefix(hub, "api.")
 	}
@@ -304,7 +317,7 @@ func ConfigNotecardHub() (hub string) {
 
 // ConfigSetHub clears the hub
 func ConfigSetHub(hub string) {
-	if Config.Hub == "-" {
+	if hub == "-" {
 		hub = ""
 	}
 	Config.Hub = hub

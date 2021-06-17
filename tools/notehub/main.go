@@ -18,6 +18,14 @@ import (
 const exitOk = 0
 const exitFail = 1
 
+// Verbose or quiet output
+var verbose bool
+
+// Used by req.go
+var flagApp string
+var flagProduct string
+var flagDevice string
+
 // Main entry point
 func main() {
 
@@ -36,6 +44,8 @@ func main() {
 	flag.StringVar(&flagTags, "tags", "", "indicate tags to attach to uploaded image")
 	var flagNotes string
 	flag.StringVar(&flagNotes, "notes", "", "indicate notes to attach to uploaded image")
+	var flagTrace bool
+	flag.BoolVar(&flagTrace, "trace", false, "enter trace mode to interactively send requests to notehub")
 	var flagOverwrite bool
 	flag.BoolVar(&flagOverwrite, "overwrite", false, "use exact filename in upload and overwrite it on service")
 	var flagOut string
@@ -46,6 +56,15 @@ func main() {
 	flag.BoolVar(&flagSignOut, "signout", false, "sign out of the notehub")
 	var flagToken bool
 	flag.BoolVar(&flagToken, "token", false, "obtain the signed-in account's Authentication Token")
+	var flagExplore bool
+	flag.BoolVar(&flagExplore, "explore", false, "explore the contents of the device")
+	var flagReserved bool
+	flag.BoolVar(&flagReserved, "reserved", false, "when exploring, include reserved notefiles")
+	var flagVerbose bool
+	flag.BoolVar(&flagVerbose, "verbose", false, "display requests and responses")
+	flag.StringVar(&flagApp, "project", "", "projectUID")
+	flag.StringVar(&flagProduct, "product", "", "productUID")
+	flag.StringVar(&flagDevice, "device", "", "deviceUID")
 
 	// Parse these flags and also the note tool config flags
 	err := noteutil.FlagParse(false, true)
@@ -101,7 +120,7 @@ func main() {
 		flagReq = flag.Args()[0]
 	} else if argsLeft != 0 {
 		remainingArgs := strings.Join(flag.Args()[1:], " ")
-		fmt.Printf("Switches must be placed on the command line prior to the request: %s\n", remainingArgs)
+		fmt.Printf("These switches must be placed on the command line prior to the request: %s\n", remainingArgs)
 		os.Exit(exitFail)
 	}
 
@@ -121,7 +140,7 @@ func main() {
 
 	// Process requests
 	if flagReq != "" || flagUpload != "" {
-		rsp, err := reqHubJSON(noteutil.ConfigAPIHub(), []byte(flagReq), flagUpload, flagType, flagTags, flagNotes, flagOverwrite, flagJq, nil)
+		rsp, err := reqHubJSON(flagVerbose, noteutil.ConfigAPIHub(), []byte(flagReq), flagUpload, flagType, flagTags, flagNotes, flagOverwrite, flagJq, nil)
 		if err != nil {
 			fmt.Printf("Error processing request: %s\n", err)
 			os.Exit(exitFail)
@@ -139,7 +158,21 @@ func main() {
 		}
 	}
 
+	// Explore the contents of the device
+	if err == nil && flagExplore {
+		err = explore(flagReserved, flagVerbose)
+	}
+
+	// Enter trace mode
+	if err == nil && flagTrace {
+		err = trace()
+	}
+
 	// Success
+	if err != nil {
+		fmt.Printf("%s\n", err)
+		os.Exit(exitFail)
+	}
 	os.Exit(exitOk)
 
 }

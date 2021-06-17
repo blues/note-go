@@ -91,6 +91,9 @@ const ErrDeviceNotFound = "{device-noexist}"
 // ErrDeviceNotSpecified (golint)
 const ErrDeviceNotSpecified = "{device-none}"
 
+// ErrDeviceDisabled (golint)
+const ErrDeviceDisabled = "{device-disabled}"
+
 // ErrProductNotFound (golint)
 const ErrProductNotFound = "{product-noexist}"
 
@@ -114,6 +117,9 @@ const ErrFleetNotFound = "{fleet-noexist}"
 
 // ErrCardIo (golint)
 const ErrCardIo = "{io}"
+
+// ErrAccessDenied (golint)
+const ErrAccessDenied = "{access-denied}"
 
 // ErrorContains tests to see if an error contains an error keyword that we might expect
 func ErrorContains(err error, errKeyword string) bool {

@@ -17,6 +17,11 @@ import (
 	"github.com/blues/note-go/notecard"
 )
 
+// ICCID prefix-to-carrier mapping
+var simPrefixToCarrier = []string{
+	"898830", "twilio",
+}
+
 // ScannedDevice data structure
 type ScannedDevice struct {
 	DeviceUID   string            `json:"device,omitempty"`
@@ -31,12 +36,13 @@ type ScannedDevice struct {
 
 // ScannedSIM data structure
 type ScannedSIM struct {
+	Order string `json:"order,omitempty"`
 	ICCID string `json:"iccid,omitempty"`
 	Key   string `json:"key,omitempty"`
 }
 
 // Scan of a set of notecards, appending to JSON file.  Press ^C when done.
-func scan(debugEnabled bool, init bool, fnSetup string, fnSetupSKU string, factoryReset bool, outfile string) (err error) {
+func scan(debugEnabled bool, init bool, fnSetup string, fnSetupSKU string, carrierProvision string, factoryReset bool, outfile string) (err error) {
 
 	// Only allow one of the two
 	if fnSetup != "" && fnSetupSKU != "" {
@@ -108,17 +114,19 @@ func scan(debugEnabled bool, init bool, fnSetup string, fnSetupSKU string, facto
 		fmt.Printf("*** new file: %s\n", simfile)
 	} else {
 		jrecs := bytes.Split(contents, []byte("\n"))
-		for _, line := range jrecs {
+		for i, line := range jrecs {
+			if i == 0 { // header row
+				continue
+			}
 			if len(line) == 0 {
 				continue
 			}
 			var v ScannedSIM
 			cols := strings.Split(string(line), ",")
-			v.ICCID = cols[0]
-			if v.ICCID != "" {
-				if len(cols) > 0 {
-					v.Key = cols[1]
-				}
+			if len(cols) == 3 {
+				v.Order = cols[0]
+				v.ICCID = cols[1]
+				v.Key = cols[2]
 				scannedSIMs = append(scannedSIMs, v)
 			}
 		}
@@ -238,9 +246,36 @@ func scan(debugEnabled bool, init bool, fnSetup string, fnSetupSKU string, facto
 		}
 
 		sir.ICCID = ir.Factory.ICCID
-		sir.Key = ir.Factory.Key
+		sir.Key = ir.Factory.SIMActivationKey
 
 		card.DebugOutput(debugEnabled, false)
+
+		// Provision the device if requested
+		if carrierProvision != "" {
+			carrier := ""
+			for i := 0; i < len(simPrefixToCarrier)/2; i++ {
+				if strings.HasPrefix(sir.ICCID, simPrefixToCarrier[i*2]) {
+					carrier = simPrefixToCarrier[i*2+1]
+					break
+				}
+			}
+
+			// Perform per-carrier provisioning
+			switch carrier {
+
+			case "twilio":
+				err = twilioProvision(carrierProvision, sir.ICCID, sir.Key)
+				if err != nil {
+					return
+				}
+
+			default:
+				fmt.Printf("\nPROVISIONING CARRIER NOT FOUND for SIM %s\n", sir.ICCID)
+				return
+
+			}
+
+		}
 
 		// Delete this card from the array if it's there, and append it
 		found := false
@@ -295,8 +330,9 @@ func scan(debugEnabled bool, init bool, fnSetup string, fnSetupSKU string, facto
 			return
 		}
 		w = bufio.NewWriter(f)
+		f.WriteString("order_sid,iccid,registration_code\r\n")
 		for _, v := range scannedSIMs {
-			f.WriteString(fmt.Sprintf("%s,%s\r\n", v.ICCID, v.Key))
+			f.WriteString(fmt.Sprintf("%s,%s,%s\r\n", v.Order, v.ICCID, v.Key))
 		}
 		w.Flush()
 		f.Close()

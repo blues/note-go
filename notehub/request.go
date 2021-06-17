@@ -81,7 +81,7 @@ type HubRequest struct {
 	Handlers         *[]string          `json:"handlers,omitempty"`
 	FileType         string             `json:"type,omitempty"`
 	FileTags         string             `json:"tags,omitempty"`
-	FileNotes        string             `json:"notes,omitempty"`
+	FileNotes        string             `json:"filenotes,omitempty"`
 	Provision        bool               `json:"provision,omitempty"`
 	Scope            string             `json:"scope,omitempty"`
 	Env              *map[string]string `json:"env,omitempty"`
@@ -98,6 +98,9 @@ const HubFileTypeUserFirmware = "firmware"
 
 // HubFileTypeCardFirmware (golint)
 const HubFileTypeCardFirmware = "notecard"
+
+// HubFileTypeModemFirmware (golint)
+const HubFileTypeModemFirmware = "modem"
 
 // HubFileTypeNotefarm (golint)
 const HubFileTypeNotefarm = "notefarm"
