@@ -31,6 +31,9 @@ const EventNoAction = ""
 // EventSession (golint)
 const EventSession = "session.begin"
 
+// EventGeolocation (golint)
+const EventGeolocation = "device.geolocation"
+
 // Event is the request structure passed to the Notification proc
 type Event struct {
 	EventUID   string                  `json:"event,omitempty"`
@@ -76,7 +79,6 @@ type Event struct {
 	TriCountry    string  `json:"tri_country,omitempty"`
 	TriTimeZone   string  `json:"tri_timezone,omitempty"`
 	TriPoints     int32   `json:"tri_points,omitempty"`
-	TriLookup     bool    `json:"tri_lookup,omitempty"`
 	// Motion
 	Moved       int64  `json:"moved,omitempty"`
 	Orientation string `json:"orientation,omitempty"`
@@ -102,6 +104,8 @@ type Event struct {
 	// Event log
 	LogAttn bool                     `json:"logattn,omitempty"`
 	Log     map[string]EventLogEntry `json:"log,omitempty"`
+	// True if the event was not routed due to exceeding the project's event limit.
+	LogEventLimit bool `json:"log_event_limit,omitempty"`
 }
 
 // EventLogEntry is the log entry used by notification processing

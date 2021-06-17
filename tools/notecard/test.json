@@ -1,4 +1,1 @@
-# harmless setup script test
-{"req":"card.version"}
-{"req":"card.status"}
-{"req":"hub.get"}
+{"device":"dev:868050040009801","factory":{"device":"dev:868050040009801","status":"completed","tests":"pads,accelerometer,modem-power,stsafe,modem,gps","board":11,"modem":"EG91NAXGAR07A03M1G_01.001.01.001","iccid":"89883070000007135880","imsi":"310170830688936","imei":"868050040009801","when":1599064515,"sku":"NOTE-WBNA500","key":"84BFZQYRSX","station":"Blues-002","operator":"John Wiedey","check":2374762577,"org":"Blues Wireless","product":"Notecard","ver_major":1,"ver_minor":5,"ver_build":11238,"built":"Sep  2 2020 10:55:45"},"hub":"a.notefile.net","firmware":"notecard-1.5.4.12920","activated":1600662750,"bytes_used":1168319}

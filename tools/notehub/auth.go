@@ -21,8 +21,19 @@ import (
 // Sign into the notehub account
 func authSignIn() (err error) {
 
+	// Sign out
+	_, _, authenticated := noteutil.ConfigSignedIn()
+	if authenticated {
+		authSignOut()
+	}
+
 	// Print banner
 	fmt.Printf(banner())
+
+	// Print hub if not the default
+	if noteutil.Config.Hub != "" {
+		fmt.Printf("notehub %s\n", noteutil.Config.Hub)
+	}
 
 	// Read the account
 	var username string
@@ -71,8 +82,12 @@ func authSignIn() (err error) {
 		err = err2
 		return
 	}
-	if httpRsp.StatusCode == http.StatusUnauthorized {
+	if httpRsp.StatusCode == http.StatusUnauthorized || httpRsp.StatusCode == http.StatusBadRequest {
 		err = fmt.Errorf("unrecognized username or password")
+		return
+	}
+	if httpRsp.StatusCode != http.StatusOK {
+		err = fmt.Errorf("status %d", httpRsp.StatusCode)
 		return
 	}
 	rspJSON, err2 := ioutil.ReadAll(httpRsp.Body)
@@ -83,6 +98,7 @@ func authSignIn() (err error) {
 	rsp := map[string]interface{}{}
 	err = json.Unmarshal(rspJSON, &rsp)
 	if err != nil {
+		err = fmt.Errorf("%s: '%s'", err, string(rspJSON))
 		return
 	}
 	token := ""
@@ -95,9 +111,13 @@ func authSignIn() (err error) {
 	}
 
 	// Extract the token and save it
-	noteutil.ConfigRead()
-	noteutil.Config.Token = token
-	noteutil.Config.TokenUser = username
+	var creds noteutil.ConfigCreds
+	creds.Token = token
+	creds.User = username
+	if noteutil.Config.HubCreds == nil {
+		noteutil.Config.HubCreds = map[string]noteutil.ConfigCreds{}
+	}
+	noteutil.Config.HubCreds[noteutil.Config.Hub] = creds
 	err = noteutil.ConfigWrite()
 	if err != nil {
 		return
@@ -113,15 +133,16 @@ func authSignIn() (err error) {
 func authSignOut() (err error) {
 
 	// Exit if not signed in
-	if noteutil.Config.Token == "" || noteutil.Config.TokenUser == "" {
+	user, token, authenticated := noteutil.ConfigSignedIn()
+	if !authenticated {
 		err = fmt.Errorf("not currently signed in")
 		return
 	}
 
 	// Get the token, and clear it
-	token := noteutil.Config.Token
-	noteutil.ConfigRead()
-	noteutil.Config.Token = ""
+	if noteutil.Config.HubCreds != nil {
+		delete(noteutil.Config.HubCreds, noteutil.Config.Hub)
+	}
 	err = noteutil.ConfigWrite()
 	if err != nil {
 		return
@@ -143,8 +164,8 @@ func authSignOut() (err error) {
 		err = err2
 		return
 	}
-	if httpRsp.StatusCode == http.StatusUnauthorized {
-		err = fmt.Errorf("unrecognized username or password")
+	if httpRsp.StatusCode == http.StatusUnauthorized || httpRsp.StatusCode == http.StatusBadRequest {
+		err = fmt.Errorf("user is not signed in")
 		return
 	}
 	rspJSON, err2 := ioutil.ReadAll(httpRsp.Body)
@@ -155,21 +176,21 @@ func authSignOut() (err error) {
 
 	response := string(rspJSON)
 	if response == "" {
-		fmt.Printf("%s signed out successfully\n", noteutil.Config.TokenUser)
+		fmt.Printf("%s signed out successfully\n", user)
 	} else {
-		fmt.Printf("%s signed out successfully: %s\n", noteutil.Config.TokenUser, response)
+		fmt.Printf("%s signed out successfully: %s\n", user, response)
 	}
 	return
 }
 
 // Get the token for use in the API
 func authToken() (user string, token string, err error) {
-	if noteutil.Config.Token == "" || noteutil.Config.TokenUser == "" {
+	var authenticated bool
+	user, token, authenticated = noteutil.ConfigSignedIn()
+	if !authenticated {
 		err = fmt.Errorf("not currently signed in")
 		return
 	}
-	user = noteutil.Config.TokenUser
-	token = noteutil.Config.Token
 	return
 }
 

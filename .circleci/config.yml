@@ -5,7 +5,7 @@ version: 2
 jobs:
   build-unix-and-windows:
     docker:
-      - image: circleci/golang:1.13.7
+      - image: circleci/golang:1.14.4
     working_directory: /go/src/github.com/blues/note-go
     steps:
       - checkout
@@ -30,7 +30,7 @@ jobs:
       - run:
           name: install go
           command: |
-            curl https://dl.google.com/go/go1.13.7.darwin-amd64.tar.gz | 
+            curl https://dl.google.com/go/go1.14.4.darwin-amd64.tar.gz |
               tar -C "$HOME" -xz # install go to $HOME/go/
       - run:
           name: build and package

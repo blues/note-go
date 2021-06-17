@@ -69,7 +69,7 @@ func CreateNote(body []byte, payload []byte) (newNote Note, err error) {
 
 // SetBody sets the application-supplied Body field of a given Note given some JSON
 func (note *Note) SetBody(body []byte) (err error) {
-	if body == nil {
+	if body == nil || len(body) == 0 {
 		note.Body = nil
 	} else {
 		note.Body = map[string]interface{}{}
