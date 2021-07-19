@@ -199,6 +199,9 @@ const ReqCardSetup = "card.setup"
 // ReqCardWireless (golint)
 const ReqCardWireless = "card.wireless"
 
+// ReqCardWirelessPenalty (golint)
+const ReqCardWirelessPenalty = "card.wireless.penalty"
+
 // ReqCardWiFi (golint)
 const ReqCardWiFi = "card.wifi"
 
@@ -392,6 +395,8 @@ type Request struct {
 	Key              string                        `json:"key,omitempty"`
 	Method           string                        `json:"method,omitempty"`
 	Content          string                        `json:"content,omitempty"`
+	Min              int32                         `json:"min,omitempty"`
+	Add              int32                         `json:"add,omitempty"`
 }
 
 // PinState describes the state of an AUX pin for hardware-related Notecard requests
