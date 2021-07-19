@@ -282,22 +282,21 @@ func main() {
 
 	if err == nil && actionInfo {
 
+		var infoErr error = nil
 		card.DebugOutput(false, false)
 
-		cardVersion := ""
 		cardDeviceUID := ""
 		cardName := ""
+		cardSKU := ""
+		cardVersion := ""
 		rsp, err = card.TransactionRequest(notecard.Request{Req: "card.version"})
 		if err == nil {
-			cardName = rsp.Name
 			cardDeviceUID = rsp.DeviceUID
+			cardName = rsp.Name
+			cardSKU = rsp.SKU
 			cardVersion = rsp.Version
 		}
-
-		cardDefaultSN := ""
-		if cardDeviceUID != "" {
-			cardDefaultSN = note.WordsFromString(cardDeviceUID)
-		}
+		infoErr = accumulateInfoErr(infoErr, err)
 
 		cardICCID := ""
 		cardIMSI := ""
@@ -314,179 +313,196 @@ func main() {
 			cardIMSIX = rsp.Net.ImsiExternal
 			cardICCIDX = rsp.Net.IccidExternal
 		}
+		infoErr = accumulateInfoErr(infoErr, err)
 
 		cardSN := ""
 		cardHost := ""
 		cardProductUID := ""
-		cardSyncMode := "periodic"
-		cardUploadMins := 60
-		cardDownloadHrs := 0
+		cardSyncMode := ""
+		OutboundPeriod := "-"
+		InboundPeriod := "-"
+		rsp, err = card.TransactionRequest(notecard.Request{Req: "hub.get"})
 		if err == nil {
-			rsp, err = card.TransactionRequest(notecard.Request{Req: "hub.get"})
-			if err == nil {
-				cardSN = rsp.SN
-				cardHost = rsp.Host
-				cardProductUID = rsp.ProductUID
-				cardSyncMode = rsp.Mode
-				cardUploadMins = int(rsp.Minutes)
-				cardDownloadHrs = int(rsp.Hours)
+			cardSN = rsp.SN
+			cardHost = rsp.Host
+			cardProductUID = rsp.ProductUID
+			cardSyncMode = rsp.Mode
+			if rsp.Minutes != 0 {
+				OutboundPeriod = fmt.Sprintf("%d minutes", rsp.Minutes)
+			}
+			if rsp.Outbound != 0 {
+				OutboundPeriod = fmt.Sprintf("%d minutes", rsp.Outbound)
+			}
+			if rsp.OutboundV != "" {
+				OutboundPeriod = rsp.OutboundV
+			}
+			if rsp.Hours != 0 {
+				InboundPeriod = fmt.Sprintf("%d hours", rsp.Hours)
+			}
+			if rsp.Inbound != 0 {
+				InboundPeriod = fmt.Sprintf("%d minutes", rsp.Inbound)
+			}
+			if rsp.InboundV != "" {
+				InboundPeriod = rsp.InboundV
+			}
+			if cardProductUID == "" {
+				cardProductUID = "*** Product UID is not set. Please use notehub.io to create a project and a product UID ***"
 			}
 		}
-
-		if cardProductUID == "" {
-			cardProductUID = "*** Product UID is not set. Please use notehub.io to create a project and a product UID ***"
-		}
+		infoErr = accumulateInfoErr(infoErr, err)
 
 		cardVoltage := 0.0
+		rsp, err = card.TransactionRequest(notecard.Request{Req: "card.voltage"})
 		if err == nil {
-			rsp, err = card.TransactionRequest(notecard.Request{Req: "card.voltage"})
-			if err == nil {
-				cardVoltage = rsp.Value
-			}
+			cardVoltage = rsp.Value
 		}
+		infoErr = accumulateInfoErr(infoErr, err)
 
 		cardTemp := 0.0
+		rsp, err = card.TransactionRequest(notecard.Request{Req: "card.temp"})
 		if err == nil {
-			rsp, err = card.TransactionRequest(notecard.Request{Req: "card.temp"})
-			if err == nil {
-				cardTemp = rsp.Value
-			}
+			cardTemp = rsp.Value
 		}
+		infoErr = accumulateInfoErr(infoErr, err)
 
 		cardGPSMode := ""
+		rsp, err = card.TransactionRequest(notecard.Request{Req: "card.location.mode"})
 		if err == nil {
-			rsp, err = card.TransactionRequest(notecard.Request{Req: "card.location.mode"})
-			if err == nil {
-				if rsp.Status == "" {
-					cardGPSMode = rsp.Mode
-				} else {
-					cardGPSMode = rsp.Mode + " (" + rsp.Status + ")"
-				}
+			if rsp.Status == "" {
+				cardGPSMode = rsp.Mode
+			} else {
+				cardGPSMode = rsp.Mode + " (" + rsp.Status + ")"
 			}
 		}
+		infoErr = accumulateInfoErr(infoErr, err)
 
 		cardTime := ""
-		if err == nil {
-			rsp, err = card.TransactionRequest(notecard.Request{Req: "card.time"})
-			if err == nil {
-				cardTime = time.Unix(int64(rsp.Time), 0).Format("2006-01-02T15:04:05Z") + " (" +
-					time.Unix(int64(rsp.Time), 0).Local().Format("2006-01-02 3:04:05 PM MST") + ")"
-			}
+		rsp, err = card.TransactionRequest(notecard.Request{Req: "card.time"})
+		if err == nil && rsp.Time > 0 {
+			cardTime = time.Unix(int64(rsp.Time), 0).Format("2006-01-02T15:04:05Z") + " (" +
+				time.Unix(int64(rsp.Time), 0).Local().Format("2006-01-02 3:04:05 PM MST") + ")"
 		}
+		infoErr = accumulateInfoErr(infoErr, err)
 
 		cardLocation := ""
+		rsp, err = card.TransactionRequest(notecard.Request{Req: "card.location"})
 		if err == nil {
-			rsp, err = card.TransactionRequest(notecard.Request{Req: "card.location"})
-			if err == nil {
-				if rsp.Latitude != 0 || rsp.Longitude != 0 {
-					cardLocation = fmt.Sprintf("%f,%f (%s)", rsp.Latitude, rsp.Longitude, rsp.LocationOLC)
-				}
+			if rsp.Latitude != 0 || rsp.Longitude != 0 {
+				cardLocation = fmt.Sprintf("%f,%f (%s)", rsp.Latitude, rsp.Longitude, rsp.LocationOLC)
 			}
 		}
+		infoErr = accumulateInfoErr(infoErr, err)
 
 		cardBootedTime := ""
 		cardStorageUsedPct := 0
+		rsp, err = card.TransactionRequest(notecard.Request{Req: "card.status"})
 		if err == nil {
-			rsp, err = card.TransactionRequest(notecard.Request{Req: "card.status"})
-			if err == nil {
+			if rsp.Time > 0 {
 				cardBootedTime = time.Unix(int64(rsp.Time), 0).Format("2006-01-02T15:04:05Z") + " (" +
 					time.Unix(int64(rsp.Time), 0).Local().Format("2006-01-02 3:04:05 PM MST") + ")"
-				cardStorageUsedPct = int(rsp.Storage)
 			}
+			cardStorageUsedPct = int(rsp.Storage)
 		}
+		infoErr = accumulateInfoErr(infoErr, err)
 
 		cardSyncedTime := ""
-		if err == nil {
-			rsp, err = card.TransactionRequest(notecard.Request{Req: "hub.sync.status"})
-			if err == nil {
-				cardSyncedTime = time.Unix(int64(rsp.Time), 0).Format("2006-01-02T15:04:05Z") + " (" +
-					time.Unix(int64(rsp.Time), 0).Local().Format("2006-01-02 3:04:05 PM MST") + ")"
-			}
+		rsp, err = card.TransactionRequest(notecard.Request{Req: "hub.sync.status"})
+		if err == nil && rsp.Time > 0 {
+			cardSyncedTime = time.Unix(int64(rsp.Time), 0).Format("2006-01-02T15:04:05Z") + " (" +
+				time.Unix(int64(rsp.Time), 0).Local().Format("2006-01-02 3:04:05 PM MST") + ")"
 		}
+		infoErr = accumulateInfoErr(infoErr, err)
 
 		cardServiceStatus := ""
+		rsp, err = card.TransactionRequest(notecard.Request{Req: "hub.status"})
 		if err == nil {
-			rsp, err = card.TransactionRequest(notecard.Request{Req: "hub.status"})
-			if err == nil {
-				cardServiceStatus = rsp.Status
-				if rsp.Connected {
-					cardServiceStatus += " (connected)"
-				}
+			cardServiceStatus = rsp.Status
+			if rsp.Connected {
+				cardServiceStatus += " (connected)"
 			}
 		}
+		infoErr = accumulateInfoErr(infoErr, err)
 
 		cardProvisionedTime := ""
-		cardUsedBytes := 0
+		cardUsedBytes := ""
+		rsp, err = card.TransactionRequest(notecard.Request{Req: "card.usage.get"})
 		if err == nil {
-			rsp, err = card.TransactionRequest(notecard.Request{Req: "card.usage.get"})
-			if err == nil {
+			if rsp.Time > 0 {
 				cardProvisionedTime = time.Unix(int64(rsp.Time), 0).Format("2006-01-02T15:04:05Z") + " (" +
 					time.Unix(int64(rsp.Time), 0).Local().Format("2006-01-02 3:04:05 PM MST") + ")"
-				cardUsedBytes = int(rsp.BytesSent + rsp.BytesReceived)
 			}
+			cardUsedBytes = fmt.Sprint(int(rsp.BytesSent + rsp.BytesReceived))
+		} else if strings.Contains(err.Error(), "{not-supported}") {
+			err = nil
 		}
+		infoErr = accumulateInfoErr(infoErr, err)
 
 		cardEnv := ""
+		rsp, err = card.TransactionRequest(notecard.Request{Req: "env.get"})
 		if err == nil {
-			rsp, err = card.TransactionRequest(notecard.Request{Req: "env.get"})
-			if err == nil {
-				cardEnv = rsp.Text
-				cardEnv = strings.TrimSuffix(cardEnv, "\n")
-				cardEnv = strings.Replace(cardEnv, "\n", ", ", -1)
-			}
+			cardEnvBytes, _ := note.JSONMarshalIndent(rsp.Body, "                          ", "  ")
+			cardEnv = string(cardEnvBytes)
+			cardEnv = strings.TrimSuffix(cardEnv, "\n")
 		}
+		infoErr = accumulateInfoErr(infoErr, err)
 
 		cardNotefiles := ""
+		rsp, err = card.TransactionRequest(notecard.Request{Req: "file.changes"})
 		if err == nil {
-			rsp, err = card.TransactionRequest(notecard.Request{Req: "file.changes"})
-			if err == nil {
-				if rsp.FileInfo != nil {
-					for notefileID, info := range *rsp.FileInfo {
-						if cardNotefiles != "" {
-							cardNotefiles += ", "
-						}
-						if info.Changes > 0 {
-							cardNotefiles += fmt.Sprintf("%s (%d)", notefileID, info.Changes)
-						} else {
-							cardNotefiles += notefileID
-						}
+			if rsp.FileInfo != nil {
+				for notefileID, info := range *rsp.FileInfo {
+					if cardNotefiles != "" {
+						cardNotefiles += ", "
+					}
+					if info.Changes > 0 {
+						cardNotefiles += fmt.Sprintf("%s (%d)", notefileID, info.Changes)
+					} else {
+						cardNotefiles += notefileID
 					}
 				}
 			}
 		}
+		infoErr = accumulateInfoErr(infoErr, err)
 
 		fmt.Printf("\n%s\n", cardName)
 		fmt.Printf("              ProductUID: %s\n", cardProductUID)
 		fmt.Printf("               DeviceUID: %s\n", cardDeviceUID)
 		fmt.Printf("           Serial Number: %s\n", cardSN)
-		fmt.Printf("     _default_sn [words]: %s\n", cardDefaultSN)
 		fmt.Printf("            Notehub Host: %s\n", cardHost)
-		fmt.Printf("                 Version: %s\n", cardVersion)
-		fmt.Printf("                   Modem: %s\n", cardModem)
-		fmt.Printf("                   ICCID: %s\n", cardICCID)
-		fmt.Printf("                    IMSI: %s\n", cardIMSI)
-		fmt.Printf("                    IMEI: %s\n", cardIMEI)
+		fmt.Printf("        Firmware Version: %s\n", cardVersion)
+		fmt.Printf("                     SKU: %s\n", cardSKU)
+		if cardModem != "" {
+			fmt.Printf("                   Modem: %s\n", cardModem)
+			fmt.Printf("                   ICCID: %s\n", cardICCID)
+			fmt.Printf("                    IMSI: %s\n", cardIMSI)
+			fmt.Printf("                    IMEI: %s\n", cardIMEI)
+		}
 		if cardICCIDX != "" {
 			fmt.Printf("          External ICCID: %s\n", cardICCIDX)
 			fmt.Printf("           External IMSI: %s\n", cardIMSIX)
 		}
-		fmt.Printf("             Provisioned: %s\n", cardProvisionedTime)
-		fmt.Printf("       Used Over-the-Air: %d bytes\n", cardUsedBytes)
+		if cardProvisionedTime != "" {
+			fmt.Printf("             Provisioned: %s\n", cardProvisionedTime)
+		}
+		if cardUsedBytes != "" {
+			fmt.Printf("       Used Over-the-Air: %s bytes\n", cardUsedBytes)
+		}
 		fmt.Printf("               Sync Mode: %s\n", cardSyncMode)
-		fmt.Printf("      Sync Upload Period: %d mins\n", cardUploadMins)
-		fmt.Printf("         Download Period: %d hours\n", cardDownloadHrs)
+		fmt.Printf("    Sync Outbound Period: %s\n", OutboundPeriod)
+		fmt.Printf("          Inbound Period: %s\n", InboundPeriod)
 		fmt.Printf("          Notehub Status: %s\n", cardServiceStatus)
 		fmt.Printf("             Last Synced: %s\n", cardSyncedTime)
 		fmt.Printf("                 Voltage: %0.02fV\n", cardVoltage)
 		fmt.Printf("             Temperature: %0.02fC\n", cardTemp)
 		fmt.Printf("                GPS Mode: %s\n", cardGPSMode)
 		fmt.Printf("                Location: %s\n", cardLocation)
-		fmt.Printf("               Currently: %s\n", cardTime)
-		fmt.Printf("                  Booted: %s\n", cardBootedTime)
+		fmt.Printf("            Current Time: %s\n", cardTime)
+		fmt.Printf("               Boot Time: %s\n", cardBootedTime)
 		fmt.Printf("               Notefiles: %s\n", cardNotefiles)
 		fmt.Printf("   Notefile Storage Used: %d%%\n", cardStorageUsedPct)
-		fmt.Printf("                     Env: %s\n", cardEnv)
+		fmt.Printf("                     Env: %v\n", cardEnv)
 
+		err = infoErr
 	}
 
 	if err == nil && actionProduct != "" {
@@ -597,6 +613,16 @@ func main() {
 	// Success
 	os.Exit(exitOk)
 
+}
+
+func accumulateInfoErr(infoErr error, newErr error) error {
+	if newErr == nil {
+		return infoErr
+	}
+	if infoErr == nil {
+		return newErr
+	}
+	return fmt.Errorf("%s\n%s", infoErr, newErr)
 }
 
 // Our app's signal handler
