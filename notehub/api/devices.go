@@ -21,8 +21,8 @@ type DeviceResponse struct {
 
 	Contact *ContactResponse `json:"contact"`
 
-	ProductUID string `json:"product_uid"`
-	FleetUID   string `json:"fleet_uid"`
+	ProductUID string   `json:"product_uid"`
+	FleetUIDs  []string `json:"fleet_uids"`
 
 	TowerInfo            *TowerInformation `json:"tower_info"`
 	TowerLocation        *Location         `json:"tower_location"`
@@ -31,6 +31,29 @@ type DeviceResponse struct {
 
 	Voltage     float64 `json:"voltage"`
 	Temperature float64 `json:"temperature"`
+}
+
+// GetDevicePublicKeyResponse v1
+//
+// The response object for retrieving a collection of devices' public keys
+type GetDevicesPublicKeysResponse struct {
+	DevicePublicKeys []DevicePublicKey `json:"device_public_keys"`
+	HasMore          bool              `json:"has_more"`
+}
+
+// DevicePublicKey v1
+//
+// A structure representing the public key for a specific device
+type DevicePublicKey struct {
+	UID       string `json:"uid"`
+	PublicKey string `json:"key"`
+}
+
+// ProvisionDeviceRequest v1
+//
+// The request object for provisioning a device
+type ProvisionDeviceRequest struct {
+	ProductUID string `json:"product_uid"`
 }
 
 // GetDeviceLatestResponse v1

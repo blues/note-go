@@ -58,6 +58,12 @@ const ReqNoteUpdate = "note.update"
 // ReqNoteDelete (golint)
 const ReqNoteDelete = "note.delete"
 
+// ReqNoteEncrypt (golint)
+const ReqNoteEncrypt = "note.encrypt"
+
+// ReqNoteDecrypt (golint)
+const ReqNoteDecrypt = "note.decrypt"
+
 // ReqCardTime (golint)
 const ReqCardTime = "card.time"
 
@@ -337,8 +343,6 @@ type Request struct {
 	DataRate         float64                       `json:"rate,omitempty"`
 	NumBytes         int32                         `json:"bytes,omitempty"`
 	Template         bool                          `json:"template,omitempty"`
-	BodyTemplate     string                        `json:"body_template,omitempty"`
-	PayloadTemplate  int32                         `json:"payload_template,omitempty"`
 	Allow            bool                          `json:"allow,omitempty"`
 	Align            bool                          `json:"align,omitempty"`
 	Limit            bool                          `json:"limit,omitempty"`
@@ -397,6 +401,8 @@ type Request struct {
 	Content          string                        `json:"content,omitempty"`
 	Min              int32                         `json:"min,omitempty"`
 	Add              int32                         `json:"add,omitempty"`
+	Encrypt          bool                          `json:"encrypt,omitempty"`
+	Decrypt          bool                          `json:"decrypt,omitempty"`
 }
 
 // PinState describes the state of an AUX pin for hardware-related Notecard requests

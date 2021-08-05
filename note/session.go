@@ -9,10 +9,11 @@ type DeviceSession struct {
 	// Session ID that can be mapped to the events created during that session
 	SessionUID string `json:"session,omitempty"`
 	// Info from the device structure
-	DeviceUID  string `json:"device,omitempty"`
-	DeviceSN   string `json:"sn,omitempty"`
-	ProductUID string `json:"product,omitempty"`
-	FleetUID   string `json:"fleet,omitempty"`
+	DeviceUID          string   `json:"device,omitempty"`
+	DeviceSN           string   `json:"sn,omitempty"`
+	ProductUID         string   `json:"product,omitempty"`
+	FleetUIDDEPRECATED string   `json:"fleet,omitempty"`
+	FleetUIDs          []string `json:"fleets,omitempty"`
 	// IP address of the session
 	Addr string `json:"addr,omitempty"`
 	// Cell ID where the session originated and quality ("mcc,mnc,lac,cellid")
