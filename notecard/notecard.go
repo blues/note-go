@@ -84,6 +84,9 @@ type Context struct {
 	// Pretty-print trace output JSON
 	Pretty bool
 
+	// Disable generation of User Agent object
+	DisableUA bool
+
 	// Reset should be done on next transaction
 	resetRequired  bool
 	reopenRequired bool
@@ -97,6 +100,7 @@ type Context struct {
 	TransactionFn  func(context *Context, portConfig int, noResponse bool, reqJSON []byte) (rspJSON []byte, err error)
 
 	// Port data
+	iface      string
 	port       string
 	portConfig int
 
@@ -191,7 +195,7 @@ func Open(moduleInterface string, port string, portConfig int) (context *Context
 		err = fmt.Errorf("error opening port: %s %s", err, note.ErrCardIo)
 		return
 	}
-
+	context.iface = moduleInterface
 	return
 
 }
@@ -405,13 +409,13 @@ func OpenI2C(port string, portConfig int) (context *Context, err error) {
 	// Create the context structure
 	context = &Context{}
 	context.Debug = InitialDebugMode
-	context.port = port
-	context.portConfig = portConfig
 
 	// Use default if not specified
 	if port == "" {
 		port, portConfig = i2cDefault()
 	}
+	context.port = port
+	context.portConfig = portConfig
 
 	// Set up class functions
 	context.PortEnumFn = i2cPortEnum
@@ -678,6 +682,15 @@ func (context *Context) transactionJSON(reqJSON []byte, multiport bool, portConf
 		err = note.JSONUnmarshal(reqJSON, &req)
 		if err != nil {
 			return
+		}
+
+		// If this is a hub.set, generate a user agent object if one hasn't already been supplied
+		if !context.DisableUA && (req.Req == ReqHubSet || req.Cmd == ReqHubSet) && req.Body == nil {
+			ua := context.UserAgent()
+			if ua != nil {
+				req.Body = &ua
+				reqJSON, _ = note.JSONMarshal(req)
+			}
 		}
 
 		// Determine whether or not a response will be expected from the notecard by

@@ -394,11 +394,13 @@ func loadRequests(filename string) (requests []map[string]interface{}, err error
 	}
 	jrecs := bytes.Split(contents, []byte("\n"))
 	for _, line := range jrecs {
+		line = bytes.TrimSpace(line)
 		if len(line) == 0 {
 			continue
 		}
 		// Allow comments in either C or Python style
-		if strings.HasPrefix(string(line), "/") || strings.HasPrefix(string(line), "#") {
+		s := string(line)
+		if strings.HasPrefix(s, "/") || strings.HasPrefix(s, "#") {
 			continue
 		}
 		var req map[string]interface{}

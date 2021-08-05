@@ -11,10 +11,10 @@ type GetProductsResponse struct {
 //
 // The response object for a product.
 type ProductResponse struct {
-	UID                     string  `json:"uid"`
-	Label                   string  `json:"label"`
-	AutoProvisionFleet      *string `json:"auto_provision_fleet"`
-	DisableDevicesByDefault bool    `json:"disable_devices_by_default"`
+	UID                     string    `json:"uid"`
+	Label                   string    `json:"label"`
+	AutoProvisionFleets     *[]string `json:"auto_provision_fleets"`
+	DisableDevicesByDefault bool      `json:"disable_devices_by_default"`
 }
 
 // PostProductRequest v1
@@ -24,7 +24,7 @@ type PostProductRequest struct {
 	ProductUID string `json:"product_uid"`
 	Label      string `json:"label"`
 	// Not required
-	AutoProvisionFleet string `json:"auto_provision_fleet"`
+	AutoProvisionFleets []string `json:"auto_provision_fleets"`
 	// Not required
 	DisableDevicesByDefault bool `json:"disable_devices_by_default"`
 }
@@ -35,8 +35,8 @@ type PostProductRequest struct {
 type PostProductResponse struct {
 	// Note that the product_uid returned here _will_ be different than the
 	// product_uid in the request. It will be prefixed with the user's reversed email.
-	ProductUID              string  `json:"product_uid"`
-	Label                   string  `json:"label"`
-	AutoProvisionFleet      *string `json:"auto_provision_fleet"`
-	DisableDevicesByDefault bool    `json:"disable_devices_by_default"`
+	ProductUID              string    `json:"product_uid"`
+	Label                   string    `json:"label"`
+	AutoProvisionFleets     *[]string `json:"auto_provision_fleets"`
+	DisableDevicesByDefault bool      `json:"disable_devices_by_default"`
 }
