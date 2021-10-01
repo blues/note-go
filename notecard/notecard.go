@@ -260,9 +260,11 @@ func cardResetSerial(context *Context, portConfig int) (err error) {
 			if false {
 				fmt.Printf("chr: 0x%02x '%c'\n", buf[i], buf[i])
 			}
-			somethingFound = true
-			if buf[i] != '\r' && buf[i] != '\n' {
-				nonCRLFFound = true
+			if buf[i] != '\r' {
+				somethingFound = true
+				if buf[i] != '\n' {
+					nonCRLFFound = true
+				}
 			}
 		}
 		if somethingFound && !nonCRLFFound {

@@ -33,7 +33,7 @@ type DeviceResponse struct {
 	Temperature float64 `json:"temperature"`
 }
 
-// GetDevicePublicKeyResponse v1
+// GetDevicesPublicKeysResponse v1
 //
 // The response object for retrieving a collection of devices' public keys
 type GetDevicesPublicKeysResponse struct {

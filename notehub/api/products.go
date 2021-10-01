@@ -28,15 +28,3 @@ type PostProductRequest struct {
 	// Not required
 	DisableDevicesByDefault bool `json:"disable_devices_by_default"`
 }
-
-// PostProductResponse v1
-//
-// The response object for adding a product.
-type PostProductResponse struct {
-	// Note that the product_uid returned here _will_ be different than the
-	// product_uid in the request. It will be prefixed with the user's reversed email.
-	ProductUID              string    `json:"product_uid"`
-	Label                   string    `json:"label"`
-	AutoProvisionFleets     *[]string `json:"auto_provision_fleets"`
-	DisableDevicesByDefault bool      `json:"disable_devices_by_default"`
-}

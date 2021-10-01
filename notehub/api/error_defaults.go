@@ -33,6 +33,15 @@ func ErrForbidden() ErrorResponse {
 	}
 }
 
+// ErrMethodNotAllowed returns the default for an HTTP 405 Method Not Allowed
+func ErrMethodNotAllowed() ErrorResponse {
+	return ErrorResponse{
+		Status: http.StatusText(http.StatusMethodNotAllowed),
+		Error:  "Method not allowed on this endpoint",
+		Code:   http.StatusMethodNotAllowed,
+	}
+}
+
 // ErrInternalServerError returns the default for an HTTP 500 InternalServerError
 func ErrInternalServerError() ErrorResponse {
 	return ErrorResponse{
