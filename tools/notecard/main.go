@@ -282,7 +282,7 @@ func main() {
 
 	if err == nil && actionInfo {
 
-		var infoErr error = nil
+		var infoErr error
 		card.DebugOutput(false, false)
 
 		cardDeviceUID := ""
