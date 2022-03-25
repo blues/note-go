@@ -15,6 +15,9 @@ type GetAppResponse struct {
 
 	AdministrativeContact *ContactResponse `json:"administrative_contact"`
 	TechnicalContact      *ContactResponse `json:"technical_contact"`
+
+	// "owner", "developer", or "viewer"
+	Role *string `json:"role"`
 }
 
 // ContactResponse v1
@@ -25,4 +28,13 @@ type ContactResponse struct {
 	Email        string `json:"email"`
 	Role         string `json:"role"`
 	Organization string `json:"organization"`
+}
+
+// GenerateClientAppResponse v1
+//
+// The response object for generating a new client app for
+// a specific app
+type GenerateClientAppResponse struct {
+	ClientID     string `json:"client_id"`
+	ClientSecret string `json:"client_secret"`
 }

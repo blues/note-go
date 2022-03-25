@@ -103,6 +103,9 @@ const ReqCardTriangulate = "card.triangulate"
 // ReqCardTemp (golint)
 const ReqCardTemp = "card.temp"
 
+// ReqCardIllumination (golint)
+const ReqCardIllumination = "card.illumination"
+
 // ReqCardVoltage (golint)
 const ReqCardVoltage = "card.voltage"
 
@@ -186,6 +189,12 @@ const ReqDFUStatus = "dfu.status"
 
 // ReqDFUGet (golint)
 const ReqDFUGet = "dfu.get"
+
+// ReqDFUPut (golint)
+const ReqDFUPut = "dfu.put"
+
+// ReqDFUDirect (golint)
+const ReqDFUDirect = "dfu.direct"
 
 // ReqEnvVersion (golint)
 const ReqEnvVersion = "env.version"
@@ -329,6 +338,7 @@ type Request struct {
 	SN               string                        `json:"sn,omitempty"`
 	APN              string                        `json:"apn,omitempty"`
 	Text             string                        `json:"text,omitempty"`
+	Base             int32                         `json:"base,omitempty"`
 	Offset           int32                         `json:"offset,omitempty"`
 	Length           int32                         `json:"length,omitempty"`
 	Total            int32                         `json:"total,omitempty"`

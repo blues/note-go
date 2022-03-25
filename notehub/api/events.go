@@ -9,6 +9,15 @@ type GetEventsResponse struct {
 	HasMore bool            `json:"has_more"`
 }
 
+// GetEventsByCursorResponse v1
+//
+// The response object for getting events by cursor.
+type GetEventsByCursorResponse struct {
+	Events     []EventResponse `json:"events"`
+	NextCursor string          `json:"next_cursor"`
+	HasMore    bool            `json:"has_more"`
+}
+
 // EventResponse v1
 //
 // The response object for a event.

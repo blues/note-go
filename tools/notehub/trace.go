@@ -179,10 +179,10 @@ traceloop:
 					return err
 				}
 			}
-		case "":
-			break
 		case "q":
 			break traceloop
+		case "":
+			// ignore
 		default:
 			fmt.Printf("%s ???\n", args[0])
 		}

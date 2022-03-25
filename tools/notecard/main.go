@@ -34,7 +34,7 @@ func main() {
 
 	// Process actions
 	var actionRequest string
-	flag.StringVar(&actionRequest, "req", "", "perform the specified request")
+	flag.StringVar(&actionRequest, "req", "", "perform the specified request (in quotes)")
 	var actionWhenConnected bool
 	flag.BoolVar(&actionWhenConnected, "when-connected", false, "wait until connected")
 	var actionWhenDisconnected bool
@@ -56,7 +56,7 @@ func main() {
 	var actionInput string
 	flag.StringVar(&actionInput, "input", "", "add the contents of this file as a payload to the request")
 	var actionOutput string
-	flag.StringVar(&actionOutput, "output", "", "if the response has a payload, place it in this file")
+	flag.StringVar(&actionOutput, "output", "", "output file")
 	var actionLog string
 	flag.StringVar(&actionLog, "log", "", "add a text string to the _log.qo notefile")
 	var actionTrace bool
@@ -87,6 +87,10 @@ func main() {
 	flag.StringVar(&actionScan, "scan", "", "scan a batch of notecards to collect info or to set them up")
 	var actionProvision string
 	flag.StringVar(&actionProvision, "provision", "", "provision into carrier account using AccountSID:AuthTOKEN")
+	var actionDFUPackage string
+	flag.StringVar(&actionDFUPackage, "binpack", "", "package multiple .bin's for DFU into a single .bins package")
+	var actionDFULoad string
+	flag.StringVar(&actionDFULoad, "sideload", "", "side-load a .bin or .bins into the notecard's storage")
 
 	// Parse these flags and also the note tool config flags
 	err := noteutil.FlagParse(true, false)
@@ -126,13 +130,20 @@ func main() {
 		return
 	}
 
-	// Process the main part of the command line as a -req
-	argsLeft := len(flag.Args())
-	if argsLeft == 1 {
-		actionRequest = flag.Args()[0]
-	} else if argsLeft != 0 {
-		remainingArgs := strings.Join(flag.Args()[1:], " ")
-		fmt.Printf("These switches must be placed on the command line prior to the request: %s\n", remainingArgs)
+	// Process the main part of the command line as a -req if neither Req nor DFU are specified
+	if actionDFUPackage == "" && actionRequest == "" {
+		argsLeft := len(flag.Args())
+		if argsLeft == 1 {
+			actionRequest = flag.Args()[0]
+		} else if argsLeft > 0 {
+			fmt.Printf("to send a JSON request to the notecard, please place it in quotes")
+			os.Exit(exitFail)
+		}
+	}
+
+	// Both actionDFUPackage and actionRequest potentially use the 'remaining args' outside the flags
+	if actionDFUPackage != "" && actionRequest != "" {
+		fmt.Printf("-req and -binpack may not be combined into one command")
 		os.Exit(exitFail)
 	}
 
@@ -518,6 +529,15 @@ func main() {
 		noteutil.ConfigSetHub(actionHub)
 	}
 
+	if err == nil && actionDFULoad != "" {
+		err = dfuLoad(actionDFULoad, actionVerbose)
+	}
+
+	if err == nil && actionDFUPackage != "" {
+		err = dfuPackage(actionOutput, actionDFUPackage, flag.Args())
+		actionRequest = ""
+	}
+
 	if err == nil && actionRequest != "" {
 		var req notecard.Request
 		err = note.JSONUnmarshal([]byte(actionRequest), &req)
@@ -578,9 +598,9 @@ func main() {
 				break
 			}
 			transactions++
-			if time.Now().Sub(lastMessage).Seconds() > 2 {
+			if time.Since(lastMessage).Seconds() > 2 {
 				lastMessage = time.Now()
-				fmt.Printf("%d successful transactions (%0.2f/sec)\n", transactions, float64(transactions)/time.Now().Sub(began).Seconds())
+				fmt.Printf("%d successful transactions (%0.2f/sec)\n", transactions, float64(transactions)/time.Since(began).Seconds())
 			}
 		}
 	}
@@ -627,17 +647,14 @@ func accumulateInfoErr(infoErr error, newErr error) error {
 
 // Our app's signal handler
 func signalHandler() {
-	ch := make(chan os.Signal)
+	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGTERM)
 	signal.Notify(ch, syscall.SIGINT)
-	signal.Notify(ch, syscall.SIGSEGV)
+	// jsalem 3/15/22: Commented this out --> signal.Notify(ch, syscall.SIGSEGV)
 	for {
 		switch <-ch {
-		case syscall.SIGINT:
-			fmt.Printf(" (interrupted)\n")
+		case syscall.SIGINT, syscall.SIGTERM:
 			os.Exit(exitFail)
-		case syscall.SIGTERM:
-			break
 		}
 	}
 }

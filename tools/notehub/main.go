@@ -18,9 +18,6 @@ import (
 const exitOk = 0
 const exitFail = 1
 
-// Verbose or quiet output
-var verbose bool
-
 // Used by req.go
 var flagApp string
 var flagProduct string
@@ -174,21 +171,5 @@ func main() {
 		os.Exit(exitFail)
 	}
 	os.Exit(exitOk)
-
-}
-
-// Is this a reset command?
-func stringOrReset(str string) string {
-
-	switch str {
-	case "none":
-		fallthrough
-	case "(none)":
-		fallthrough
-	case "reset":
-		return ""
-	}
-
-	return str
 
 }

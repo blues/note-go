@@ -362,11 +362,11 @@ func inputHandler() {
 
 		case "":
 
-		default:
-			fmt.Printf("Unrecognized: '%s'\n", text)
-
 		case "q":
 			os.Exit(0)
+
+		default:
+			fmt.Printf("Unrecognized: '%s'\n", text)
 
 		}
 
@@ -483,6 +483,9 @@ func processRequests(init bool, requests []map[string]interface{}) (err error) {
 			}
 			var reqJSON []byte
 			reqJSON, err = note.JSONMarshal(req)
+			if err != nil {
+				break
+			}
 			_, err = card.TransactionJSON(reqJSON)
 			if err != nil {
 				break

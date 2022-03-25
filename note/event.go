@@ -35,6 +35,11 @@ const EventSession = "session.begin"
 const EventGeolocation = "device.geolocation"
 
 // Event is the request structure passed to the Notification proc
+//
+// NOTE: This structure's underlying storage has been decoupled from the use of
+// the structure in business logic.  As such, please share any changes to these
+// structures with cloud services to ensure that storage and testing frameworks
+// are kept in sync with these structures used for business logic
 type Event struct {
 	EventUID   string                  `json:"event,omitempty"`
 	SessionUID string                  `json:"session,omitempty"`
@@ -116,6 +121,11 @@ type Event struct {
 }
 
 // EventLogEntry is the log entry used by notification processing
+//
+// NOTE: This structure's underlying storage has been decoupled from the use of
+// the structure in business logic.  As such, please share any changes to these
+// structures with cloud services to ensure that storage and testing frameworks
+// are kept in sync with these structures used for business logic
 type EventLogEntry struct {
 	Attn   bool   `json:"attn,omitempty"`
 	Status string `json:"status,omitempty"`
@@ -124,6 +134,11 @@ type EventLogEntry struct {
 }
 
 // EventContact has the basic contact info structure
+//
+// NOTE: This structure's underlying storage has been decoupled from the use of
+// the structure in business logic.  As such, please share any changes to these
+// structures with cloud services to ensure that storage and testing frameworks
+// are kept in sync with these structures used for business logic
 type EventContact struct {
 	Name        string `json:"name,omitempty"`
 	Affiliation string `json:"org,omitempty"`
@@ -132,12 +147,22 @@ type EventContact struct {
 }
 
 // EventContacts has contact info for this app
+//
+// NOTE: This structure's underlying storage has been decoupled from the use of
+// the structure in business logic.  As such, please share any changes to these
+// structures with cloud services to ensure that storage and testing frameworks
+// are kept in sync with these structures used for business logic
 type EventContacts struct {
 	Admin *EventContact `json:"admin,omitempty"`
 	Tech  *EventContact `json:"tech,omitempty"`
 }
 
 // EventApp has information about the app
+//
+// NOTE: This structure's underlying storage has been decoupled from the use of
+// the structure in business logic.  As such, please share any changes to these
+// structures with cloud services to ensure that storage and testing frameworks
+// are kept in sync with these structures used for business logic
 type EventApp struct {
 	AppUID   string        `json:"id,omitempty"`
 	AppLabel string        `json:"name,omitempty"`

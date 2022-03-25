@@ -50,7 +50,7 @@ type DeleteDeviceFleetsRequest struct {
 type DeleteDeviceFleetsResponse struct {
 	// FleetUIDs
 	//
-	// The fleets the device was disassociated from
+	// The fleets the device is still a part of.
 	//
 	// required: true
 	Fleets []FleetResponse `json:"fleets"`

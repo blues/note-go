@@ -73,6 +73,12 @@ const ErrTransportWaitGateway = "{wait-gateway}"
 // ErrTransportWaitModule (golint)
 const ErrTransportWaitModule = "{wait-module}"
 
+// ErrNetwork (golint)
+const ErrNetwork = "{network}"
+
+// ErrDFUNotReady (golint)
+const ErrDFUNotReady = "{dfu-not-ready}"
+
 // ErrAuth (golint)
 const ErrAuth = "{auth}"
 
@@ -120,6 +126,33 @@ const ErrCardIo = "{io}"
 
 // ErrAccessDenied (golint)
 const ErrAccessDenied = "{access-denied}"
+
+// ErrDoNotRoute (golint)
+const ErrDoNotRoute = "{do-not-route}"
+
+// ErrWebPayload (golint)
+const ErrWebPayload = "{web-payload}"
+
+// ErrHubMode (golint)
+const ErrHubMode = "{hub-mode}"
+
+// ErrTemplateIncompatible (golint)
+const ErrTemplateIncompatible = "{template-incompatible}"
+
+// ErrSyntax (golint)
+const ErrSyntax = "{syntax}"
+
+// ErrIncompatible (golint)
+const ErrIncompatible = "{incompatible}"
+
+// ErrTooBig (golint)
+const ErrTooBig = "{too-big}"
+
+// ErrJson (golint)
+const ErrJson = "{not-json}"
+
+// ErrGPSInactive (golint)
+const ErrGPSInactive = "{gps-inactive}"
 
 // ErrorContains tests to see if an error contains an error keyword that we might expect
 func ErrorContains(err error, errKeyword string) bool {

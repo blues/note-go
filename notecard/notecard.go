@@ -284,14 +284,12 @@ func serialTimeoutHelper(context *Context, portConfig int) {
 		timeout := false
 		select {
 		case <-context.ioCompleteSignal:
-			break
 		case <-time.After(time.Duration(timeoutMs) * time.Millisecond):
 			timeout = true
 			if debugSerialIO {
 				fmt.Printf("serialTimeoutHelper: timeout\n")
 			}
 			cardCloseSerial(context)
-			break
 		}
 		context.ioTimeoutSignal <- timeout
 	}
@@ -882,7 +880,7 @@ func cardTransactionSerial(context *Context, portConfig int, noResponse bool, re
 		err = serialIOEnd(context, err)
 		readElapsedMs := int(time.Now().UnixNano()/1000000) - readBeganMs
 		if debugSerialIO {
-			fmt.Printf("                       back after %d ms with len = %d err = %v\n", readElapsedMs, length, err)
+			fmt.Printf("                       back after %d ms with len = %d err = %v [%v]\n", readElapsedMs, length, err, string(buf[:length]))
 		}
 		if false {
 			err2 := err

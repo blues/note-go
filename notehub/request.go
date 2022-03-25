@@ -118,10 +118,10 @@ type HubRequestFileFirmware struct {
 	// The composite version number of the firmware, generally major.minor.patch as a string
 	Version string `json:"version,omitempty"`
 	// The build number of the firmware, for numeric comparison
-	Major uint16 `json:"ver_major,omitempty"`
-	Minor uint16 `json:"ver_minor,omitempty"`
-	Patch uint16 `json:"ver_patch,omitempty"`
-	Build uint16 `json:"ver_build,omitempty"`
+	Major uint32 `json:"ver_major,omitempty"`
+	Minor uint32 `json:"ver_minor,omitempty"`
+	Patch uint32 `json:"ver_patch,omitempty"`
+	Build uint32 `json:"ver_build,omitempty"`
 	// The build number of the firmware, generally just a date and time
 	Built string `json:"built,omitempty"`
 	// The entity who built or is responsible for the firmware - a display string
