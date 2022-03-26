@@ -48,6 +48,7 @@ type Note struct {
 type History struct {
 	When       int64  `json:"w,omitempty"`
 	Where      string `json:"l,omitempty"`
+	WhereWhen  int64  `json:"m,omitempty"`
 	EndpointID string `json:"e,omitempty"`
 	Sequence   int32  `json:"s,omitempty"`
 }
@@ -69,7 +70,7 @@ func CreateNote(body []byte, payload []byte) (newNote Note, err error) {
 
 // SetBody sets the application-supplied Body field of a given Note given some JSON
 func (note *Note) SetBody(body []byte) (err error) {
-	if body == nil || len(body) == 0 {
+	if len(body) == 0 {
 		note.Body = nil
 	} else {
 		note.Body = map[string]interface{}{}

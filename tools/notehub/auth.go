@@ -14,8 +14,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/blues/note-go/notehub"
 	"github.com/blues/note-go/noteutil"
-	"golang.org/x/crypto/ssh/terminal"
+	terminal "golang.org/x/term"
 )
 
 // Sign into the notehub account
@@ -28,7 +29,7 @@ func authSignIn() (err error) {
 	}
 
 	// Print banner
-	fmt.Printf(banner())
+	fmt.Printf("%s", banner())
 
 	// Print hub if not the default
 	if noteutil.Config.Hub != "" {
@@ -117,7 +118,11 @@ func authSignIn() (err error) {
 	if noteutil.Config.HubCreds == nil {
 		noteutil.Config.HubCreds = map[string]noteutil.ConfigCreds{}
 	}
-	noteutil.Config.HubCreds[noteutil.Config.Hub] = creds
+	hub := noteutil.Config.Hub
+	if hub == "" {
+		hub = notehub.DefaultAPIService
+	}
+	noteutil.Config.HubCreds[hub] = creds
 	err = noteutil.ConfigWrite()
 	if err != nil {
 		return
@@ -141,7 +146,12 @@ func authSignOut() (err error) {
 
 	// Get the token, and clear it
 	if noteutil.Config.HubCreds != nil {
-		delete(noteutil.Config.HubCreds, noteutil.Config.Hub)
+		hub := noteutil.Config.Hub
+		if hub == "" {
+			delete(noteutil.Config.HubCreds, "")
+			hub = notehub.DefaultAPIService
+		}
+		delete(noteutil.Config.HubCreds, hub)
 	}
 	err = noteutil.ConfigWrite()
 	if err != nil {

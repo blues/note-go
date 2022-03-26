@@ -9,7 +9,7 @@ import (
 	"runtime"
 
 	"github.com/shirou/gopsutil/v3/cpu"
-	"github.com/shirou/gopsutil/v3/host"
+	/*	"github.com/shirou/gopsutil/v3/host"	// Deprecated */
 	"github.com/shirou/gopsutil/v3/mem"
 )
 
@@ -38,11 +38,13 @@ func (context *Context) UserAgent() (ua map[string]interface{}) {
 		ua["cpu_name"] = c[0].ModelName
 	}
 
+	/* Deprecated
 	h, _ := host.Info()
 	ua["os_name"] = h.OS                 // freebsd, linux
 	ua["os_platform"] = h.Platform       // ubuntu, linuxmint
 	ua["os_family"] = h.PlatformFamily   // debian, rhel
 	ua["os_version"] = h.PlatformVersion // complete OS version
+	*/
 
 	return
 

@@ -94,7 +94,6 @@ func ConfigReset() {
 	configResetInterface()
 	ConfigSetHub("-")
 	Config.When = time.Now().UTC().Format("2006-01-02T15:04:05Z")
-	return
 }
 
 // ConfigShow displays all current config parameters
@@ -111,9 +110,6 @@ func ConfigShow() error {
 	if len(Config.HubCreds) != 0 {
 		fmt.Printf("     creds:\n")
 		for hub, cred := range Config.HubCreds {
-			if hub == "" {
-				hub = "api.notefile.net"
-			}
 			fmt.Printf("            %s: %s\n", hub, cred.User)
 		}
 	}
@@ -218,7 +214,6 @@ func FlagParse(notecardFlags bool, notehubFlags bool) (err error) {
 				// any odd argument that isn't one of our switches
 				default:
 					configOnly = false
-					break
 				}
 			}
 		}
@@ -257,7 +252,11 @@ func ConfigSignedIn() (username string, token string, authenticated bool) {
 	if Config.HubCreds == nil {
 		Config.HubCreds = map[string]ConfigCreds{}
 	}
-	creds, present := Config.HubCreds[Config.Hub]
+	hub := Config.Hub
+	if hub == "" {
+		hub = notehub.DefaultAPIService
+	}
+	creds, present := Config.HubCreds[hub]
 	if present {
 		if creds.Token != "" && creds.User != "" {
 			authenticated = true
@@ -276,7 +275,11 @@ func ConfigAuthenticationHeader(httpReq *http.Request) (err error) {
 	// Exit if not signed in
 	_, token, authenticated := ConfigSignedIn()
 	if !authenticated {
-		err = fmt.Errorf("not authenticated to %s: please use 'notehub -signin' to sign into the notehub service", Config.Hub)
+		hub := Config.Hub
+		if hub == "" {
+			hub = notehub.DefaultAPIService
+		}
+		err = fmt.Errorf("not authenticated to %s: please use 'notehub -signin' to sign into the notehub service", hub)
 		return
 	}
 
@@ -309,9 +312,7 @@ func ConfigNotecardHub() (hub string) {
 	if hub == "" || hub == "-" {
 		hub = notehub.DefaultAPIService
 	}
-	if strings.HasPrefix(hub, "api.") {
-		hub = strings.TrimPrefix(hub, "api.")
-	}
+	hub = strings.TrimPrefix(hub, "api.")
 	return
 }
 

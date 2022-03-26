@@ -13,7 +13,6 @@ import (
 // Notecard's USB VID/PID
 const bluesincVID = "30A4"
 const notecardPID = "0001"
-const notepadPID = "0002"
 
 // Get the default serial device
 func defaultSerialDefault() (device string, speed int) {

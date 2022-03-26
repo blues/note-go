@@ -2,6 +2,7 @@
 // Use of this source code is governed by licenses granted by the
 // copyright holder including that found in the LICENSE file.
 
+//go:build windows
 // +build windows
 
 // If you have odd serial port behavior (where responses are apparently lost or delayed), try this:

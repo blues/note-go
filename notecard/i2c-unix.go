@@ -4,6 +4,7 @@
 // Forked from github.com/d2r2/go-i2c
 // Forked from github.com/davecheney/i2c
 
+//go:build !windows
 // +build !windows
 
 // Before usage you must load the i2c-dev kernel module.
