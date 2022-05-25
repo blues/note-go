@@ -76,8 +76,10 @@ func remoteClose(context *Context) {
 		return
 	}
 	httpclient := &http.Client{Timeout: time.Second * 90}
-	_, err = httpclient.Do(req)
-	if err != nil {
+	resp, err := httpclient.Do(req)
+	if err == nil {
+		defer resp.Body.Close()
+	} else {
 		if context.Debug {
 			fmt.Printf("notefarm: remoteClose http.Do Fail %v", err)
 		}
@@ -153,7 +155,9 @@ func cardList(context *Context) (cards []RemoteCard, err error) {
 
 	httpclient := &http.Client{Timeout: time.Second * 90}
 	resp, err2 := httpclient.Do(req)
-	if err2 != nil {
+	if err2 == nil {
+		defer resp.Body.Close()
+	} else {
 		err = fmt.Errorf("notefarm: can't get device list: %s", err2)
 		return
 	}
@@ -395,6 +399,7 @@ func remoteTransaction(context *Context, portConfig int, noResponse bool, reqJSO
 
 		// Success, so now we read the response
 		rspbuf, err = ioutil.ReadAll(resp.Body)
+		resp.Body.Close()
 		if err != nil {
 			err = fmt.Errorf("reading response %s: %s", note.ErrCardIo, err)
 			rspJSON = note.ErrorJSON("", err)

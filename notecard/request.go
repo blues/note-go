@@ -193,14 +193,14 @@ const ReqDFUGet = "dfu.get"
 // ReqDFUPut (golint)
 const ReqDFUPut = "dfu.put"
 
-// ReqDFUDirect (golint)
-const ReqDFUDirect = "dfu.direct"
+// ReqCardDFU (golint)
+const ReqCardDFU = "card.dfu"
 
 // ReqEnvVersion (golint)
 const ReqEnvVersion = "env.version"
 
-// ReqEnvVersionL (golint)
-const ReqEnvVersionL = "card.version"
+// ReqCardVersion (golint)
+const ReqCardVersion = "card.version"
 
 // ReqCardBootloader (golint)
 const ReqCardBootloader = "card.bootloader"
@@ -413,6 +413,7 @@ type Request struct {
 	Add              int32                         `json:"add,omitempty"`
 	Encrypt          bool                          `json:"encrypt,omitempty"`
 	Decrypt          bool                          `json:"decrypt,omitempty"`
+	Alt              bool                          `json:"alt,omitempty"`
 }
 
 // PinState describes the state of an AUX pin for hardware-related Notecard requests

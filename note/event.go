@@ -65,6 +65,7 @@ type Event struct {
 	Payload    []byte                  `json:"payload,omitempty"`
 	// Location
 	BestLocationType string  `json:"best_location_type,omitempty"`
+	BestLocationWhen int64   `json:"best_location_when,omitempty"`
 	BestLat          float64 `json:"best_lat,omitempty"`
 	BestLon          float64 `json:"best_lon,omitempty"`
 	BestLocation     string  `json:"best_location,omitempty"`

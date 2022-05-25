@@ -25,6 +25,9 @@ const HealthNotefile = "_health.qo"
 // GeolocationNotefile is the hard-wired notefile that the notehub uses when performing a geolocation
 const GeolocationNotefile = "_geolocate.qo"
 
+// WebNotefile is the hard-wired notefile that the notehub uses when performing web requests
+const WebNotefile = "_web.qo"
+
 // SyncPriorityLowest (golint)
 const SyncPriorityLowest = -3
 
