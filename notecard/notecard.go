@@ -29,7 +29,7 @@ var transLock sync.RWMutex
 var multiportTransLock [128]sync.RWMutex
 
 // SerialTimeoutMs is the response timeout for Notecard serial communications.
-var SerialTimeoutMs = 10000
+var SerialTimeoutMs = 15000
 
 // IgnoreWindowsHWErrSecs is the amount of time to ignore a Windows serial communiction error.
 var IgnoreWindowsHWErrSecs = 2
@@ -570,7 +570,13 @@ func (context *Context) transactionRequest(req Request, multiport bool, portConf
 	}
 	var rspJSON []byte
 	rspJSON, err = context.transactionJSON(reqJSON, multiport, portConfig)
-	note.JSONUnmarshal(rspJSON, &rsp)
+	if err != nil {
+		return
+	}
+	err = note.JSONUnmarshal(rspJSON, &rsp)
+	if err != nil {
+		err = fmt.Errorf("error unmarshaling reply from module: %s %s: %s", err, note.ErrCardIo, rspJSON)
+	}
 	return
 }
 
@@ -645,7 +651,7 @@ func (context *Context) Transaction(req map[string]interface{}) (rsp map[string]
 	// Unmarshal for convenience of the caller
 	err = note.JSONUnmarshal(rspJSON, &rsp)
 	if err != nil {
-		err = fmt.Errorf("error unmarshaling reply from module: %s %s", err, note.ErrCardIo)
+		err = fmt.Errorf("error unmarshaling reply from module: %s %s: %s", err, note.ErrCardIo, rspJSON)
 		return
 	}
 
@@ -782,11 +788,18 @@ func (context *Context) transactionJSON(reqJSON []byte, multiport bool, portConf
 	// do this because it's SUPER inconvenient to always be checking for a response error
 	// vs an error on the transaction itself
 	var rsp Request
-	if err == nil && note.JSONUnmarshal(rspJSON, &rsp) == nil && rsp.Err != "" {
-		if req.Req == "" {
-			err = fmt.Errorf("%s", rsp.Err)
+	if err == nil {
+		err = note.JSONUnmarshal(rspJSON, &rsp)
+		if err != nil {
+			err = fmt.Errorf("error unmarshaling reply from module: %s %s: %s", err, note.ErrCardIo, rspJSON)
 		} else {
-			err = fmt.Errorf("%s: %s", req.Req, rsp.Err)
+			if rsp.Err != "" {
+				if req.Req == "" {
+					err = fmt.Errorf("%s", rsp.Err)
+				} else {
+					err = fmt.Errorf("%s: %s", req.Req, rsp.Err)
+				}
+			}
 		}
 	}
 
@@ -908,9 +921,35 @@ func cardTransactionSerial(context *Context, portConfig int, noResponse bool, re
 			continue
 		}
 		rspJSON = append(rspJSON, buf[:length]...)
-		if strings.HasSuffix(string(rspJSON), "\n") {
-			break
+		if strings.Contains(string(rspJSON), "\n") {
+
+			// At this point, if we split the string at \n its len must be >= 2
+			lines := strings.Split(string(rspJSON), "\n")
+			lastLine := lines[len(lines)-1]
+			secondToLastLine := lines[len(lines)-2]
+
+			// The reply should be only a single line.  However, if the user had been
+			// in trace mode (likely on USB) we may be receiving trace lines that
+			// were sent to us and inserted into the serial buffer prior to the JSON reply.
+			if lastLine != "" {
+
+				// If the json didn't END in \n, we are still collecting a partial line
+				rspJSON = []byte(lastLine)
+
+			} else {
+
+				// We're done if and only if the response looks like JSON
+				if secondToLastLine[0] == '{' {
+					break
+				}
+
+				// Drop it, because the line doesn't look like JSON
+				rspJSON = []byte{}
+
+			}
+
 		}
+
 	}
 
 	// Done

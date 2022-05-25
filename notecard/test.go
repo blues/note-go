@@ -21,6 +21,7 @@ type CardTest struct {
 	IMEI                string `json:"imei,omitempty"`
 	When                uint32 `json:"when,omitempty"`
 	SKU                 string `json:"sku,omitempty"`
+	OrderingCode        string `json:"ordering_code,omitempty"`
 	SIMActivationKey    string `json:"key,omitempty"`
 	Station             string `json:"station,omitempty"`
 	Operator            string `json:"operator,omitempty"`
