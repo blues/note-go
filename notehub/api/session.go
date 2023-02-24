@@ -1,5 +1,7 @@
 package api
 
+import "github.com/blues/note-go/note"
+
 // GetDeviceSessionsResponse is the structure returned from a GetDeviceSessions call
 type GetDeviceSessionsResponse struct {
 	// Sessions
@@ -7,7 +9,7 @@ type GetDeviceSessionsResponse struct {
 	// The requested page of session logs for the device
 	//
 	// required: true
-	Sessions []DeviceSession `json:"sessions"`
+	Sessions []note.DeviceSession `json:"sessions"`
 
 	// HasMore
 	//
@@ -16,14 +18,4 @@ type GetDeviceSessionsResponse struct {
 	//
 	// required: true
 	HasMore bool `json:"has_more"`
-}
-
-// DeviceSession is the structure describing a device session
-type DeviceSession struct {
-	// Timestamp
-	Started       string    `json:"started"`
-	Duration      uint      `json:"duration"`
-	Notes         uint      `json:"notes"`
-	Bytes         uint      `json:"bytes"`
-	TowerLocation *Location `json:"tower_location"`
 }

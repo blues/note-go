@@ -76,8 +76,23 @@ const ErrTransportWaitModule = "{wait-module}"
 // ErrNetwork (golint)
 const ErrNetwork = "{network}"
 
+// ErrRegistrationFailure (golint)
+const ErrRegistrationFailure = "{registration-failure}"
+
+// ErrExtendedNetworkFailure (golint)
+const ErrExtendedNetworkFailure = "{extended-network-failure}"
+
+// ErrExtendedServiceFailure (golint)
+const ErrExtendedServiceFailure = "{extended-service-failure}"
+
+// ErrHostUnreachable (golint)
+const ErrHostUnreachable = "{host-unreachable}"
+
 // ErrDFUNotReady (golint)
 const ErrDFUNotReady = "{dfu-not-ready}"
+
+// ErrDFUInProgress (golint)
+const ErrDFUInProgress = "{dfu-in-progress}"
 
 // ErrAuth (golint)
 const ErrAuth = "{auth}"
@@ -153,6 +168,24 @@ const ErrJson = "{not-json}"
 
 // ErrGPSInactive (golint)
 const ErrGPSInactive = "{gps-inactive}"
+
+// ErrDeviceDelay5 (golint)
+const ErrDeviceDelay5 = "{device-delay-5}"
+
+// ErrDeviceDelay10 (golint)
+const ErrDeviceDelay10 = "{device-delay-10}"
+
+// ErrDeviceDelay15 (golint)
+const ErrDeviceDelay15 = "{device-delay-15}"
+
+// ErrDeviceDelay20 (golint)
+const ErrDeviceDelay20 = "{device-delay-20}"
+
+// ErrDeviceDelay30 (golint)
+const ErrDeviceDelay30 = "{device-delay-30}"
+
+// ErrDeviceDelay60 (golint)
+const ErrDeviceDelay60 = "{device-delay-60}"
 
 // ErrorContains tests to see if an error contains an error keyword that we might expect
 func ErrorContains(err error, errKeyword string) bool {

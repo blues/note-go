@@ -67,6 +67,8 @@ var RequestSegmentMaxLen = -1
 // RequestSegmentDelayMs (golint)
 var RequestSegmentDelayMs = -1
 
+var DoNotReterminateJSON = false
+
 // IoErrorIsRecoverable is a configuration parameter describing library capabilities.
 // Set this to true if the error recovery of the implementation supports re-open.  On all implementations
 // tested to date, I can't yet get the close/reopen working the way it does on microcontrollers.  For
@@ -571,6 +573,12 @@ func (context *Context) transactionRequest(req Request, multiport bool, portConf
 	var rspJSON []byte
 	rspJSON, err = context.transactionJSON(reqJSON, multiport, portConfig)
 	if err != nil {
+		// Give transaction's error precedence, except that if we get an error unmarshaling
+		// we want to make sure that we indicate to the caller that there was an I/O error (corruption)
+		err2 := note.JSONUnmarshal(rspJSON, &rsp)
+		if err2 != nil {
+			err = fmt.Errorf("%s %s", err, note.ErrCardIo)
+		}
 		return
 	}
 	err = note.JSONUnmarshal(rspJSON, &rsp)
@@ -659,6 +667,44 @@ func (context *Context) Transaction(req map[string]interface{}) (rsp map[string]
 	return
 }
 
+// ReceiveBytes receives arbitrary Bytes from the Notecard
+func (context *Context) ReceiveBytes() (rspBytes []byte, err error) {
+	return context.receiveBytes(0)
+}
+
+// receiveBytes receives arbitrary Bytes from the Notecard, using  the current or specified port
+func (context *Context) receiveBytes(portConfig int) (rspBytes []byte, err error) {
+
+	// Only one caller at a time accessing the I/O port
+	lockTrans(false, portConfig)
+
+	// Reopen if error
+	err = context.ReopenIfRequired(portConfig)
+	if err != nil {
+		unlockTrans(false, portConfig)
+		if context.Debug {
+			fmt.Printf("%s\n", err)
+		}
+		return
+	}
+
+	// Do a reset if one was pending
+	if context.resetRequired {
+		context.Reset(portConfig)
+	}
+
+	// Request is empty
+	var reqBytes []byte
+	// Perform the transaction
+	rspBytes, err = context.TransactionFn(context, portConfig, false, reqBytes)
+
+	unlockTrans(false, portConfig)
+
+	// Done
+	return
+
+}
+
 // TransactionJSON performs a card transaction using raw JSON []bytes
 func (context *Context) TransactionJSON(reqJSON []byte) (rspJSON []byte, err error) {
 	return context.transactionJSON(reqJSON, false, 0)
@@ -703,19 +749,21 @@ func (context *Context) transactionJSON(reqJSON []byte, multiport bool, portConf
 		// examining the req and cmd fields
 		noResponseRequested = req.Req == "" && req.Cmd != ""
 
-		// Make sure that the JSON has a single \n terminator
-		for {
-			if strings.HasSuffix(string(reqJSON), "\n") {
-				reqJSON = []byte(strings.TrimSuffix(string(reqJSON), "\n"))
-				continue
+		if !DoNotReterminateJSON {
+			// Make sure that the JSON has a single \n terminator
+			for {
+				if strings.HasSuffix(string(reqJSON), "\n") {
+					reqJSON = []byte(strings.TrimSuffix(string(reqJSON), "\n"))
+					continue
+				}
+				if strings.HasSuffix(string(reqJSON), "\r") {
+					reqJSON = []byte(strings.TrimSuffix(string(reqJSON), "\r"))
+					continue
+				}
+				break
 			}
-			if strings.HasSuffix(string(reqJSON), "\r") {
-				reqJSON = []byte(strings.TrimSuffix(string(reqJSON), "\r"))
-				continue
-			}
-			break
+			reqJSON = []byte(string(reqJSON) + "\n")
 		}
-		reqJSON = []byte(string(reqJSON) + "\n")
 	}
 
 	// Debug

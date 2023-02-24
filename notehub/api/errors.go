@@ -5,7 +5,7 @@
 package api
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 )
 
@@ -51,6 +51,12 @@ type ErrorResponse struct {
 	Debug string `json:"debug,omitempty"`
 }
 
+var SuspendedBillingAccountResponse = ErrorResponse{
+	Code:   403,
+	Status: "Forbidden",
+	Error:  "this billing account is suspended",
+}
+
 // WithRequest is a an easy way to add http.Request information to an error.
 // It takes a http.Request object, parses the URI string into response.Request
 // and adds the request Body (if it exists) into the response.Details["body"] as a string
@@ -59,7 +65,7 @@ func (e ErrorResponse) WithRequest(r *http.Request) ErrorResponse {
 	var bodyBytes []byte
 	if r.Body != nil {
 		var err error
-		bodyBytes, err = ioutil.ReadAll(r.Body)
+		bodyBytes, err = io.ReadAll(r.Body)
 		if err != nil {
 			return e
 		}

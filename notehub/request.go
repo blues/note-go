@@ -50,6 +50,12 @@ const HubAppUploadRead = "hub.app.upload.get"
 // HubUploadRead (golint)
 const HubUploadRead = "hub.upload.get"
 
+// HubAppSetTransform (golint)
+const HubAppSetTransform = "hub.app.transform.set"
+
+// HubAppGetTransform (golint)
+const HubAppGetTransform = "hub.app.transform.get"
+
 // HubEnvSet (golint)
 const HubEnvSet = "hub.env.set"
 
@@ -65,27 +71,36 @@ const HubEnvScopeProject = "project"
 // HubEnvScopeFleet (golint)
 const HubEnvScopeFleet = "fleet"
 
+// HubEnvScopeFleets (golint)
+const HubEnvScopeFleets = "fleets"
+
 // HubEnvScopeDevice (golint)
 const HubEnvScopeDevice = "device"
+
+// HubCompressModeSnappy (golint)
+const HubCompressModeSnappy = "snappy"
 
 // HubRequest is is the core data structure for notehub-specific requests
 type HubRequest struct {
 	notecard.Request `json:",omitempty"`
-	Contact          *note.EventContact `json:"contact,omitempty"`
-	AppUID           string             `json:"app,omitempty"`
-	FleetUID         string             `json:"fleet,omitempty"`
-	EventSerials     []string           `json:"events,omitempty"`
-	DbQuery          *DbQuery           `json:"query,omitempty"`
-	Uploads          *[]HubRequestFile  `json:"uploads,omitempty"`
-	Contains         string             `json:"contains,omitempty"`
-	Handlers         *[]string          `json:"handlers,omitempty"`
-	FileType         string             `json:"type,omitempty"`
-	FileTags         string             `json:"tags,omitempty"`
-	FileNotes        string             `json:"filenotes,omitempty"`
-	Provision        bool               `json:"provision,omitempty"`
-	Scope            string             `json:"scope,omitempty"`
-	Env              *map[string]string `json:"env,omitempty"`
-	PIN              string             `json:"pin,omitempty"`
+	Contact          *note.Contact                 `json:"contact,omitempty"`
+	AppUID           string                        `json:"app,omitempty"`
+	FleetUID         string                        `json:"fleet,omitempty"`
+	EventSerials     []string                      `json:"events,omitempty"`
+	DbQuery          *DbQuery                      `json:"query,omitempty"`
+	Uploads          *[]HubRequestFile             `json:"uploads,omitempty"`
+	Contains         string                        `json:"contains,omitempty"`
+	Handlers         *[]string                     `json:"handlers,omitempty"`
+	FileType         string                        `json:"type,omitempty"`
+	FileTags         string                        `json:"tags,omitempty"`
+	FileNotes        string                        `json:"filenotes,omitempty"`
+	Provision        bool                          `json:"provision,omitempty"`
+	Scope            string                        `json:"scope,omitempty"`
+	Env              *map[string]string            `json:"env,omitempty"`
+	FleetEnv         *map[string]map[string]string `json:"fleet_env,omitempty"`
+	PIN              string                        `json:"pin,omitempty"`
+	Compress         string                        `json:"compress,omitempty"`
+	MD5              string                        `json:"md5,omitempty"`
 }
 
 // File Types
@@ -105,6 +120,9 @@ const HubFileTypeModemFirmware = "modem"
 // HubFileTypeNotefarm (golint)
 const HubFileTypeNotefarm = "notefarm"
 
+// HubFileTypeUserData (golint)
+const HubFileTypeUserData = "data"
+
 // HubRequestFileFirmware is firmware-specific metadata
 type HubRequestFileFirmware struct {
 	// The organization accountable for the firmware - a display string
@@ -117,6 +135,8 @@ type HubRequestFileFirmware struct {
 	Firmware string `json:"firmware,omitempty"`
 	// The composite version number of the firmware, generally major.minor.patch as a string
 	Version string `json:"version,omitempty"`
+	// The target CPU of the firmware (see notecard/src/board.h)
+	Target string `json:"target,omitempty"`
 	// The build number of the firmware, for numeric comparison
 	Major uint32 `json:"ver_major,omitempty"`
 	Minor uint32 `json:"ver_minor,omitempty"`
@@ -141,7 +161,7 @@ type HubRequestFile struct {
 	Found    string                  `json:"found,omitempty"`
 	FileType string                  `json:"type,omitempty"`
 	Tags     string                  `json:"tags,omitempty"`  // comma-separated, no spaces, case-insensitive
-	Notes    string                  `json:"notes,omitempty"` // markdown
+	Notes    string                  `json:"notes,omitempty"` // Should be simple text
 	Firmware *HubRequestFileFirmware `json:"firmware,omitempty"`
 	// Arbitrary metadata that the user may define - we don't interpret the schema at all
 	Info *map[string]interface{} `json:"info,omitempty"`

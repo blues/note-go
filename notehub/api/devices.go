@@ -1,5 +1,7 @@
 package api
 
+import "github.com/blues/note-go/note"
+
 // GetDevicesResponse v1
 //
 // The response object for getting devices.
@@ -13,24 +15,26 @@ type GetDevicesResponse struct {
 // The response object for a device.
 type DeviceResponse struct {
 	UID          string `json:"uid"`
-	SerialNumber string `json:"serial_number"`
+	SerialNumber string `json:"serial_number,omitempty"`
+	SKU          string `json:"sku,omitempty"`
 
 	// RFC3339 timestamps, in UTC.
 	Provisioned  string  `json:"provisioned"`
 	LastActivity *string `json:"last_activity"`
 
-	Contact *ContactResponse `json:"contact"`
+	Contact *ContactResponse `json:"contact,omitempty"`
 
 	ProductUID string   `json:"product_uid"`
 	FleetUIDs  []string `json:"fleet_uids"`
 
-	TowerInfo            *TowerInformation `json:"tower_info"`
-	TowerLocation        *Location         `json:"tower_location"`
-	GPSLocation          *Location         `json:"gps_location"`
-	TriangulatedLocation *Location         `json:"triangulated_location"`
+	TowerInfo            *TowerInformation `json:"tower_info,omitempty"`
+	TowerLocation        *Location         `json:"tower_location,omitempty"`
+	GPSLocation          *Location         `json:"gps_location,omitempty"`
+	TriangulatedLocation *Location         `json:"triangulated_location,omitempty"`
 
 	Voltage     float64 `json:"voltage"`
 	Temperature float64 `json:"temperature"`
+	DFUEnv      *DFUEnv `json:"dfu,omitempty"`
 }
 
 // GetDevicesPublicKeysResponse v1
@@ -60,19 +64,7 @@ type ProvisionDeviceRequest struct {
 //
 // The response object for retrieving the latest notefile values for a device
 type GetDeviceLatestResponse struct {
-	LatestEvents []LatestEvent `json:"latest_events"`
-}
-
-// LatestEvent v1
-//
-// The response object of the returnable information from a "latest" event for
-// a device
-type LatestEvent struct {
-	File     string                  `json:"file"`
-	Captured string                  `json:"captured"`
-	Received string                  `json:"received"`
-	EventUID string                  `json:"event_uid"`
-	Body     *map[string]interface{} `json:"body"`
+	LatestEvents []note.Event `json:"latest_events"`
 }
 
 // Location v1
@@ -114,4 +106,27 @@ type HealthLogEntry struct {
 	When  string `json:"when"`
 	Alert bool   `json:"alert"`
 	Text  string `json:"text"`
+}
+
+// DFUState is the state of the DFU in progress
+type DFUState struct {
+	Type              string `json:"type,omitempty"`
+	File              string `json:"file,omitempty"`
+	Length            uint32 `json:"length,omitempty"`
+	CRC32             uint32 `json:"crc32,omitempty"`
+	MD5               string `json:"md5,omitempty"`
+	Phase             string `json:"mode,omitempty"`
+	Status            string `json:"status,omitempty"`
+	BeganSecs         uint32 `json:"began,omitempty"`
+	RetryCount        uint32 `json:"retry,omitempty"`
+	ConsecutiveErrors uint32 `json:"errors,omitempty"`
+	ReadFromService   uint32 `json:"read,omitempty"`
+	UpdatedSecs       uint32 `json:"updated,omitempty"`
+	Version           string `json:"version,omitempty"`
+}
+
+// DFUEnv is the data structure passed to Notehub when DFU info changes
+type DFUEnv struct {
+	Card *DFUState `json:"card,omitempty"`
+	User *DFUState `json:"user,omitempty"`
 }
