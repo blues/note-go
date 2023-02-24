@@ -4,6 +4,8 @@
 
 package note
 
+import "time"
+
 // EventAdd (golint)
 const EventAdd = "note.add"
 
@@ -48,11 +50,10 @@ type Event struct {
 	DeviceUID  string                  `json:"device,omitempty"`
 	DeviceSN   string                  `json:"sn,omitempty"`
 	ProductUID string                  `json:"product,omitempty"`
+	AppUID     string                  `json:"app,omitempty"`
 	EndpointID string                  `json:"endpoint,omitempty"`
 	Received   float64                 `json:"received,omitempty"`
-	Routed     int64                   `json:"routed,omitempty"`
 	Req        string                  `json:"req,omitempty"`
-	Rsp        string                  `json:"rsp,omitempty"`
 	Error      string                  `json:"err,omitempty"`
 	When       int64                   `json:"when,omitempty"`
 	NotefileID string                  `json:"file,omitempty"`
@@ -108,64 +109,45 @@ type Event struct {
 	// Triangulation
 	Triangulate *map[string]interface{} `json:"triangulate,omitempty"`
 	// "Routed" environment variables beginning with a "$" prefix
-	Env *map[string]string `json:"environment,omitempty"`
-	// App and device meta info
-	App           *EventApp     `json:"project,omitempty"`
-	DeviceContact *EventContact `json:"device_contact,omitempty"`
-	// Where to reply
-	ReplyURL string `json:"reply,omitempty"`
-	// Event log
-	LogAttn bool                     `json:"logattn,omitempty"`
-	Log     map[string]EventLogEntry `json:"log,omitempty"`
-	// True if the event was not routed due to exceeding the project's event limit.
-	LogEventLimit bool `json:"log_event_limit,omitempty"`
+	Env       *map[string]string `json:"environment,omitempty"`
+	LogAttn   bool               `json:"logattn,omitempty"`
+	Status    EventStatus        `json:"status,omitempty"`
+	FleetUIDs *[]string          `json:"fleets,omitempty"`
 }
 
-// EventLogEntry is the log entry used by notification processing
+type EventStatus string
+
+const (
+	EventStatusSuccess    EventStatus = "success"
+	EventStatusFailure    EventStatus = "failure"
+	EventStatusInProgress EventStatus = "in_progress"
+)
+
+// we should no longer be writing to the LogAttn field,
+// we can simplify this logic to just return event.Status
+func (event Event) GetStatus() EventStatus {
+	if len(event.Status) == 0 {
+		if event.LogAttn {
+			return EventStatusFailure
+		} else {
+			return EventStatusSuccess
+		}
+	}
+	return event.Status
+}
+
+// RouteLogEntry is the log entry used by notification processing
 //
 // NOTE: This structure's underlying storage has been decoupled from the use of
 // the structure in business logic.  As such, please share any changes to these
 // structures with cloud services to ensure that storage and testing frameworks
 // are kept in sync with these structures used for business logic
-type EventLogEntry struct {
-	Attn   bool   `json:"attn,omitempty"`
-	Status string `json:"status,omitempty"`
-	Text   string `json:"text,omitempty"`
-	URL    string `json:"url,omitempty"`
-}
-
-// EventContact has the basic contact info structure
-//
-// NOTE: This structure's underlying storage has been decoupled from the use of
-// the structure in business logic.  As such, please share any changes to these
-// structures with cloud services to ensure that storage and testing frameworks
-// are kept in sync with these structures used for business logic
-type EventContact struct {
-	Name        string `json:"name,omitempty"`
-	Affiliation string `json:"org,omitempty"`
-	Role        string `json:"role,omitempty"`
-	Email       string `json:"email,omitempty"`
-}
-
-// EventContacts has contact info for this app
-//
-// NOTE: This structure's underlying storage has been decoupled from the use of
-// the structure in business logic.  As such, please share any changes to these
-// structures with cloud services to ensure that storage and testing frameworks
-// are kept in sync with these structures used for business logic
-type EventContacts struct {
-	Admin *EventContact `json:"admin,omitempty"`
-	Tech  *EventContact `json:"tech,omitempty"`
-}
-
-// EventApp has information about the app
-//
-// NOTE: This structure's underlying storage has been decoupled from the use of
-// the structure in business logic.  As such, please share any changes to these
-// structures with cloud services to ensure that storage and testing frameworks
-// are kept in sync with these structures used for business logic
-type EventApp struct {
-	AppUID   string        `json:"id,omitempty"`
-	AppLabel string        `json:"name,omitempty"`
-	Contacts EventContacts `json:"contacts,omitempty"`
+type RouteLogEntry struct {
+	EventSerial int64     `json:"event,omitempty"`
+	RouteSerial int64     `json:"route,omitempty"`
+	Date        time.Time `json:"date,omitempty"`
+	Attn        bool      `json:"attn,omitempty"`
+	Status      string    `json:"status,omitempty"`
+	Text        string    `json:"text,omitempty"`
+	URL         string    `json:"url,omitempty"`
 }

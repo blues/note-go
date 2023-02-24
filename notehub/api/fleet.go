@@ -70,8 +70,9 @@ type PostFleetRequest struct {
 //
 // The request object for updating a fleet within a project
 type PutFleetRequest struct {
-	Label string `json:"label"`
-
-	Is     string   `json:"is,omitempty"`
-	IsLike []string `json:"is_like,omitempty"`
+	Label         string   `json:"label"`
+	AddDevices    []string `json:"addDevices,omitempty"`
+	RemoveDevices []string `json:"removeDevices,omitempty"`
+	Is            string   `json:"is,omitempty"`
+	IsLike        []string `json:"is_like,omitempty"`
 }

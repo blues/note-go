@@ -7,6 +7,7 @@ package notecard
 // CardTest is a structure that is returned by the notecard after completing its self-test
 type CardTest struct {
 	DeviceUID           string `json:"device,omitempty"`
+	DefaultProductUID   string `json:"default_product,omitempty"`
 	Error               string `json:"err,omitempty"`
 	Status              string `json:"status,omitempty"`
 	Tests               string `json:"tests,omitempty"`

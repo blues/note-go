@@ -10,7 +10,7 @@ const TrackNotefile = "_track.qo"
 // NotecardRequestNotefile is a special notefile for sending notecard requests
 const NotecardRequestNotefile = "_req.qis"
 
-// NotecardResponseNotefile is a special notefile for sending notecard requests
+// NotecardResponseNotefile is a special notefile for sending notecard responses
 const NotecardResponseNotefile = "_rsp.qos"
 
 // LogNotefile is the hard-wired notefile that the notecard uses for debug logging
