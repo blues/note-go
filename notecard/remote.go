@@ -7,7 +7,7 @@ package notecard
 import (
 	"bytes"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -162,7 +162,7 @@ func cardList(context *Context) (cards []RemoteCard, err error) {
 		return
 	}
 
-	rspbuf, err3 := io.ReadAll(resp.Body)
+	rspbuf, err3 := ioutil.ReadAll(resp.Body)
 	if err3 != nil {
 		err = fmt.Errorf("notefarm: can't read device list: %s", err3)
 		return
@@ -398,7 +398,7 @@ func remoteTransaction(context *Context, portConfig int, noResponse bool, reqJSO
 		}
 
 		// Success, so now we read the response
-		rspbuf, err = io.ReadAll(resp.Body)
+		rspbuf, err = ioutil.ReadAll(resp.Body)
 		resp.Body.Close()
 		if err != nil {
 			err = fmt.Errorf("reading response %s: %s", note.ErrCardIo, err)
