@@ -1,6 +1,6 @@
 module github.com/blues/note-go
 
-go 1.19
+go 1.15
 
 require (
 	github.com/gofrs/flock v0.7.1
