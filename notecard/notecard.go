@@ -21,6 +21,9 @@ var debugSerialIO = false
 // InitialDebugMode is the debug mode that the context is initialized with
 var InitialDebugMode = false
 
+// InitialResetMode says whether or not we should reset the port on entry
+var InitialResetMode = true
+
 // Protect against multiple concurrent callers, because across different operating systems it is
 // not at all clear that concurrency is allowed on a single I/O device.  An exception is made
 // for I2C because of Notefarm, where we only serialize transactions destined for a single I2C
@@ -90,8 +93,9 @@ type Context struct {
 	DisableUA bool
 
 	// Reset should be done on next transaction
-	resetRequired  bool
-	reopenRequired bool
+	resetRequired       bool
+	reopenRequired      bool
+	reopenBecauseOfOpen bool
 
 	// Class functions
 	PortEnumFn     func() (allports []string, usbports []string, notecardports []string, err error)
@@ -365,6 +369,7 @@ func OpenSerial(port string, portConfig int) (context *Context, err error) {
 
 	// For serial, we defer the port open until the first transaction so that we can
 	// support the concept of dynamically inserted devices, as in "notecard -scan" mode.
+	context.reopenBecauseOfOpen = true
 	context.reopenRequired = true
 
 	// All set
@@ -522,8 +527,14 @@ func cardReopenSerial(context *Context, portConfig int) (err error) {
 	// Done with the reopen
 	context.reopenRequired = false
 
-	// Reset serial to a known good state
-	return cardResetSerial(context, portConfig)
+	// Unless we've been instructed not to reset on open, reset serial to a known good state
+	if context.reopenBecauseOfOpen && InitialResetMode {
+		err = cardResetSerial(context, portConfig)
+	}
+	context.reopenBecauseOfOpen = false
+
+	// Done
+	return err
 }
 
 // Reopen I2C
