@@ -21,10 +21,10 @@ import (
 	"sync"
 	"time"
 
-	"periph.io/x/periph"
-	"periph.io/x/periph/conn/i2c"
-	"periph.io/x/periph/conn/i2c/i2creg"
-	"periph.io/x/periph/host"
+	"periph.io/x/conn/v3/driver/driverreg"
+	"periph.io/x/conn/v3/i2c"
+	"periph.io/x/conn/v3/i2c/i2creg"
+	"periph.io/x/host/v3"
 )
 
 const (
@@ -34,7 +34,7 @@ const (
 
 // I2C is the handle to the I2C subsystem
 type I2C struct {
-	host   *periph.State
+	host   *driverreg.State
 	bus    i2c.BusCloser
 	device *i2c.Dev
 }
