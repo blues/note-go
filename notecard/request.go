@@ -433,6 +433,9 @@ type Request struct {
 	UOff                   bool                          `json:"uoff,omitempty"`
 	UMin                   bool                          `json:"umin,omitempty"`
 	UPeriodic              bool                          `json:"uperiodic,omitempty"`
+	Milliseconds           int32                         `json:"ms,omitempty"`
+	Full                   bool                          `json:"full,omitempty"`
+	Async                  bool                          `json:"async,omitempty"`
 }
 
 // A Note on Time
