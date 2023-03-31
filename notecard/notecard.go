@@ -28,8 +28,10 @@ var InitialResetMode = true
 // not at all clear that concurrency is allowed on a single I/O device.  An exception is made
 // for I2C because of Notefarm, where we only serialize transactions destined for a single I2C
 // device.  Note that for I2C there is a deeper mutex protecting the physical device.
-var transLock sync.RWMutex
-var multiportTransLock [128]sync.RWMutex
+var (
+	transLock          sync.RWMutex
+	multiportTransLock [128]sync.RWMutex
+)
 
 // SerialTimeoutMs is the response timeout for Notecard serial communications.
 var SerialTimeoutMs = 15000
@@ -82,7 +84,6 @@ const IoErrorIsRecoverable = true
 
 // Context for the port that is open
 type Context struct {
-
 	// True to emit trace output
 	Debug bool
 
@@ -181,7 +182,6 @@ func Defaults() (moduleInterface string, port string, portConfig int) {
 
 // Open the card to establish communications
 func Open(moduleInterface string, port string, portConfig int) (context *Context, err error) {
-
 	if moduleInterface == "" {
 		moduleInterface, _, _ = Defaults()
 	}
@@ -203,12 +203,10 @@ func Open(moduleInterface string, port string, portConfig int) (context *Context
 	}
 	context.iface = moduleInterface
 	return
-
 }
 
 // Reset serial to a known state
 func cardResetSerial(context *Context, portConfig int) (err error) {
-
 	// Exit if not open
 	if !context.serialPortIsOpen {
 		err = fmt.Errorf("port not open " + note.ErrCardIo)
@@ -280,7 +278,6 @@ func cardResetSerial(context *Context, portConfig int) (err error) {
 
 	// Done
 	return
-
 }
 
 // Serial I/O timeout helper function for Windows
@@ -336,7 +333,6 @@ func serialIOEnd(context *Context, errIn error) (errOut error) {
 
 // OpenSerial opens the card on serial
 func OpenSerial(port string, portConfig int) (context *Context, err error) {
-
 	// Create the context structure
 	context = &Context{}
 	context.Debug = InitialDebugMode
@@ -374,12 +370,10 @@ func OpenSerial(port string, portConfig int) (context *Context, err error) {
 
 	// All set
 	return
-
 }
 
 // Reset I2C to a known good state
 func cardResetI2C(context *Context, portConfig int) (err error) {
-
 	// Synchronize by guaranteeing not only that I2C works, but that we drain the remainder of any
 	// pending partial reply from a previously-aborted session.
 	chunklen := 0
@@ -407,12 +401,10 @@ func cardResetI2C(context *Context, portConfig int) (err error) {
 
 	// Done
 	return
-
 }
 
 // OpenI2C opens the card on I2C
 func OpenI2C(port string, portConfig int) (context *Context, err error) {
-
 	// Create the context structure
 	context = &Context{}
 	context.Debug = InitialDebugMode
@@ -448,7 +440,6 @@ func OpenI2C(port string, portConfig int) (context *Context, err error) {
 
 	// Done
 	return
-
 }
 
 // Reset the port
@@ -499,7 +490,6 @@ func (context *Context) Reopen(portConfig int) (err error) {
 
 // Reopen serial
 func cardReopenSerial(context *Context, portConfig int) (err error) {
-
 	// Close if open
 	cardCloseSerial(context)
 
@@ -575,7 +565,6 @@ func (context *Context) TransactionRequestToPort(req Request, portConfig int) (r
 
 // transactionRequest performs a card transaction with a Req structure, to the current or specified port
 func (context *Context) transactionRequest(req Request, multiport bool, portConfig int) (rsp Request, err error) {
-
 	reqJSON, err2 := note.JSONMarshal(req)
 	if err2 != nil {
 		err = fmt.Errorf("error marshaling request for module: %s", err2)
@@ -642,13 +631,10 @@ func (context *Context) Response() (rsp map[string]interface{}, err error) {
 
 // Transaction performs a card transaction with a JSON structure
 func (context *Context) Transaction(req map[string]interface{}) (rsp map[string]interface{}, err error) {
-
 	// Handle the special case where we are just processing a response
 	var reqJSON []byte
 	if req == nil {
-
 		reqJSON = []byte("")
-
 	} else {
 
 		// Marshal the request to JSON
@@ -685,7 +671,6 @@ func (context *Context) ReceiveBytes() (rspBytes []byte, err error) {
 
 // receiveBytes receives arbitrary Bytes from the Notecard, using  the current or specified port
 func (context *Context) receiveBytes(portConfig int) (rspBytes []byte, err error) {
-
 	// Only one caller at a time accessing the I/O port
 	lockTrans(false, portConfig)
 
@@ -713,7 +698,6 @@ func (context *Context) receiveBytes(portConfig int) (rspBytes []byte, err error
 
 	// Done
 	return
-
 }
 
 // TransactionJSON performs a card transaction using raw JSON []bytes
@@ -728,7 +712,6 @@ func (context *Context) TransactionJSONToPort(reqJSON []byte, portConfig int) (r
 
 // transactionJSON performs a card transaction using raw JSON []bytes, to the current or specified port
 func (context *Context) transactionJSON(reqJSON []byte, multiport bool, portConfig int) (rspJSON []byte, err error) {
-
 	// Remember in the context if we've ever seen multiport I/O, for timeout computation
 	if multiport {
 		context.i2cMultiport = true
@@ -877,12 +860,10 @@ func (context *Context) transactionJSON(reqJSON []byte, multiport bool, portConf
 
 	// Done
 	return
-
 }
 
 // Perform a card transaction over serial under the assumption that request already has '\n' terminator
 func cardTransactionSerial(context *Context, portConfig int, noResponse bool, reqJSON []byte) (rspJSON []byte, err error) {
-
 	// Exit if not open
 	if !context.serialPortIsOpen {
 		err = fmt.Errorf("port not open " + note.ErrCardIo)
@@ -952,7 +933,7 @@ func cardTransactionSerial(context *Context, portConfig int, noResponse bool, re
 		err = serialIOEnd(context, err)
 		readElapsedMs := int(time.Now().UnixNano()/1000000) - readBeganMs
 		if debugSerialIO {
-			fmt.Printf("                       back after %d ms with len = %d err = %v [%v]\n", readElapsedMs, length, err, string(buf[:length]))
+			fmt.Printf("                       back after %d ms with len = %d err = %v\n", readElapsedMs, length, err)
 		}
 		if false {
 			err2 := err
@@ -991,10 +972,11 @@ func cardTransactionSerial(context *Context, portConfig int, noResponse bool, re
 			// in trace mode (likely on USB) we may be receiving trace lines that
 			// were sent to us and inserted into the serial buffer prior to the JSON reply.
 			if lastLine != "" {
-
 				// If the json didn't END in \n, we are still collecting a partial line
 				rspJSON = []byte(lastLine)
-
+			} else if len(reqJSON) == 0 {
+				// If we're just gathering a reply, we accept binary because it may be COBS
+				break
 			} else {
 
 				// We're done if and only if the response looks like JSON
@@ -1013,12 +995,10 @@ func cardTransactionSerial(context *Context, portConfig int, noResponse bool, re
 
 	// Done
 	return
-
 }
 
 // Perform a card transaction over I2C under the assumption that request already has '\n' terminator
 func cardTransactionI2C(context *Context, portConfig int, noResponse bool, reqJSON []byte) (rspJSON []byte, err error) {
-
 	// Initialize timing parameters
 	if RequestSegmentMaxLen < 0 {
 		RequestSegmentMaxLen = CardRequestI2CSegmentMaxLen
@@ -1130,7 +1110,6 @@ func cardTransactionI2C(context *Context, portConfig int, noResponse bool, reqJS
 
 // OpenRemote opens a remote card
 func OpenRemote(farmURL string, farmCheckoutMins int) (context *Context, err error) {
-
 	// Create the context structure
 	context = &Context{}
 	context.Debug = InitialDebugMode
@@ -1170,7 +1149,6 @@ func OpenRemote(farmURL string, farmCheckoutMins int) (context *Context, err err
 
 	// All set
 	return
-
 }
 
 // Lock the appropriate mutex for the transaction
