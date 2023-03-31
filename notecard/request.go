@@ -178,6 +178,9 @@ const ReqEnvSync = "env.sync"
 // ReqWeb (golint)
 const ReqWeb = "web"
 
+// ReqWebStatus (golint)
+const ReqWebStatus = "web.status"
+
 // ReqWebGet (golint)
 const ReqWebGet = "web.get"
 
@@ -436,6 +439,8 @@ type Request struct {
 	Milliseconds           int32                         `json:"ms,omitempty"`
 	Full                   bool                          `json:"full,omitempty"`
 	Async                  bool                          `json:"async,omitempty"`
+	Binary                 bool                          `json:"binary,omitempty"`
+	Cobs                   int32                         `json:"cobs,omitempty"`
 }
 
 // A Note on Time
