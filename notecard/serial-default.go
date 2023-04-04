@@ -11,12 +11,13 @@ import (
 )
 
 // Notecard's USB VID/PID
-const bluesincVID = "30A4"
-const notecardPID = "0001"
+const (
+	bluesincVID = "30A4"
+	notecardPID = "0001"
+)
 
 // Get the default serial device
 func defaultSerialDefault() (device string, speed int) {
-
 	// Enum all ports
 	speed = 115200
 	ports, err2 := enumerator.GetDetailedPortsList()
@@ -51,7 +52,6 @@ func defaultSerialDefault() (device string, speed int) {
 
 // Set or display the serial port
 func defaultSerialPortEnum() (allports []string, usbports []string, notecardports []string, err error) {
-
 	// Enum all ports
 	ports, err2 := enumerator.GetDetailedPortsList()
 	if err2 != nil {

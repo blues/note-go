@@ -34,7 +34,7 @@ var (
 )
 
 // SerialTimeoutMs is the response timeout for Notecard serial communications.
-var SerialTimeoutMs = 15000
+var SerialTimeoutMs = 30000
 
 // IgnoreWindowsHWErrSecs is the amount of time to ignore a Windows serial communiction error.
 var IgnoreWindowsHWErrSecs = 2
@@ -667,6 +667,36 @@ func (context *Context) Transaction(req map[string]interface{}) (rsp map[string]
 // ReceiveBytes receives arbitrary Bytes from the Notecard
 func (context *Context) ReceiveBytes() (rspBytes []byte, err error) {
 	return context.receiveBytes(0)
+}
+
+// SendBytes sends arbitrary Bytes to the Notecard
+func (context *Context) SendBytes(reqBytes []byte) (err error) {
+
+	// Only operate on port 0
+	portConfig := 0
+
+	// Only one caller at a time accessing the I/O port
+	lockTrans(false, portConfig)
+
+	// Reopen if error
+	err = context.ReopenIfRequired(portConfig)
+	if err != nil {
+		unlockTrans(false, portConfig)
+		return
+	}
+
+	// Do a reset if one was pending
+	if context.resetRequired {
+		context.Reset(portConfig)
+	}
+
+	// Do the send, with no response requested
+	_, err = context.TransactionFn(context, portConfig, true, reqBytes)
+
+	// Done
+	unlockTrans(false, portConfig)
+	return
+
 }
 
 // receiveBytes receives arbitrary Bytes from the Notecard, using  the current or specified port

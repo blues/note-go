@@ -7,7 +7,7 @@ package notecard
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -62,7 +62,6 @@ func remoteReset(context *Context, portConfig int) (err error) {
 
 // Close a remote notecard
 func remoteClose(context *Context) {
-
 	// Reset the remote card to release the reservation
 	// 'https://DirectURL&reset=true'
 	var req *http.Request
@@ -90,7 +89,6 @@ func remoteClose(context *Context) {
 // reservation between tests which may be run across different machines and across
 // different processes on the same machine.
 func callerID() (id string) {
-
 	// See if it's specified in the environment
 	id = os.Getenv("NOTEFARM_CALLERID")
 	if id != "" {
@@ -137,7 +135,6 @@ func extractCallerID(sn string) (callerid string, expires int64) {
 
 // Get the remote notecard list
 func cardList(context *Context) (cards []RemoteCard, err error) {
-
 	notefarm := os.Getenv("NOTEFARM")
 	if context.farmURL != "" {
 		notefarm = context.farmURL
@@ -162,11 +159,13 @@ func cardList(context *Context) (cards []RemoteCard, err error) {
 		return
 	}
 
-	rspbuf, err3 := ioutil.ReadAll(resp.Body)
+	var buf bytes.Buffer
+	_, err3 := io.Copy(&buf, resp.Body)
 	if err3 != nil {
 		err = fmt.Errorf("notefarm: can't read device list: %s", err3)
 		return
 	}
+	rspbuf := buf.Bytes()
 
 	remoteCards := RemoteCards{}
 	err3 = note.JSONUnmarshal(rspbuf, &remoteCards)
@@ -187,7 +186,6 @@ func cardList(context *Context) (cards []RemoteCard, err error) {
 
 	cards = remoteCards.Cards
 	return
-
 }
 
 // Open or reopen the remote card. Locked to prevent multiple processes on this
@@ -215,7 +213,6 @@ func remoteReopen(context *Context, portConfig int) (err error) {
 
 // Open or reopen the remote card. Unlocked.
 func uRemoteReopen(context *Context, portConfig int) (err error) {
-
 	// Wait indefinitely for a reservation
 	for {
 
@@ -339,7 +336,6 @@ func uRemoteReopen(context *Context, portConfig int) (err error) {
 
 // Perform a remote transaction
 func remoteTransaction(context *Context, portConfig int, noResponse bool, reqJSON []byte) (rspJSON []byte, err error) {
-
 	// If our reservation has expired, fail the transaction
 	if time.Now().Unix() > context.farmCheckoutExpires {
 		err = fmt.Errorf("notefarm reservation of %d min has expired", context.farmCheckoutMins)
@@ -350,7 +346,7 @@ func remoteTransaction(context *Context, portConfig int, noResponse bool, reqJSO
 	// transaction rate of the notefarm's proxy infrastructure
 	var rspbuf []byte
 	var resp *http.Response
-	var maxRetries = 5
+	maxRetries := 5
 	for i := 0; ; i++ {
 
 		// Retry requests because Balena server needs to throttle us when we are hammering it
@@ -398,13 +394,15 @@ func remoteTransaction(context *Context, portConfig int, noResponse bool, reqJSO
 		}
 
 		// Success, so now we read the response
-		rspbuf, err = ioutil.ReadAll(resp.Body)
+		var buf bytes.Buffer
+		_, err = io.Copy(&buf, resp.Body)
 		resp.Body.Close()
 		if err != nil {
 			err = fmt.Errorf("reading response %s: %s", note.ErrCardIo, err)
 			rspJSON = note.ErrorJSON("", err)
 			break
 		}
+		rspbuf = buf.Bytes()
 
 		// Validate that it's compliant JSON
 		var jobj map[string]interface{}
@@ -459,5 +457,4 @@ func remoteTransaction(context *Context, portConfig int, noResponse bool, reqJSO
 	}
 
 	return
-
 }

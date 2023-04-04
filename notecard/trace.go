@@ -20,16 +20,17 @@ import (
 const prompt = false
 
 // The time when the last read began
-var readBeganMs = 0
-var promptedMs = 0
-var prompted = false
-var inputHandlerActive = false
-var promptHandlerActive = false
+var (
+	readBeganMs         = 0
+	promptedMs          = 0
+	prompted            = false
+	inputHandlerActive  = false
+	promptHandlerActive = false
+)
 
 // TraceCapture monitors the trace output until a delimiter is reached
 // It then returns the received output to the caller.
 func (context *Context) TraceCapture(toSend string, toEnd string) (captured string, err error) {
-
 	// Tracing only works for USB and AUX ports
 	if !context.isSerial {
 		err = fmt.Errorf("tracing is only available on USB and AUX ports")
@@ -97,12 +98,10 @@ func (context *Context) TraceCapture(toSend string, toEnd string) (captured stri
 	}
 
 	return
-
 }
 
 // Trace the incoming serial output AND connect the input handler
 func (context *Context) Trace() (err error) {
-
 	// Tracing only works for USB and AUX ports
 	if !context.isSerial {
 		return fmt.Errorf("tracing is only available on USB and AUX ports")
@@ -166,9 +165,7 @@ func (context *Context) Trace() (err error) {
 		}
 
 		if !prompt {
-
 			fmt.Printf("%s", buf[:length])
-
 		} else {
 
 			// Overwrite prompt
@@ -189,12 +186,10 @@ func (context *Context) Trace() (err error) {
 	err = fmt.Errorf("error reading from module: %s", err)
 	cardReportError(context, err)
 	return
-
 }
 
 // Watch for console input
 func inputHandler(context *Context) {
-
 	// Mark as active, in case we invoke this multiple times
 	inputHandlerActive = true
 
@@ -208,7 +203,6 @@ func inputHandler(context *Context) {
 		message = scanner.Text()
 
 		if strings.HasPrefix(message, "^") {
-
 			if !context.serialPortIsOpen {
 				for _, r := range message[1:] {
 					switch {
@@ -225,9 +219,7 @@ func inputHandler(context *Context) {
 					}
 				}
 			}
-
 		} else {
-
 			// Send the command to the module
 			if !context.serialPortIsOpen {
 				time.Sleep(250 * time.Millisecond)
@@ -235,15 +227,12 @@ func inputHandler(context *Context) {
 				context.serialPort.Write([]byte(message))
 				context.serialPort.Write([]byte("\n"))
 			}
-
 		}
 	}
-
 }
 
 // Display a prompt
 func promptHandler(context *Context) {
-
 	// Mark as active, in case we invoke this multiple times
 	promptHandlerActive = true
 
@@ -260,5 +249,4 @@ func promptHandler(context *Context) {
 			time.Sleep(150 * time.Millisecond)
 		}
 	}
-
 }

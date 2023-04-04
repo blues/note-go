@@ -40,9 +40,11 @@ type I2C struct {
 }
 
 // The open I2C port
-var hostInitialized bool
-var openI2CPort *I2C
-var i2cLock sync.RWMutex
+var (
+	hostInitialized bool
+	openI2CPort     *I2C
+	i2cLock         sync.RWMutex
+)
 
 // Our default I2C address
 const notecardDefaultI2CAddress = 0x17
@@ -56,7 +58,6 @@ func i2cDefault() (port string, portConfig int) {
 
 // Open the i2c port
 func i2cOpen(port string, portConfig int) (err error) {
-
 	// Open the periph.io host
 	if !hostInitialized {
 		openI2CPort = &I2C{}
@@ -155,7 +156,6 @@ func i2cClose() (err error) {
 
 // Enum I2C ports
 func i2cPortEnum() (allports []string, usbports []string, notecardports []string, err error) {
-
 	// Open the periph.io host
 	if !hostInitialized {
 		openI2CPort = &I2C{}

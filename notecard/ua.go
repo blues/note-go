@@ -15,7 +15,6 @@ import (
 
 // UserAgent generates a User Agent object for a given interface
 func (context *Context) UserAgent() (ua map[string]interface{}) {
-
 	ua = map[string]interface{}{}
 	ua["agent"] = "note-go"
 	ua["compiler"] = fmt.Sprintf("%s %s/%s", runtime.Version(), runtime.GOOS, runtime.GOARCH)
@@ -47,5 +46,4 @@ func (context *Context) UserAgent() (ua map[string]interface{}) {
 	*/
 
 	return
-
 }

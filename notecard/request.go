@@ -223,6 +223,9 @@ const ReqCardSetup = "card.setup"
 // ReqCardWireless (golint)
 const ReqCardWireless = "card.wireless"
 
+// ReqCardTransport (golint)
+const ReqCardTransport = "card.transport"
+
 // ReqCardWirelessPenalty (golint)
 const ReqCardWirelessPenalty = "card.wireless.penalty"
 

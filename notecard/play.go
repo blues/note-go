@@ -16,9 +16,11 @@ import (
 )
 
 // Interactive I/O
-var iInputHandlerActive = false
-var iWatch = false
-var uiLock sync.RWMutex
+var (
+	iInputHandlerActive = false
+	iWatch              = false
+	uiLock              sync.RWMutex
+)
 
 // Interactive enters interactive request/response mode, disabling trace in case
 // that was the last mode entered
@@ -171,12 +173,10 @@ func (context *Context) Interactive(watch bool, watchLevel int, prompt bool, wat
 	// Done
 	iInputHandlerActive = false
 	return
-
 }
 
 // Watch for console input
 func interactiveInputHandler(context *Context, prompt bool, watchCommand string, quitCommand string) {
-
 	// Mark as active, in case we invoke this multiple times
 	iInputHandlerActive = true
 
@@ -220,5 +220,4 @@ func interactiveInputHandler(context *Context, prompt bool, watchCommand string,
 		}
 		uiLock.Unlock()
 	}
-
 }

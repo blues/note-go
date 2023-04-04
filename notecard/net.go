@@ -4,21 +4,23 @@
 
 package notecard
 
-const NetworkBearerUnknown = -1
-const NetworkBearerGsm = 0
-const NetworkBearerTdScdma = 1
-const NetworkBearerWcdma = 2
-const NetworkBearerCdma2000 = 3
-const NetworkBearerWiMax = 4
-const NetworkBearerLteTdd = 5
-const NetworkBearerLteFdd = 6
-const NetworkBearerNBIot = 7
-const NetworkBearerWLan = 21
-const NetworkBearerBluetooth = 22
-const NetworkBearerIeee802p15p4 = 23
-const NetworkBearerEthernet = 41
-const NetworkBearerDsl = 42
-const NetworkBearerPlc = 43
+const (
+	NetworkBearerUnknown      = -1
+	NetworkBearerGsm          = 0
+	NetworkBearerTdScdma      = 1
+	NetworkBearerWcdma        = 2
+	NetworkBearerCdma2000     = 3
+	NetworkBearerWiMax        = 4
+	NetworkBearerLteTdd       = 5
+	NetworkBearerLteFdd       = 6
+	NetworkBearerNBIot        = 7
+	NetworkBearerWLan         = 21
+	NetworkBearerBluetooth    = 22
+	NetworkBearerIeee802p15p4 = 23
+	NetworkBearerEthernet     = 41
+	NetworkBearerDsl          = 42
+	NetworkBearerPlc          = 43
+)
 
 // NetInfo is the composite structure with all networking connection info
 type NetInfo struct {
