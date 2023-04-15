@@ -444,6 +444,7 @@ type Request struct {
 	Async                  bool                          `json:"async,omitempty"`
 	Binary                 bool                          `json:"binary,omitempty"`
 	Cobs                   int32                         `json:"cobs,omitempty"`
+	Append                 bool                          `json:"append,omitempty"`
 }
 
 // A Note on Time
