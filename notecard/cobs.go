@@ -30,11 +30,16 @@ func CobsDecode(inputOutput []byte, xor byte) ([]byte, error) {
 	return inputOutput[startOffset:outOffset], nil
 }
 
+// Get the maximum size of the cobs-encoded buffer
+func CobsEncodedLength(length int) int {
+	return length + (1 + (length / 254))
+}
+
 // Encode with optional XOR
 func CobsEncode(input []byte, xor byte) ([]byte, error) {
 	length := len(input)
 	inOffset := 0
-	output := make([]byte, len(input)+(1+(len(input)/254)))
+	output := make([]byte, CobsEncodedLength(len(input)))
 	outOffset := 0
 	outStartOffset := outOffset
 	var ch, code uint8
