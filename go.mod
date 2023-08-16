@@ -1,5 +1,6 @@
 module github.com/blues/note-go
 
+// 2023-02-26 Raspberry Pi apt-get only is updated to 1.15
 go 1.15
 
 require (

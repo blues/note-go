@@ -4,7 +4,9 @@
 
 package note
 
-import "time"
+import (
+	"time"
+)
 
 // EventAdd (golint)
 const EventAdd = "note.add"
@@ -36,6 +38,9 @@ const EventSession = "session.begin"
 // EventGeolocation (golint)
 const EventGeolocation = "device.geolocation"
 
+// EventWebhook (golint)
+const EventWebhook = "webhook"
+
 // Event is the request structure passed to the Notification proc
 //
 // NOTE: This structure's underlying storage has been decoupled from the use of
@@ -46,6 +51,7 @@ type Event struct {
 	EventUID   string                  `json:"event,omitempty"`
 	SessionUID string                  `json:"session,omitempty"`
 	TLS        bool                    `json:"tls,omitempty"`
+	Continuous bool                    `json:"continuous,omitempty"`
 	BestID     string                  `json:"best_id,omitempty"`
 	DeviceUID  string                  `json:"device,omitempty"`
 	DeviceSN   string                  `json:"sn,omitempty"`
@@ -64,6 +70,8 @@ type Event struct {
 	Bulk       bool                    `json:"bulk,omitempty"`
 	Body       *map[string]interface{} `json:"body,omitempty"`
 	Payload    []byte                  `json:"payload,omitempty"`
+	// This field is ONLY used when we remove the payload for storage reasons, to show the app how large it was
+	MissingPayloadLength int64 `json:"payload_length,omitempty"`
 	// Location
 	BestLocationType string  `json:"best_location_type,omitempty"`
 	BestLocationWhen int64   `json:"best_location_when,omitempty"`
@@ -110,38 +118,25 @@ type Event struct {
 	Triangulate *map[string]interface{} `json:"triangulate,omitempty"`
 	// "Routed" environment variables beginning with a "$" prefix
 	Env       *map[string]string `json:"environment,omitempty"`
-	LogAttn   bool               `json:"logattn,omitempty"`
 	Status    EventStatus        `json:"status,omitempty"`
 	FleetUIDs *[]string          `json:"fleets,omitempty"`
+
+	// Extended details for routed events.  This is not referenced in the source
+	// code because it gets optionally populated by a JSONata transform.  It was
+	// added to support the v1 API /v1/projects/<UID>/webhooks/<UID>
+	Details *map[string]interface{} `json:"details,omitempty"`
 }
 
 type EventStatus string
 
 const (
+	EventStatusEmpty      EventStatus = ""
 	EventStatusSuccess    EventStatus = "success"
 	EventStatusFailure    EventStatus = "failure"
 	EventStatusInProgress EventStatus = "in_progress"
 )
 
-// we should no longer be writing to the LogAttn field,
-// we can simplify this logic to just return event.Status
-func (event Event) GetStatus() EventStatus {
-	if len(event.Status) == 0 {
-		if event.LogAttn {
-			return EventStatusFailure
-		} else {
-			return EventStatusSuccess
-		}
-	}
-	return event.Status
-}
-
 // RouteLogEntry is the log entry used by notification processing
-//
-// NOTE: This structure's underlying storage has been decoupled from the use of
-// the structure in business logic.  As such, please share any changes to these
-// structures with cloud services to ensure that storage and testing frameworks
-// are kept in sync with these structures used for business logic
 type RouteLogEntry struct {
 	EventSerial int64     `json:"event,omitempty"`
 	RouteSerial int64     `json:"route,omitempty"`
@@ -150,4 +145,31 @@ type RouteLogEntry struct {
 	Status      string    `json:"status,omitempty"`
 	Text        string    `json:"text,omitempty"`
 	URL         string    `json:"url,omitempty"`
+}
+
+// GetAggregateEventStatus returns the status of the event given all
+// of the route logs for the event.
+//
+// The aggregate status is determined by taking the most recent status
+// for each route.  If any of these are failures then the overall status
+// is EventStatusFailure, otherwise it's EventStatusSuccess
+func GetAggregateEventStatus(logs []RouteLogEntry) EventStatus {
+	if len(logs) == 0 {
+		return EventStatusEmpty
+	}
+
+	latest := make(map[int64]RouteLogEntry)
+	for _, log := range logs {
+		if val, ok := latest[log.RouteSerial]; !ok || log.Date.After(val.Date) {
+			latest[log.RouteSerial] = log
+		}
+	}
+
+	for _, latestLogEntry := range latest {
+		if latestLogEntry.Attn {
+			return EventStatusFailure
+		}
+	}
+
+	return EventStatusSuccess
 }

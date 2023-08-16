@@ -17,9 +17,11 @@ type Word struct {
 	WordIndex uint
 }
 
-var sortedWords []Word
-var sortedWordsInitialized = false
-var sortedWordsInitLock sync.RWMutex
+var (
+	sortedWords            []Word
+	sortedWordsInitialized = false
+	sortedWordsInitLock    sync.RWMutex
+)
 
 // Class used to sort an index of words
 type byWord []Word
@@ -30,7 +32,6 @@ func (a byWord) Less(i, j int) bool { return words2048[a[i].WordIndex] < words20
 
 // WordToNumber converts a single word to a number
 func WordToNumber(word string) (num uint, success bool) {
-
 	// Initialize sorted words array if necessary
 	if !sortedWordsInitialized {
 		sortedWordsInitLock.Lock()
@@ -114,7 +115,6 @@ func WordsToNumber(words string) (num uint32, found bool) {
 	result |= uint32(right)
 
 	return result, true
-
 }
 
 // WordsFromString hashes a string with a 32-bit function and converts it to three simple words
@@ -129,7 +129,6 @@ func WordsFromString(in string) (out string) {
 
 // WordsFromNumber converts a number to three simple words
 func WordsFromNumber(number uint32) string {
-
 	// Break the 32-bit uint down into 3 bit fields
 	left := (number >> 22) & 0x000003ff
 	middle := (number >> 11) & 0x000007ff
@@ -140,7 +139,6 @@ func WordsFromNumber(number uint32) string {
 		return words2048[middle] + "-" + words2048[right]
 	}
 	return words2048[left] + "-" + words2048[middle] + "-" + words2048[right]
-
 }
 
 // 2048 words, ORDERED but alphabetically unsorted
@@ -2192,6 +2190,7 @@ var words2048 = []string{
 	"wooden",
 	"worker",
 	"writer",
-	"yellow"}
+	"yellow",
+}
 
 // end

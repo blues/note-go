@@ -163,6 +163,9 @@ const ReqEnvGet = "env.get"
 // ReqEnvSet (golint)
 const ReqEnvSet = "env.set"
 
+// ReqEnvTemplate (golint)
+const ReqEnvTemplate = "env.template"
+
 // ReqEnvDefault (golint)
 const ReqEnvDefault = "env.default"
 
@@ -178,8 +181,14 @@ const ReqEnvSync = "env.sync"
 // ReqWeb (golint)
 const ReqWeb = "web"
 
-// ReqWebStatus (golint)
-const ReqWebStatus = "web.status"
+// ReqCardBinary (golint)
+const ReqCardBinary = "card.binary"
+
+// ReqCardBinaryGet (golint)
+const ReqCardBinaryGet = "card.binary.get"
+
+// ReqCardBinaryPut (golint)
+const ReqCardBinaryPut = "card.binary.put"
 
 // ReqWebGet (golint)
 const ReqWebGet = "web.get"
@@ -350,7 +359,7 @@ type Request struct {
 	LocationOLC            string                        `json:"olc,omitempty"`
 	Latitude               float64                       `json:"lat,omitempty"`
 	Longitude              float64                       `json:"lon,omitempty"`
-	HDOP                   float64                       `json:"dop,omitempty"`
+	LocationTime           int64                         `json:"ltime,omitempty"`
 	Value                  float64                       `json:"value,omitempty"`
 	ValueV                 string                        `json:"vvalue,omitempty"`
 	SN                     string                        `json:"sn,omitempty"`
@@ -394,6 +403,8 @@ type Request struct {
 	Weekly                 float64                       `json:"weekly,omitempty"`
 	Montly                 float64                       `json:"monthly,omitempty"`
 	Verify                 bool                          `json:"verify,omitempty"`
+	Confirm                bool                          `json:"confirm,omitempty"`
+	Port                   int32                         `json:"port,omitempty"`
 	Set                    bool                          `json:"set,omitempty"`
 	Reset                  bool                          `json:"reset,omitempty"`
 	Calibration            float64                       `json:"calibration,omitempty"`
@@ -445,6 +456,8 @@ type Request struct {
 	Binary                 bool                          `json:"binary,omitempty"`
 	Cobs                   int32                         `json:"cobs,omitempty"`
 	Append                 bool                          `json:"append,omitempty"`
+	Details                *map[string]interface{}       `json:"details,omitempty"`
+	Tower                  *note.TowerLocation           `json:"tower,omitempty"`
 }
 
 // A Note on Time

@@ -39,6 +39,7 @@ type Note struct {
 	Bulk      bool                   `json:"k,omitempty"`
 	XPOff     uint32                 `json:"O,omitempty"`
 	XPLen     uint32                 `json:"L,omitempty"`
+	Tower     *TowerLocation         `json:"T,omitempty"`
 }
 
 // History records the update history, optimized so that if the most recent entry
@@ -176,6 +177,15 @@ func (note *Note) GetConflicts() []Note {
 		return []Note{}
 	}
 	return *note.Conflicts
+}
+
+// GetWhen retrieves the epoch modification time
+func (note *Note) When() (when int64) {
+	if note.Histories == nil || len(*note.Histories) == 0 {
+		return 0
+	}
+	histories := *note.Histories
+	return histories[0].When
 }
 
 // GetModified retrieves information about the note's modification

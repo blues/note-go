@@ -44,18 +44,6 @@ type DeleteDeviceFleetsRequest struct {
 	FleetUIDs []string `json:"fleet_uids"`
 }
 
-// DeleteDeviceFleetsResponse v1
-//
-// The response object for removing a device from fleets
-type DeleteDeviceFleetsResponse struct {
-	// FleetUIDs
-	//
-	// The fleets the device is still a part of.
-	//
-	// required: true
-	Fleets []FleetResponse `json:"fleets"`
-}
-
 // PostFleetRequest v1
 //
 // The request object for adding a fleet for a project

@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -20,9 +19,6 @@ import (
 	"github.com/blues/note-go/note"
 	"github.com/gofrs/flock"
 )
-
-// The number of minutes that we'll round up so that card reservations don't thrash
-const reservationModulusMinutes = 5
 
 // RemoteCard is the full description of notecards managed by the farm
 type RemoteCard struct {
@@ -45,24 +41,10 @@ type RemoteCards struct {
 	Cards []RemoteCard `json:"notecards,omitempty"`
 }
 
-// Get the default remote farm and notecard checkout period
-func remotePortDefault() (farmURL string, farmCheckoutMins int) {
-	return
-}
-
-// Enumerate remote farms
-func remotePortEnum() (allFarms []string, unused []string, notecardFarms []string, err error) {
-	return
-}
-
-// Reset communications with the remote notecard
-func remoteReset(context *Context, portConfig int) (err error) {
-	return
-}
-
 // Close a remote notecard
 func remoteClose(context *Context) {
 	// Reset the remote card to release the reservation
+
 	// 'https://DirectURL&reset=true'
 	var req *http.Request
 	resetURL := context.farmCard.DirectURL + `&reset=true`
@@ -83,34 +65,9 @@ func remoteClose(context *Context) {
 			fmt.Printf("notefarm: remoteClose http.Do Fail %v", err)
 		}
 	}
-}
 
-// Get the CallerID for this requestor, increasing the likelihood of getting the same
-// reservation between tests which may be run across different machines and across
-// different processes on the same machine.
-func callerID() (id string) {
-	// See if it's specified in the environment
-	id = os.Getenv("NOTEFARM_CALLERID")
-	if id != "" {
-		return
-	}
+	context.portIsOpen = false
 
-	// Get the mac address
-	interfaces, err := net.Interfaces()
-	if err == nil {
-		for _, i := range interfaces {
-			if i.Flags&net.FlagUp != 0 && !bytes.Equal(i.HardwareAddr, nil) {
-				// Don't use random as we have a real address
-				id = i.HardwareAddr.String()
-				break
-			}
-		}
-	}
-
-	// Append the parent process ID
-	id += fmt.Sprintf(":%d", os.Getppid())
-
-	return
 }
 
 // Get the caller ID with expiration
@@ -192,6 +149,9 @@ func cardList(context *Context) (cards []RemoteCard, err error) {
 // machine from stepping on eachother's toes. Doesn't prevent us from stepping
 // on the toes of processes running on different machines.
 func remoteReopen(context *Context, portConfig int) (err error) {
+
+	context.portIsOpen = false
+
 	// Get Mutex file lock to prevent a race with other processes on this machine.
 	fileLock := flock.New(filepath.Join(os.TempDir(), "notefarm.lock"))
 	err = fileLock.Lock()
@@ -206,6 +166,10 @@ func remoteReopen(context *Context, portConfig int) (err error) {
 	if err2 != nil {
 		err = fmt.Errorf("notefarm reservation error: can not unlock [%v]: %s; inner error: %w",
 			fileLock.Path(), err2, err)
+	}
+
+	if err == nil {
+		context.portIsOpen = true
 	}
 
 	return

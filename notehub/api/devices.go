@@ -35,6 +35,7 @@ type DeviceResponse struct {
 	Voltage     float64 `json:"voltage"`
 	Temperature float64 `json:"temperature"`
 	DFUEnv      *DFUEnv `json:"dfu,omitempty"`
+	Disabled    bool    `json:"disabled,omitempty"`
 }
 
 // GetDevicesPublicKeysResponse v1

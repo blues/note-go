@@ -29,6 +29,7 @@ type CardTest struct {
 	Check               uint32 `json:"check,omitempty"`
 	CellUsageBytes      uint32 `json:"cell_used,omitempty"`
 	CellProvisionedTime uint32 `json:"cell_provisioned,omitempty"`
+	LSEStability        string `json:"lse,omitempty"`
 	// Firmware info
 	FirmwareOrg     string `json:"org,omitempty"`
 	FirmwareProduct string `json:"product,omitempty"`
@@ -38,6 +39,13 @@ type CardTest struct {
 	FirmwarePatch   uint32 `json:"ver_patch,omitempty"`
 	FirmwareBuild   uint32 `json:"ver_build,omitempty"`
 	FirmwareBuilt   string `json:"built,omitempty"`
+	// LoRa notecard provisioning info
+	DevEui    string `json:"deveui,omitempty"`
+	AppEui    string `json:"appeui,omitempty"`
+	AppKey    string `json:"appkey,omitempty"`
+	FreqPlan  string `json:"freqplan,omitempty"`
+	LWVersion string `json:"lorawan,omitempty"`
+	PHVersion string `json:"regional,omitempty"`
 	// Certificate and cert info
 	CertSN string `json:"certsn,omitempty"`
 	Cert   string `json:"cert,omitempty"`

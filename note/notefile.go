@@ -67,4 +67,8 @@ type NotefileInfo struct {
 	ReqLoc bool `json:"req_loc,omitempty"`
 	// AnonAddAllowed is specified if anyone is allowed to drop into this notefile without authentication
 	AnonAddAllowed bool `json:"anon_add,omitempty"`
+	// ImportTime is the epoch time of when an external data source (such as a feed) last sync'ed data inbound
+	ImportTime int64 `json:"import_time,omitempty"`
+	// ExportTime is the epoch time of when an external data source (such as a feed) last sync'ed data outbound
+	ExportTime int64 `json:"export_time,omitempty"`
 }

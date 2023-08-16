@@ -80,6 +80,9 @@ const HubEnvScopeDevice = "device"
 // HubCompressModeSnappy (golint)
 const HubCompressModeSnappy = "snappy"
 
+// HubCompressModeCobs (golint)
+const HubCompressModeCobs = "cobs"
+
 // HubRequest is is the core data structure for notehub-specific requests
 type HubRequest struct {
 	notecard.Request `json:",omitempty"`
@@ -101,6 +104,7 @@ type HubRequest struct {
 	PIN              string                        `json:"pin,omitempty"`
 	Compress         string                        `json:"compress,omitempty"`
 	MD5              string                        `json:"md5,omitempty"`
+	DeviceEndpoint   bool                          `json:"device_endpoint,omitempty"`
 }
 
 // File Types

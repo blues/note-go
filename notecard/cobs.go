@@ -5,29 +5,30 @@
 package notecard
 
 // Decode with optional XOR
-func CobsDecode(inputOutput []byte, xor byte) ([]byte, error) {
-	length := len(inputOutput)
+func CobsDecode(input []byte, xor byte) ([]byte, error) {
+	output := make([]byte, len(input))
+	length := len(output)
 	inOffset := 0
 	outOffset := inOffset
 	startOffset, endOffset := outOffset, inOffset+length
 	var code, copy uint8 = 0xFF, 0
-	for inOffset < endOffset {
+	for ; inOffset < endOffset; copy-- {
 		if copy != 0 {
-			inputOutput[outOffset] = inputOutput[inOffset] ^ xor
-			outOffset, inOffset, copy = outOffset+1, inOffset+1, copy-1
+			output[outOffset] = input[inOffset] ^ xor
+			outOffset, inOffset = outOffset+1, inOffset+1
 		} else {
 			if code != 0xFF {
-				inputOutput[outOffset] = 0
+				output[outOffset] = 0
 				outOffset = outOffset + 1
 			}
-			code = inputOutput[inOffset] ^ xor
+			code = input[inOffset] ^ xor
 			copy, inOffset = code, inOffset+1
 			if code == 0 {
 				break
 			}
 		}
 	}
-	return inputOutput[startOffset:outOffset], nil
+	return output[startOffset:outOffset], nil
 }
 
 // Get the maximum size of the cobs-encoded buffer
