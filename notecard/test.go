@@ -18,7 +18,9 @@ type CardTest struct {
 	BoardType           uint32 `json:"board_type,omitempty"`
 	Modem               string `json:"modem,omitempty"`
 	ICCID               string `json:"iccid,omitempty"`
+	ICCID2              string `json:"iccid2,omitempty"`
 	IMSI                string `json:"imsi,omitempty"`
+	IMSI2               string `json:"imsi2,omitempty"`
 	IMEI                string `json:"imei,omitempty"`
 	When                uint32 `json:"when,omitempty"`
 	SKU                 string `json:"sku,omitempty"`

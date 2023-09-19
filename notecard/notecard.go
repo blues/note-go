@@ -7,9 +7,11 @@ package notecard
 import (
 	"bytes"
 	"fmt"
+	"hash/crc32"
 	"io"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -80,6 +82,11 @@ var RequestSegmentMaxLen = -1
 var RequestSegmentDelayMs = -1
 
 var DoNotReterminateJSON = false
+
+// Transaction retry logic
+const requestRetriesAllowed = 5
+
+var lastRequestSeqno = 0
 
 // IoErrorIsRecoverable is a configuration parameter describing library capabilities.
 // Set this to true if the error recovery of the implementation supports re-open.  On all implementations
@@ -283,7 +290,7 @@ func cardResetSerial(context *Context, portConfig int) (err error) {
 			err = fmt.Errorf("hardware failure")
 		}
 		if err != nil {
-			err = fmt.Errorf("error reading from module: %s %s", err, note.ErrCardIo)
+			err = fmt.Errorf("error reading from module after reset: %s %s", err, note.ErrCardIo)
 			cardReportError(context, err)
 			return
 		}
@@ -530,9 +537,6 @@ func (context *Context) Reopen(portConfig int) (err error) {
 
 // Reopen serial
 func cardReopenSerial(context *Context, portConfig int) (err error) {
-
-	// Open
-	context.portIsOpen = false
 
 	// Close if open
 	cardCloseSerial(context)
@@ -846,45 +850,144 @@ func (context *Context) transactionJSON(reqJSON []byte, multiport bool, portConf
 		fmt.Printf("%s\n", string(j))
 	}
 
+	// If it is a request (as opposed to a command), include a CRC so that the
+	// request might be retried if it is received in a corrupted state.  (We can
+	// only do this on requests because for cmd's there is no 'response channel'
+	// where we can find out that the cmd failed.  Note that a Seqno is included
+	// as part of the CRC data so that two identical requests occurring within the
+	// modulus of seqno never are mistaken as being the same request being retried.
+	lastRequestRetries := 0
+	lastRequestCrcAdded := false
+	if !noResponseRequested {
+		reqJSON = crcAdd(reqJSON, lastRequestSeqno)
+		lastRequestCrcAdded = true
+	}
+
 	// Only one caller at a time accessing the I/O port
 	lockTrans(multiport, portConfig)
 
-	// Only do reopen/reset in the single-port case, because we may not be talking to the port in error
-	if !multiport {
+	// Transaction retry loop.  Note that "err" must be set before breaking out of loop
+	err = nil
+	for {
+		if lastRequestRetries > requestRetriesAllowed {
+			break
+		}
 
-		// Reopen if error
-		err = context.ReopenIfRequired(portConfig)
+		// Only do reopen/reset in the single-port case, because we may not be talking to the port in error
+		if !multiport {
+
+			// Reopen if error
+			err = context.ReopenIfRequired(portConfig)
+			if err != nil {
+				unlockTrans(multiport, portConfig)
+				if context.Debug {
+					fmt.Printf("%s\n", err)
+				}
+				return
+			}
+
+			// Do a reset if one was pending
+			if context.resetRequired {
+				context.Reset(portConfig)
+			}
+
+		}
+
+		// Perform the transaction
+		rspJSON, err = context.TransactionFn(context, portConfig, noResponseRequested, reqJSON)
 		if err != nil {
-			unlockTrans(multiport, portConfig)
+			// We can defer the error if a single port, but we need to reset it NOW if multiport
+			if multiport {
+				if context.ResetFn != nil {
+					context.ResetFn(context, portConfig)
+				}
+			} else {
+				context.resetRequired = true
+			}
+		}
+
+		// If no response expected, we won't be retrying
+		if noResponseRequested {
+			break
+		}
+
+		// Decode the response to create an error if the response JSON was badly formatted.
+		// do this because it's SUPER inconvenient to always be checking for a response error
+		// vs an error on the transaction itself
+		if err == nil {
+			var rsp Request
+			err = note.JSONUnmarshal(rspJSON, &rsp)
+			if err != nil {
+				err = fmt.Errorf("error unmarshaling reply from module: %s %s: %s", err, note.ErrCardIo, rspJSON)
+			} else {
+				if rsp.Err != "" {
+					if req.Req == "" {
+						err = fmt.Errorf("%s", rsp.Err)
+					} else {
+						err = fmt.Errorf("%s: %s", req.Req, rsp.Err)
+					}
+				}
+			}
+		}
+
+		// Don't retry these transactions for obvious reasons
+		if req.Req == ReqCardRestore || req.Req == ReqCardRestart {
+			break
+		}
+
+		// If an I/O error, retry
+		if note.ErrorContains(err, note.ErrCardIo) {
+			// We can defer the error if a single port, but we need to reset it NOW if multiport
+			if multiport {
+				if context.ResetFn != nil {
+					context.ResetFn(context, portConfig)
+				}
+			} else {
+				context.resetRequired = true
+			}
+			lastRequestRetries++
 			if context.Debug {
-				fmt.Printf("%s\n", err)
+				fmt.Printf("retrying I/O error detected by host: %s\n", err)
 			}
-			return
+			time.Sleep(500 * time.Millisecond)
+			continue
 		}
 
-		// Do a reset if one was pending
-		if context.resetRequired {
-			context.Reset(portConfig)
+		// If an error, stop transaction processing here
+		if err != nil {
+			break
 		}
+
+		// If we sent a CRC in the request, examine the response JSON to see if
+		// it has a CRC error.  Note that the CRC is stripped from the
+		// rspJSON as a side-effect of this method.
+		if lastRequestCrcAdded {
+			rspJSON, err = crcError(rspJSON, lastRequestSeqno)
+			if err != nil {
+				lastRequestRetries++
+				if context.Debug {
+					fmt.Printf("retrying: %s\n", err)
+				}
+				time.Sleep(500 * time.Millisecond)
+				continue
+			}
+
+		}
+
+		// Transaction completed
+		break
 
 	}
 
-	// Perform the transaction
-	rspJSON, err = context.TransactionFn(context, portConfig, noResponseRequested, reqJSON)
-	if err != nil {
-		// We can defer the error if a single port, but we need to reset it NOW if multiport
-		if multiport {
-			if context.ResetFn != nil {
-				context.ResetFn(context, portConfig)
-			}
-		} else {
-			context.resetRequired = true
-		}
-	}
+	// Bump the request sequence number now that we've processed this request, success or error
+	lastRequestSeqno++
 
 	// If this was a card restore, we want to hold everyone back if we reset the card if it
 	// isn't a multiport case.  But in multiport, we only want to hold this caller back.
-	if context.isLocal && (req.Req == ReqCardRestore || req.Req == ReqCardRestart) {
+	if (req.Req == ReqCardRestore) && req.Reset {
+		// Special case card.restore, reset:true does not cause a reboot.
+		unlockTrans(multiport, portConfig)
+	} else if context.isLocal && (req.Req == ReqCardRestore || req.Req == ReqCardRestart) {
 		if multiport {
 			unlockTrans(multiport, portConfig)
 			time.Sleep(12 * time.Second)
@@ -903,33 +1006,18 @@ func (context *Context) transactionJSON(reqJSON []byte, multiport bool, portConf
 		return
 	}
 
-	// Decode the response to create an error if the transaction returned an error.  We
-	// do this because it's SUPER inconvenient to always be checking for a response error
-	// vs an error on the transaction itself
-	var rsp Request
-	if err == nil {
-		err = note.JSONUnmarshal(rspJSON, &rsp)
-		if err != nil {
-			err = fmt.Errorf("error unmarshaling reply from module: %s %s: %s", err, note.ErrCardIo, rspJSON)
-		} else {
-			if rsp.Err != "" {
-				if req.Req == "" {
-					err = fmt.Errorf("%s", rsp.Err)
-				} else {
-					err = fmt.Errorf("%s: %s", req.Req, rsp.Err)
-				}
-			}
-		}
-	}
-
 	// Debug
 	if context.Debug {
 		responseJSON := rspJSON
 		if context.Pretty {
-			prettyJSON, e := note.JSONMarshalIndent(rsp, "    ", "    ")
+			var rsp Request
+			e := note.JSONUnmarshal(responseJSON, &rsp)
 			if e == nil {
-				fmt.Printf("==> ")
-				responseJSON = append(prettyJSON, byte('\n'))
+				prettyJSON, e := note.JSONMarshalIndent(rsp, "    ", "    ")
+				if e == nil {
+					fmt.Printf("==> ")
+					responseJSON = append(prettyJSON, byte('\n'))
+				}
 			}
 		}
 		fmt.Printf("%s", string(responseJSON))
@@ -1355,10 +1443,113 @@ func serialTraceRead(context *Context) (data []byte, err error) {
 	}
 
 	return buf[:length], nil
-
 }
 
 // Serial trace write function
 func serialTraceWrite(context *Context, data []byte) {
 	context.serialPort.Write(data)
+}
+
+// Add a crc to the JSON transaction
+func crcAdd(reqJson []byte, seqno int) []byte {
+
+	// Exit if invalid
+	if len(reqJson) < 2 {
+		return reqJson
+	}
+
+	// Extract any terminator present so it isn't included in the checksum
+	reqJsonStr := string(reqJson)
+	terminator := ""
+	temp := strings.Split(reqJsonStr, "}")
+	if len(temp) > 1 {
+		terminator = temp[len(temp)-1]
+		reqJsonStr = strings.Join(temp[0:len(temp)-1], "}") + "}"
+	}
+
+	// Compute the CRC of the JSON
+	crc := crc32.ChecksumIEEE([]byte(reqJsonStr))
+
+	// Strip the suffix and prepare for crc concatenation.  Note that
+	// the decode side assumes that either a space or comma was added
+	reqJsonStr = strings.TrimSuffix(reqJsonStr, "}")
+	if !strings.Contains(reqJsonStr, ":") {
+		reqJsonStr += " "
+	} else {
+		reqJsonStr += ","
+	}
+
+	// Append the CRC
+	reqJsonStr += fmt.Sprintf("\"crc\":\"%04X:%08X\"}", seqno, crc)
+
+	// Done
+	return []byte(reqJsonStr + terminator)
+}
+
+// Test and remove CRC from transaction JSON
+// Note that if a CRC field is not present in the JSON, it is considered
+// a valid transaction because old Notecards do not have the code
+// with which to calculate and piggyback a CRC field.  Note that the
+// CRC is stripped from the input JSON regardless of whether or not
+// there was an error.
+func crcError(rspJson []byte, shouldBeSeqno int) (retJson []byte, err error) {
+
+	// Exit silently if invalid
+	if len(rspJson) < 2 {
+		return rspJson, nil
+	}
+
+	// Extract any terminator present so it isn't included in the checksum
+	rspJsonStr := string(rspJson)
+	terminator := ""
+	temp := strings.Split(rspJsonStr, "}")
+	if len(temp) > 1 {
+		terminator = temp[len(temp)-1]
+		rspJsonStr = strings.Join(temp[0:len(temp)-1], "}") + "}"
+	}
+
+	// Minimum valid JSON is "{}" (2 bytes) and must end with a closing "}".  If
+	// it's not there, it's ok because it could be an old notecard
+	crcFieldLength := 22 // ,"crc":"SSSS:CCCCCCCC"
+	if len(rspJsonStr) < crcFieldLength+2 || !strings.HasSuffix(rspJsonStr, "}") {
+		return rspJson, nil
+	}
+
+	// Split the string into its json and non-json components
+	t1 := strings.Split(rspJsonStr, " \"crc\":\"")
+	if len(t1) != 2 {
+		t1 = strings.Split(rspJsonStr, ",\"crc\":\"")
+	}
+	if len(t1) != 2 {
+		return rspJson, nil
+	}
+	stripped := t1[0] + "}"
+	t2 := strings.Split(t1[1], ":")
+	if len(t2) != 2 {
+		return rspJson, fmt.Errorf("badly formatted CRC seqno")
+	}
+	seqnoHex := t2[0]
+	seqno, err := strconv.ParseInt(seqnoHex, 16, 64)
+	if err != nil {
+		return rspJson, fmt.Errorf("badly formatted hex CRC seqno")
+	}
+	shouldBeCrcHex := strings.TrimSuffix(t2[1], "\"}")
+	shouldBeCrc, err := strconv.ParseInt(shouldBeCrcHex, 16, 64)
+	if err != nil {
+		return rspJson, fmt.Errorf("badly formatted hex CRC")
+	}
+
+	// Compute the CRC of the JSON
+	crc := crc32.ChecksumIEEE([]byte(stripped))
+
+	// Test values
+	if shouldBeSeqno != int(seqno) {
+		return rspJson, fmt.Errorf("sequence number mismatch (%d != %d)", seqno, shouldBeSeqno)
+	}
+	if uint32(shouldBeCrc) != crc {
+		return rspJson, fmt.Errorf("CRC mismatch")
+	}
+
+	// Done
+	return []byte(stripped + terminator), nil
 }
