@@ -25,8 +25,10 @@ const (
 // NetInfo is the composite structure with all networking connection info
 type NetInfo struct {
 	Iccid            string `json:"iccid,omitempty"`
+	Iccid2           string `json:"iccid2,omitempty"`
 	IccidExternal    string `json:"iccid_external,omitempty"`
 	Imsi             string `json:"imsi,omitempty"`
+	Imsi2            string `json:"imsi2,omitempty"`
 	ImsiExternal     string `json:"imsi_external,omitempty"`
 	Imei             string `json:"imei,omitempty"`
 	ModemFirmware    string `json:"modem,omitempty"`

@@ -152,7 +152,7 @@ type HubRequestFileFirmware struct {
 	Builder string `json:"builder,omitempty"`
 }
 
-// HubRequestFile is is the body of the object uploaded for each file
+// HubRequestFile is the body of the object uploaded for each file
 type HubRequestFile struct {
 	Name     string                  `json:"name,omitempty"`
 	Length   int                     `json:"length,omitempty"`
