@@ -112,6 +112,9 @@ const ReqCardIllumination = "card.illumination"
 // ReqCardVoltage (golint)
 const ReqCardVoltage = "card.voltage"
 
+// ReqCardPower (golint)
+const ReqCardPower = "card.power"
+
 // ReqCardMotion (golint)
 const ReqCardMotion = "card.motion"
 
@@ -417,6 +420,7 @@ type Request struct {
 	Type                   int32                         `json:"type,omitempty"`
 	Number                 int64                         `json:"number,omitempty"`
 	SKU                    string                        `json:"sku,omitempty"`
+	OrderingCode           string                        `json:"ordering_code,omitempty"`
 	Board                  string                        `json:"board,omitempty"`
 	Net                    *NetInfo                      `json:"net,omitempty"`
 	Sensitivity            int32                         `json:"sensitivity,omitempty"`
@@ -425,6 +429,8 @@ type Request struct {
 	WiFi                   bool                          `json:"wifi,omitempty"`
 	Cell                   bool                          `json:"cell,omitempty"`
 	GPS                    bool                          `json:"gps,omitempty"`
+	LoRa                   bool                          `json:"lora,omitempty"`
+	NTN                    bool                          `json:"ntn,omitempty"`
 	Inbound                int32                         `json:"inbound,omitempty"`
 	InboundV               string                        `json:"vinbound,omitempty"`
 	Outbound               int32                         `json:"outbound,omitempty"`
@@ -458,6 +464,10 @@ type Request struct {
 	Append                 bool                          `json:"append,omitempty"`
 	Details                *map[string]interface{}       `json:"details,omitempty"`
 	Tower                  *note.TowerLocation           `json:"tower,omitempty"`
+	Change                 float64                       `json:"change,omitempty"`
+	Format                 string                        `json:"format,omitempty"`
+	Voltage                float64                       `json:"voltage,omitempty"`
+	MilliampHours          float64                       `json:"milliamp_hours,omitempty"`
 }
 
 // A Note on Time

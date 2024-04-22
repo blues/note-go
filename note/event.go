@@ -118,7 +118,7 @@ type Event struct {
 	Triangulate *map[string]interface{} `json:"triangulate,omitempty"`
 	// "Routed" environment variables beginning with a "$" prefix
 	Env       *map[string]string `json:"environment,omitempty"`
-	Status    EventStatus        `json:"status,omitempty"`
+	Status    EventRoutingStatus `json:"status,omitempty"`
 	FleetUIDs *[]string          `json:"fleets,omitempty"`
 
 	// Extended details for routed events.  This is not referenced in the source
@@ -127,13 +127,13 @@ type Event struct {
 	Details *map[string]interface{} `json:"details,omitempty"`
 }
 
-type EventStatus string
+type EventRoutingStatus string
 
 const (
-	EventStatusEmpty      EventStatus = ""
-	EventStatusSuccess    EventStatus = "success"
-	EventStatusFailure    EventStatus = "failure"
-	EventStatusInProgress EventStatus = "in_progress"
+	EventStatusEmpty      EventRoutingStatus = ""
+	EventStatusSuccess    EventRoutingStatus = "success"
+	EventStatusFailure    EventRoutingStatus = "failure"
+	EventStatusInProgress EventRoutingStatus = "in_progress"
 )
 
 // RouteLogEntry is the log entry used by notification processing
@@ -153,7 +153,7 @@ type RouteLogEntry struct {
 // The aggregate status is determined by taking the most recent status
 // for each route.  If any of these are failures then the overall status
 // is EventStatusFailure, otherwise it's EventStatusSuccess
-func GetAggregateEventStatus(logs []RouteLogEntry) EventStatus {
+func GetAggregateEventStatus(logs []RouteLogEntry) EventRoutingStatus {
 	if len(logs) == 0 {
 		return EventStatusEmpty
 	}

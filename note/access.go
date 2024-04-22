@@ -44,9 +44,6 @@ const ACResourceNotecardFirmwares = "notecard:*"
 // ACResourceUserFirmwares is the resource for all user firmware
 const ACResourceUserFirmwares = "firmware:*"
 
-// ACResourceNotefarms is the resource for all notefarm descriptors
-const ACResourceNotefarms = "notefarm:*"
-
 // ACResourceSep is the separator for building compound resource names
 const ACResourceSep = ":"
 

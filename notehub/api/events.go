@@ -7,7 +7,7 @@ import "github.com/blues/note-go/note"
 // The response object for getting events.
 type GetEventsResponse struct {
 	Events  []note.Event `json:"events"`
-	Through string       `json:"through"`
+	Through string       `json:"through,omitempty"`
 	HasMore bool         `json:"has_more"`
 }
 
