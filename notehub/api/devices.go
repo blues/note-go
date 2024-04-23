@@ -59,6 +59,7 @@ type DevicePublicKey struct {
 // The request object for provisioning a device
 type ProvisionDeviceRequest struct {
 	ProductUID string `json:"product_uid"`
+	DeviceSN   string `json:"device_sn"`
 }
 
 // GetDeviceLatestResponse v1

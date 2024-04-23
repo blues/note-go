@@ -121,9 +121,6 @@ const HubFileTypeCardFirmware = "notecard"
 // HubFileTypeModemFirmware (golint)
 const HubFileTypeModemFirmware = "modem"
 
-// HubFileTypeNotefarm (golint)
-const HubFileTypeNotefarm = "notefarm"
-
 // HubFileTypeUserData (golint)
 const HubFileTypeUserData = "data"
 

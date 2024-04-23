@@ -160,6 +160,9 @@ const ErrSyntax = "{syntax}"
 // ErrIncompatible (golint)
 const ErrIncompatible = "{incompatible}"
 
+// ErrReqNotSupported (golint)
+const ErrReqNotSupported = "{not-supported}"
+
 // ErrTooBig (golint)
 const ErrTooBig = "{too-big}"
 

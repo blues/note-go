@@ -86,6 +86,12 @@ func leaseReopen(context *Context, portConfig int) (err error) {
 
 	context.portIsOpen = false
 
+	// Don't reopen if tracing
+	if InitialTraceMode {
+		context.portIsOpen = true
+		return
+	}
+
 	// Find out our unique ID
 	context.leaseLessor = callerID()
 
