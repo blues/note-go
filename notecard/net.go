@@ -24,18 +24,20 @@ const (
 
 // NetInfo is the composite structure with all networking connection info
 type NetInfo struct {
-	Iccid            string `json:"iccid,omitempty"`
-	Iccid2           string `json:"iccid2,omitempty"`
-	IccidExternal    string `json:"iccid_external,omitempty"`
-	Imsi             string `json:"imsi,omitempty"`
-	Imsi2            string `json:"imsi2,omitempty"`
-	ImsiExternal     string `json:"imsi_external,omitempty"`
-	Imei             string `json:"imei,omitempty"`
-	ModemFirmware    string `json:"modem,omitempty"`
-	Band             string `json:"band,omitempty"`
-	AccessTechnology string `json:"rat,omitempty"`
-	Bssid            string `json:"bssid,omitempty"`
-	Ssid             string `json:"ssid,omitempty"`
+	Iccid                    string `json:"iccid,omitempty"`
+	Iccid2                   string `json:"iccid2,omitempty"`
+	IccidExternal            string `json:"iccid_external,omitempty"`
+	Imsi                     string `json:"imsi,omitempty"`
+	Imsi2                    string `json:"imsi2,omitempty"`
+	ImsiExternal             string `json:"imsi_external,omitempty"`
+	Imei                     string `json:"imei,omitempty"`
+	ModemFirmware            string `json:"modem,omitempty"`
+	Band                     string `json:"band,omitempty"`
+	AccessTechnology         string `json:"rat,omitempty"`
+	ReportedAccessTechnology string `json:"ratr,omitempty"`
+	ReportedCarrier          string `json:"carrier,omitempty"`
+	Bssid                    string `json:"bssid,omitempty"`
+	Ssid                     string `json:"ssid,omitempty"`
 	// Internal vs external SIM used at any given moment
 	InternalSIMSelected bool `json:"internal,omitempty"`
 	// Radio signal strength in dBm, or ModemValueUnknown if it is not

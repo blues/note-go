@@ -1,6 +1,10 @@
 package api
 
-import "github.com/blues/note-go/note"
+import (
+	"strings"
+
+	"github.com/blues/note-go/note"
+)
 
 // GetDevicesResponse v1
 //
@@ -36,6 +40,7 @@ type DeviceResponse struct {
 	Temperature float64 `json:"temperature"`
 	DFUEnv      *DFUEnv `json:"dfu,omitempty"`
 	Disabled    bool    `json:"disabled,omitempty"`
+	Tags        string  `json:"tags,omitempty"`
 }
 
 // GetDevicesPublicKeysResponse v1
@@ -124,11 +129,54 @@ type DFUState struct {
 	ConsecutiveErrors uint32 `json:"errors,omitempty"`
 	ReadFromService   uint32 `json:"read,omitempty"`
 	UpdatedSecs       uint32 `json:"updated,omitempty"`
-	Version           string `json:"version,omitempty"`
+
+	// This will always point to the current running version
+	Version string `json:"version,omitempty"`
 }
 
 // DFUEnv is the data structure passed to Notehub when DFU info changes
 type DFUEnv struct {
 	Card *DFUState `json:"card,omitempty"`
 	User *DFUState `json:"user,omitempty"`
+}
+
+type DfuPhase string
+
+const (
+	DfuPhaseUnknown     DfuPhase = ""
+	DfuPhaseIdle        DfuPhase = "idle"
+	DfuPhaseError       DfuPhase = "error"
+	DfuPhaseDownloading DfuPhase = "downloading"
+	DfuPhaseSideloading DfuPhase = "sideloading"
+	DfuPhaseReady       DfuPhase = "ready"
+	DfuPhaseReadyRetry  DfuPhase = "ready-retry"
+	DfuPhaseUpdating    DfuPhase = "updating"
+	DfuPhaseCompleted   DfuPhase = "completed"
+)
+
+var allDfuPhases = []DfuPhase{
+	DfuPhaseUnknown,
+	DfuPhaseIdle,
+	DfuPhaseError,
+	DfuPhaseDownloading,
+	DfuPhaseSideloading,
+	DfuPhaseReady,
+	DfuPhaseReadyRetry,
+	DfuPhaseUpdating,
+	DfuPhaseCompleted,
+}
+
+func ParseDfuPhase(phase string) DfuPhase {
+	phase = strings.ToLower(phase)
+	for _, validPhase := range allDfuPhases {
+		if phase == string(validPhase) {
+			return validPhase
+		}
+	}
+	return DfuPhaseUnknown
+}
+
+func (phase DfuPhase) IsTerminal() bool {
+	return phase == DfuPhaseError ||
+		phase == DfuPhaseCompleted
 }

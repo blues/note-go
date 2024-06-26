@@ -166,6 +166,15 @@ const ReqEnvGet = "env.get"
 // ReqEnvSet (golint)
 const ReqEnvSet = "env.set"
 
+// ReqVarSet (golint)
+const ReqVarSet = "var.set"
+
+// ReqVarGet (golint)
+const ReqVarGet = "var.get"
+
+// ReqVarDelete (golint)
+const ReqVarDelete = "var.delete"
+
 // ReqEnvTemplate (golint)
 const ReqEnvTemplate = "env.template"
 
@@ -240,6 +249,9 @@ const ReqCardTransport = "card.transport"
 
 // ReqCardWirelessPenalty (golint)
 const ReqCardWirelessPenalty = "card.wireless.penalty"
+
+// ReqCardWirelessSignal (golint)
+const ReqCardWirelessSignal = "card.wireless.signal"
 
 // ReqCardWiFi (golint)
 const ReqCardWiFi = "card.wifi"
@@ -410,6 +422,7 @@ type Request struct {
 	Port                   int32                         `json:"port,omitempty"`
 	Set                    bool                          `json:"set,omitempty"`
 	Reset                  bool                          `json:"reset,omitempty"`
+	Flag                   bool                          `json:"flag,omitempty"`
 	Calibration            float64                       `json:"calibration,omitempty"`
 	Heartbeat              bool                          `json:"heartbeat,omitempty"`
 	Threshold              int32                         `json:"threshold,omitempty"`

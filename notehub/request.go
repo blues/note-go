@@ -5,6 +5,8 @@
 package notehub
 
 import (
+	"fmt"
+
 	"github.com/blues/note-go/note"
 	"github.com/blues/note-go/notecard"
 )
@@ -19,6 +21,12 @@ const HubAppGetSchemas = "hub.app.schemas.get"
 
 // HubQuery (golint)
 const HubQuery = "hub.app.data.query"
+
+// HubEventQuery (golint)
+const HubEventQuery = "hub.app.event.query"
+
+// HubSessionQuery (golint)
+const HubSessionQuery = "hub.app.session.query"
 
 // HubAppUpload (golint)
 const HubAppUpload = "hub.app.upload.add"
@@ -91,10 +99,10 @@ type HubRequest struct {
 	FleetUID         string                        `json:"fleet,omitempty"`
 	EventSerials     []string                      `json:"events,omitempty"`
 	DbQuery          *DbQuery                      `json:"query,omitempty"`
-	Uploads          *[]HubRequestFile             `json:"uploads,omitempty"`
+	Uploads          []UploadMetadata              `json:"uploads,omitempty"`
 	Contains         string                        `json:"contains,omitempty"`
 	Handlers         *[]string                     `json:"handlers,omitempty"`
-	FileType         string                        `json:"type,omitempty"`
+	FileType         UploadType                    `json:"type,omitempty"`
 	FileTags         string                        `json:"tags,omitempty"`
 	FileNotes        string                        `json:"filenotes,omitempty"`
 	Provision        bool                          `json:"provision,omitempty"`
@@ -107,22 +115,32 @@ type HubRequest struct {
 	DeviceEndpoint   bool                          `json:"device_endpoint,omitempty"`
 }
 
-// File Types
+type UploadType string
 
-// HubFileTypeUnknown (golint)
-const HubFileTypeUnknown = ""
+const (
+	UploadTypeUnknown          UploadType = ""
+	UploadTypeHostFirmware     UploadType = "firmware"
+	UploadTypeNotecardFirmware UploadType = "notecard"
+	UploadTypeModemFirmware    UploadType = "modem"
+	UploadTypeUserData         UploadType = "data"
+)
 
-// HubFileTypeUserFirmware (golint)
-const HubFileTypeUserFirmware = "firmware"
+var allFileTypes = []UploadType{
+	UploadTypeUnknown,
+	UploadTypeHostFirmware,
+	UploadTypeNotecardFirmware,
+	UploadTypeModemFirmware,
+	UploadTypeUserData,
+}
 
-// HubFileTypeCardFirmware (golint)
-const HubFileTypeCardFirmware = "notecard"
-
-// HubFileTypeModemFirmware (golint)
-const HubFileTypeModemFirmware = "modem"
-
-// HubFileTypeUserData (golint)
-const HubFileTypeUserData = "data"
+func ParseUploadType(fileType string) UploadType {
+	for _, validType := range allFileTypes {
+		if string(validType) == fileType {
+			return validType
+		}
+	}
+	return UploadTypeUnknown
+}
 
 // HubRequestFileFirmware is firmware-specific metadata
 type HubRequestFileFirmware struct {
@@ -149,8 +167,12 @@ type HubRequestFileFirmware struct {
 	Builder string `json:"builder,omitempty"`
 }
 
-// HubRequestFile is the body of the object uploaded for each file
-type HubRequestFile struct {
+func (metadata HubRequestFileFirmware) VersionString() string {
+	return fmt.Sprintf("%d.%d.%d.%d", metadata.Major, metadata.Minor, metadata.Patch, metadata.Build)
+}
+
+// UploadMetadata is the body of the object uploaded for each file
+type UploadMetadata struct {
 	Name     string                  `json:"name,omitempty"`
 	Length   int                     `json:"length,omitempty"`
 	MD5      string                  `json:"md5,omitempty"`
@@ -160,12 +182,12 @@ type HubRequestFile struct {
 	Source   string                  `json:"source,omitempty"`
 	Contains string                  `json:"contains,omitempty"`
 	Found    string                  `json:"found,omitempty"`
-	FileType string                  `json:"type,omitempty"`
+	FileType UploadType              `json:"type,omitempty"`
 	Tags     string                  `json:"tags,omitempty"`  // comma-separated, no spaces, case-insensitive
 	Notes    string                  `json:"notes,omitempty"` // Should be simple text
 	Firmware *HubRequestFileFirmware `json:"firmware,omitempty"`
 	// Arbitrary metadata that the user may define - we don't interpret the schema at all
-	Info *map[string]interface{} `json:"info,omitempty"`
+	Info map[string]interface{} `json:"info,omitempty"`
 }
 
 // HubRequestFileTagPublish indicates that this should be published in the UI
