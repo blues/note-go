@@ -1049,6 +1049,9 @@ func cardTransactionSerial(context *Context, portConfig int, noResponse bool, re
 		RequestSegmentDelayMs = CardRequestSerialSegmentDelayMs
 	}
 
+	// Set the serial read timeout to 30 seconds, preventing reads under windows from stalling indefinitely on a serial error.
+	context.serialPort.SetReadTimeout(30 * time.Second)
+
 	// Handle the special case where we are looking only for a reply
 	if len(reqJSON) > 0 {
 
@@ -1150,7 +1153,7 @@ func cardTransactionSerial(context *Context, portConfig int, noResponse bool, re
 			} else {
 
 				// We're done if and only if the response looks like JSON
-				if secondToLastLine[0] == '{' {
+				if len(secondToLastLine) > 0 && secondToLastLine[0] == '{' {
 					break
 				}
 
