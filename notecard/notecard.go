@@ -11,6 +11,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"os/user"
 	"strconv"
 	"strings"
 	"sync"
@@ -26,19 +27,25 @@ var debugSerialIO = false
 // InitialDebugMode is the debug mode that the context is initialized with
 var InitialDebugMode = false
 
+// InitialTraceMode is whether or not we will be entering trace mode, to prevent reservationsa
+var InitialTraceMode = false
+
 // InitialResetMode says whether or not we should reset the port on entry
 var InitialResetMode = true
 
 // Protect against multiple concurrent callers, because across different operating systems it is
 // not at all clear that concurrency is allowed on a single I/O device.  An exception is made
-// for I2C because of Notefarm, where we only serialize transactions destined for a single I2C
-// device.  Note that for I2C there is a deeper mutex protecting the physical device.
+// for the I2C 'multiport' case (exposed by TransactionRequestToPort) where we allow multiple
+// concurrent I2C transactions on a single device.  (This capability was needed for the
+// Notefarm, but it's unclear if anyone uses this multi-notecard concurrency capability anymore
+// now that it's deprecated.)
 var (
 	transLock          sync.RWMutex
 	multiportTransLock [128]sync.RWMutex
 )
 
-// SerialTimeoutMs is the response timeout for Notecard serial communications.
+// SerialTimeoutMs is the response timeout for Notecard serial communications.  (This is public
+// in case someone wants to alter it.)
 var SerialTimeoutMs = 30000
 
 // IgnoreWindowsHWErrSecs is the amount of time to ignore a Windows serial communiction error.
@@ -48,7 +55,6 @@ var IgnoreWindowsHWErrSecs = 2
 const (
 	NotecardInterfaceSerial = "serial"
 	NotecardInterfaceI2C    = "i2c"
-	NotecardInterfaceRemote = "remote"
 	NotecardInterfaceLease  = "lease"
 )
 
@@ -86,8 +92,6 @@ var DoNotReterminateJSON = false
 // Transaction retry logic
 const requestRetriesAllowed = 5
 
-var lastRequestSeqno = 0
-
 // IoErrorIsRecoverable is a configuration parameter describing library capabilities.
 // Set this to true if the error recovery of the implementation supports re-open.  On all implementations
 // tested to date, I can't yet get the close/reopen working the way it does on microcontrollers.  For
@@ -111,6 +115,9 @@ type Context struct {
 	resetRequired       bool
 	reopenRequired      bool
 	reopenBecauseOfOpen bool
+
+	// Sequence number
+	lastRequestSeqno int
 
 	// Class functions
 	PortEnumFn     func() (allports []string, usbports []string, notecardports []string, err error)
@@ -153,12 +160,6 @@ type Context struct {
 	leaseLessor    string
 	leaseDeviceUID string
 	leaseTraceConn net.Conn
-
-	// Remote instance state
-	farmURL             string
-	farmCheckoutMins    int
-	farmCheckoutExpires int64
-	farmCard            RemoteCard
 }
 
 // Report a critical card error
@@ -225,8 +226,6 @@ func Open(moduleInterface string, port string, portConfig int) (context *Context
 	case NotecardInterfaceI2C:
 		context, err = OpenI2C(port, portConfig)
 		context.isLocal = true
-	case NotecardInterfaceRemote:
-		context, err = OpenRemote(port, portConfig)
 	case NotecardInterfaceLease:
 		context, err = OpenLease(port, portConfig)
 	default:
@@ -241,7 +240,10 @@ func Open(moduleInterface string, port string, portConfig int) (context *Context
 	return
 }
 
-// Reset serial to a known state
+// Reset serial to a known state.  Note that this is performed by sending
+// a newline and then draining the input buffer.  If a newline is not
+// received, it is NOT a bug because, for example, Starnote does not
+// perform the echo'ing of \n *by design*.
 func cardResetSerial(context *Context, portConfig int) (err error) {
 	// Exit if not open
 	if !context.portIsOpen {
@@ -262,7 +264,7 @@ func cardResetSerial(context *Context, portConfig int) (err error) {
 		if debugSerialIO {
 			fmt.Printf("cardResetSerial: about to write newline\n")
 		}
-		serialIOBegin(context)
+		serialIOBegin(context, SerialTimeoutMs)
 		_, err = context.serialPort.Write([]byte("\n"))
 		err = serialIOEnd(context, err)
 		if debugSerialIO {
@@ -273,12 +275,12 @@ func cardResetSerial(context *Context, portConfig int) (err error) {
 			cardReportError(context, err)
 			return
 		}
-		time.Sleep(750 * time.Millisecond)
+		time.Sleep(250 * time.Millisecond)
 		if debugSerialIO {
 			fmt.Printf("cardResetSerial: about to read up to %d bytes\n", len(buf))
 		}
 		readBeganMs := int(time.Now().UnixNano() / 1000000)
-		serialIOBegin(context)
+		serialIOBegin(context, 750)
 		length, err = context.serialPort.Read(buf)
 		err = serialIOEnd(context, err)
 		readElapsedMs := int(time.Now().UnixNano()/1000000) - readBeganMs
@@ -290,9 +292,9 @@ func cardResetSerial(context *Context, portConfig int) (err error) {
 			err = fmt.Errorf("hardware failure")
 		}
 		if err != nil {
-			err = fmt.Errorf("error reading from module after reset: %s %s", err, note.ErrCardIo)
-			cardReportError(context, err)
-			return
+			// Ignore errors after reset, as the only purpose of reset is to drain the input buffer
+			err = cardReopenSerial(context, portConfig)
+			return err
 		}
 		somethingFound := false
 		nonCRLFFound := false
@@ -335,8 +337,7 @@ func serialTimeoutHelper(context *Context, portConfig int) {
 }
 
 // Begin a serial I/O
-func serialIOBegin(context *Context) {
-	timeoutMs := SerialTimeoutMs
+func serialIOBegin(context *Context, timeoutMs int) {
 	context.ioStartSignal <- timeoutMs
 	if debugSerialIO {
 		if !context.portIsOpen {
@@ -374,6 +375,7 @@ func OpenSerial(port string, portConfig int) (context *Context, err error) {
 	context.Debug = InitialDebugMode
 	context.port = port
 	context.portConfig = portConfig
+	context.lastRequestSeqno = 0
 
 	// Set up class functions
 	context.PortEnumFn = serialPortEnum
@@ -445,12 +447,13 @@ func cardResetI2C(context *Context, portConfig int) (err error) {
 // OpenI2C opens the card on I2C
 func OpenI2C(port string, portConfig int) (context *Context, err error) {
 
-	// Open
-	context.portIsOpen = false
-
 	// Create the context structure
 	context = &Context{}
 	context.Debug = InitialDebugMode
+	context.lastRequestSeqno = 0
+
+	// Open
+	context.portIsOpen = false
 
 	// Use default if not specified
 	if port == "" {
@@ -549,6 +552,11 @@ func cardReopenSerial(context *Context, portConfig int) (err error) {
 		return fmt.Errorf("error opening serial port: serial device not available %s", note.ErrCardIo)
 	}
 
+	// Set default speed if not set
+	if context.serialConfig.BaudRate == 0 {
+		_, context.serialConfig.BaudRate = serialDefault()
+	}
+
 	// Open the serial port
 	if debugSerialIO {
 		fmt.Printf("cardReopenSerial: about to open '%s'\n", context.serialName)
@@ -567,10 +575,12 @@ func cardReopenSerial(context *Context, portConfig int) (err error) {
 	context.reopenRequired = false
 
 	// Unless we've been instructed not to reset on open, reset serial to a known good state
-	if context.reopenBecauseOfOpen && InitialResetMode {
-		err = cardResetSerial(context, portConfig)
+	if context.reopenBecauseOfOpen {
+		context.reopenBecauseOfOpen = false
+		if InitialResetMode {
+			err = cardResetSerial(context, portConfig)
+		}
 	}
-	context.reopenBecauseOfOpen = false
 
 	// Done
 	return err
@@ -859,7 +869,7 @@ func (context *Context) transactionJSON(reqJSON []byte, multiport bool, portConf
 	lastRequestRetries := 0
 	lastRequestCrcAdded := false
 	if !noResponseRequested {
-		reqJSON = crcAdd(reqJSON, lastRequestSeqno)
+		reqJSON = crcAdd(reqJSON, context.lastRequestSeqno)
 		lastRequestCrcAdded = true
 	}
 
@@ -936,7 +946,7 @@ func (context *Context) transactionJSON(reqJSON []byte, multiport bool, portConf
 		}
 
 		// If an I/O error, retry
-		if note.ErrorContains(err, note.ErrCardIo) {
+		if note.ErrorContains(err, note.ErrCardIo) && !note.ErrorContains(err, note.ErrReqNotSupported) {
 			// We can defer the error if a single port, but we need to reset it NOW if multiport
 			if multiport {
 				if context.ResetFn != nil {
@@ -962,7 +972,7 @@ func (context *Context) transactionJSON(reqJSON []byte, multiport bool, portConf
 		// it has a CRC error.  Note that the CRC is stripped from the
 		// rspJSON as a side-effect of this method.
 		if lastRequestCrcAdded {
-			rspJSON, err = crcError(rspJSON, lastRequestSeqno)
+			rspJSON, err = crcError(rspJSON, context.lastRequestSeqno)
 			if err != nil {
 				lastRequestRetries++
 				if context.Debug {
@@ -980,7 +990,7 @@ func (context *Context) transactionJSON(reqJSON []byte, multiport bool, portConf
 	}
 
 	// Bump the request sequence number now that we've processed this request, success or error
-	lastRequestSeqno++
+	context.lastRequestSeqno++
 
 	// If this was a card restore, we want to hold everyone back if we reset the card if it
 	// isn't a multiport case.  But in multiport, we only want to hold this caller back.
@@ -1044,6 +1054,9 @@ func cardTransactionSerial(context *Context, portConfig int, noResponse bool, re
 		RequestSegmentDelayMs = CardRequestSerialSegmentDelayMs
 	}
 
+	// Set the serial read timeout to 30 seconds, preventing reads under windows from stalling indefinitely on a serial error.
+	context.serialPort.SetReadTimeout(30 * time.Second)
+
 	// Handle the special case where we are looking only for a reply
 	if len(reqJSON) > 0 {
 
@@ -1058,7 +1071,7 @@ func cardTransactionSerial(context *Context, portConfig int, noResponse bool, re
 			if debugSerialIO {
 				fmt.Printf("cardTransactionSerial: about to write %d bytes\n", segLen)
 			}
-			serialIOBegin(context)
+			serialIOBegin(context, SerialTimeoutMs)
 			_, err = context.serialPort.Write(reqJSON[segOff : segOff+segLen])
 			err = serialIOEnd(context, err)
 			if debugSerialIO {
@@ -1093,7 +1106,7 @@ func cardTransactionSerial(context *Context, portConfig int, noResponse bool, re
 			fmt.Printf("cardTransactionSerial: about to read up to %d bytes\n", len(buf))
 		}
 		readBeganMs := int(time.Now().UnixNano() / 1000000)
-		serialIOBegin(context)
+		serialIOBegin(context, SerialTimeoutMs)
 		length, err = context.serialPort.Read(buf)
 		err = serialIOEnd(context, err)
 		readElapsedMs := int(time.Now().UnixNano()/1000000) - readBeganMs
@@ -1145,7 +1158,7 @@ func cardTransactionSerial(context *Context, portConfig int, noResponse bool, re
 			} else {
 
 				// We're done if and only if the response looks like JSON
-				if secondToLastLine[0] == '{' {
+				if len(secondToLastLine) > 0 && secondToLastLine[0] == '{' {
 					break
 				}
 
@@ -1273,45 +1286,6 @@ func cardTransactionI2C(context *Context, portConfig int, noResponse bool, reqJS
 	return
 }
 
-// OpenRemote opens a remote card
-func OpenRemote(farmURL string, farmCheckoutMins int) (context *Context, err error) {
-	// Create the context structure
-	context = &Context{}
-	context.Debug = InitialDebugMode
-	context.port = farmURL
-	context.portConfig = 0
-
-	// Prevent accidental reservation for excessive durations e.g. 115200 minutes
-	if farmCheckoutMins > 120 {
-		err = fmt.Errorf("error, 120 minute limit on notefarm reservations")
-		return
-	}
-
-	// Set up class functions
-	context.CloseFn = remoteClose
-	context.ReopenFn = remoteReopen
-	context.TransactionFn = remoteTransaction
-
-	// Record serial configuration
-	context.farmURL = farmURL
-	if farmCheckoutMins == 0 {
-		farmCheckoutMins = 1
-	}
-	farmCheckoutMins = (((farmCheckoutMins - 1) / reservationModulusMinutes) + 1) * reservationModulusMinutes
-	context.farmCheckoutMins = farmCheckoutMins
-	context.farmCheckoutExpires = time.Now().Unix() + int64(context.farmCheckoutMins*60)
-
-	// Open the port
-	err = context.ReopenFn(context, context.portConfig)
-	if err != nil {
-		err = fmt.Errorf("error opening remote %s: %s %s", farmURL, err, note.ErrCardIo)
-		return
-	}
-
-	// All set
-	return
-}
-
 // OpenLease opens a remote card with a lease
 func OpenLease(leaseScope string, leaseMins int) (context *Context, err error) {
 
@@ -1320,10 +1294,11 @@ func OpenLease(leaseScope string, leaseMins int) (context *Context, err error) {
 	context.Debug = InitialDebugMode
 	context.port = leaseScope
 	context.portConfig = 0
+	context.lastRequestSeqno = 0
 
 	// Prevent accidental reservation for excessive durations e.g. 115200 minutes
 	if leaseMins > 120 {
-		err = fmt.Errorf("leasing a notecard has a 120 minute limit")
+		err = fmt.Errorf("leasing a notecard has a 120 minute limit, but got %d", leaseMins)
 		return
 	}
 
@@ -1383,23 +1358,29 @@ func callerID() (id string) {
 		return
 	}
 
-	// Get the mac address
-	interfaces, err := net.Interfaces()
-	if err == nil {
-		for _, i := range interfaces {
-			if i.Flags&net.FlagUp != 0 && !bytes.Equal(i.HardwareAddr, nil) {
-				// Don't use random as we have a real address
-				id = i.HardwareAddr.String()
-				break
+	user, err := user.Current()
+	if user != nil && err == nil {
+		id = user.Username
+	}
+
+	hostname, err := os.Hostname()
+	if hostname != "" && err == nil {
+		id += "@" + hostname
+	}
+
+	if id == "" {
+		// Use the mac address if we have no other name
+		interfaces, err := net.Interfaces()
+		if err == nil {
+			for _, i := range interfaces {
+				if i.Flags&net.FlagUp != 0 && !bytes.Equal(i.HardwareAddr, nil) {
+					// Don't use random as we have a real address
+					id = i.HardwareAddr.String()
+					break
+				}
 			}
 		}
 	}
-
-	// Append the parent process ID
-	// Note: this was disabled 2023-08 because nobody was using this feature, and
-	// it prevents tests (run in a subprocess) from being interrupted with ^C because
-	// the subprocess's pid holds the lease.
-	//	id += fmt.Sprintf(":%d", os.Getppid())
 
 	return
 }

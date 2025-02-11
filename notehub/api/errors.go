@@ -44,7 +44,7 @@ type ErrorResponse struct {
 	// type: object
 	Details map[string]interface{} `json:"details,omitempty"`
 
-	// Debug is any other nice to have information to aid in debugging.
+	// Debug is any customer-facing information to aid in debugging.
 	//
 	// required: false
 	// type: string
@@ -52,7 +52,7 @@ type ErrorResponse struct {
 }
 
 var SuspendedBillingAccountResponse = ErrorResponse{
-	Code:   403,
+	Code:   http.StatusForbidden,
 	Status: "Forbidden",
 	Error:  "this billing account is suspended",
 }
@@ -80,5 +80,11 @@ func (e ErrorResponse) WithRequest(r *http.Request) ErrorResponse {
 // WithError adds an error string from an error object into the response.
 func (e ErrorResponse) WithError(err error) ErrorResponse {
 	e.Error = err.Error()
+	return e
+}
+
+// WithDebug adds a debug string onto the error response object
+func (e ErrorResponse) WithDebug(msg string) ErrorResponse {
+	e.Debug = msg
 	return e
 }

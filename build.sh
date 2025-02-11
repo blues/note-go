@@ -33,6 +33,6 @@ IFS=$'\r\n' GLOBIGNORE='*' command eval  'build_dirs=($(find . -name main.go -pr
 for dir in "${build_dirs[@]}"; do
   (
     cd "$dir"
-    go build -o "$BUILD_EXE_DIR"
+    go build ${GO_BUILD_FLAGS:-} -o "$BUILD_EXE_DIR"
   ) 
 done

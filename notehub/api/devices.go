@@ -1,6 +1,10 @@
 package api
 
-import "github.com/blues/note-go/note"
+import (
+	"strings"
+
+	"github.com/blues/note-go/note"
+)
 
 // GetDevicesResponse v1
 //
@@ -36,6 +40,7 @@ type DeviceResponse struct {
 	Temperature float64 `json:"temperature"`
 	DFUEnv      *DFUEnv `json:"dfu,omitempty"`
 	Disabled    bool    `json:"disabled,omitempty"`
+	Tags        string  `json:"tags,omitempty"`
 }
 
 // GetDevicesPublicKeysResponse v1
@@ -58,7 +63,9 @@ type DevicePublicKey struct {
 //
 // The request object for provisioning a device
 type ProvisionDeviceRequest struct {
-	ProductUID string `json:"product_uid"`
+	ProductUID string    `json:"product_uid"`
+	DeviceSN   string    `json:"device_sn"`
+	FleetUIDs  *[]string `json:"fleet_uids,omitempty"`
 }
 
 // GetDeviceLatestResponse v1
@@ -111,23 +118,70 @@ type HealthLogEntry struct {
 
 // DFUState is the state of the DFU in progress
 type DFUState struct {
-	Type              string `json:"type,omitempty"`
-	File              string `json:"file,omitempty"`
-	Length            uint32 `json:"length,omitempty"`
-	CRC32             uint32 `json:"crc32,omitempty"`
-	MD5               string `json:"md5,omitempty"`
-	Phase             string `json:"mode,omitempty"`
-	Status            string `json:"status,omitempty"`
-	BeganSecs         uint32 `json:"began,omitempty"`
-	RetryCount        uint32 `json:"retry,omitempty"`
-	ConsecutiveErrors uint32 `json:"errors,omitempty"`
-	ReadFromService   uint32 `json:"read,omitempty"`
-	UpdatedSecs       uint32 `json:"updated,omitempty"`
-	Version           string `json:"version,omitempty"`
+	Type               string `json:"type,omitempty"`
+	File               string `json:"file,omitempty"`
+	Length             uint32 `json:"length,omitempty"`
+	CRC32              uint32 `json:"crc32,omitempty"`
+	MD5                string `json:"md5,omitempty"`
+	Phase              string `json:"mode,omitempty"`
+	Status             string `json:"status,omitempty"`
+	BeganSecs          uint32 `json:"began,omitempty"`
+	RetryCount         uint32 `json:"retry,omitempty"`
+	ConsecutiveErrors  uint32 `json:"errors,omitempty"`
+	ReadFromService    uint32 `json:"read,omitempty"`
+	UpdatedSecs        uint32 `json:"updated,omitempty"`
+	DownloadComplete   bool   `json:"dl_complete,omitempty"`
+	DisabledReason     string `json:"disabled,omitempty"`
+	MinNotecardVersion string `json:"min_card_version,omitempty"`
+
+	// This will always point to the current running version
+	Version string `json:"version,omitempty"`
 }
 
 // DFUEnv is the data structure passed to Notehub when DFU info changes
 type DFUEnv struct {
 	Card *DFUState `json:"card,omitempty"`
 	User *DFUState `json:"user,omitempty"`
+}
+
+type DfuPhase string
+
+const (
+	DfuPhaseUnknown     DfuPhase = ""
+	DfuPhaseIdle        DfuPhase = "idle"
+	DfuPhaseError       DfuPhase = "error"
+	DfuPhaseDownloading DfuPhase = "downloading"
+	DfuPhaseSideloading DfuPhase = "sideloading"
+	DfuPhaseReady       DfuPhase = "ready"
+	DfuPhaseReadyRetry  DfuPhase = "ready-retry"
+	DfuPhaseUpdating    DfuPhase = "updating"
+	DfuPhaseCompleted   DfuPhase = "completed"
+)
+
+var allDfuPhases = []DfuPhase{
+	DfuPhaseUnknown,
+	DfuPhaseIdle,
+	DfuPhaseError,
+	DfuPhaseDownloading,
+	DfuPhaseSideloading,
+	DfuPhaseReady,
+	DfuPhaseReadyRetry,
+	DfuPhaseUpdating,
+	DfuPhaseCompleted,
+}
+
+func ParseDfuPhase(phase string) DfuPhase {
+	phase = strings.ToLower(phase)
+	for _, validPhase := range allDfuPhases {
+		if phase == string(validPhase) {
+			return validPhase
+		}
+	}
+	return DfuPhaseUnknown
+}
+
+func (phase DfuPhase) IsTerminal() bool {
+	return phase == DfuPhaseError ||
+		phase == DfuPhaseCompleted ||
+		phase == DfuPhaseIdle
 }

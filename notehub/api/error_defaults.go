@@ -46,8 +46,17 @@ func ErrMethodNotAllowed() ErrorResponse {
 func ErrInternalServerError() ErrorResponse {
 	return ErrorResponse{
 		Status: http.StatusText(http.StatusInternalServerError),
-		Error:  "An internal server error occurred, please contact the system administrator",
+		Error:  "An internal server error occurred",
 		Code:   http.StatusInternalServerError,
+	}
+}
+
+// ErrEventsQueryTimeout returns the default for a GetEvents (and related) request that took too long
+func ErrEventsQueryTimeout() ErrorResponse {
+	return ErrorResponse{
+		Status: "Took too long",
+		Error:  "Events query took too long to complete",
+		Code:   http.StatusGatewayTimeout,
 	}
 }
 
