@@ -34,6 +34,7 @@ type NetInfo struct {
 	ModemFirmware            string `json:"modem,omitempty"`
 	Band                     string `json:"band,omitempty"`
 	AccessTechnology         string `json:"rat,omitempty"`
+	AccessTechnologyFilter   string `json:"ratf,omitempty"`
 	ReportedAccessTechnology string `json:"ratr,omitempty"`
 	ReportedCarrier          string `json:"carrier,omitempty"`
 	Bssid                    string `json:"bssid,omitempty"`

@@ -32,8 +32,11 @@ const EventGet = "get"
 // EventNoAction (golint)
 const EventNoAction = ""
 
-// EventSession (golint)
-const EventSession = "session.begin"
+// EventSessionBegin (golint)
+const EventSessionBegin = "session.begin"
+
+// EventSessionEndNotehub (golint)
+const EventSessionEnd = "session.end"
 
 // EventGeolocation (golint)
 const EventGeolocation = "device.geolocation"
@@ -48,28 +51,37 @@ const EventWebhook = "webhook"
 // structures with cloud services to ensure that storage and testing frameworks
 // are kept in sync with these structures used for business logic
 type Event struct {
-	EventUID   string                  `json:"event,omitempty"`
-	SessionUID string                  `json:"session,omitempty"`
-	TLS        bool                    `json:"tls,omitempty"`
-	Continuous bool                    `json:"continuous,omitempty"`
-	BestID     string                  `json:"best_id,omitempty"`
-	DeviceUID  string                  `json:"device,omitempty"`
-	DeviceSN   string                  `json:"sn,omitempty"`
-	ProductUID string                  `json:"product,omitempty"`
-	AppUID     string                  `json:"app,omitempty"`
-	EndpointID string                  `json:"endpoint,omitempty"`
-	Received   float64                 `json:"received,omitempty"`
-	Req        string                  `json:"req,omitempty"`
-	Error      string                  `json:"err,omitempty"`
+	EventUID string `json:"event,omitempty"`
+	// Indicates whether or not this event is a "platform event" - that is, an event generated automatically
+	// somewhere in the notecard or notehub largely for administrative purposes that doesn't pertain to either
+	// implicit or explicit user data.
+	Platform bool `json:"platform,omitempty"`
+	// These fields, and only these fields, are regarded as "user data".  All
+	// the rest of the fields are regarded as "metadata".
 	When       int64                   `json:"when,omitempty"`
 	NotefileID string                  `json:"file,omitempty"`
 	NoteID     string                  `json:"note,omitempty"`
-	Updates    int32                   `json:"updates,omitempty"`
-	Deleted    bool                    `json:"deleted,omitempty"`
-	Sent       bool                    `json:"queued,omitempty"`
-	Bulk       bool                    `json:"bulk,omitempty"`
 	Body       *map[string]interface{} `json:"body,omitempty"`
 	Payload    []byte                  `json:"payload,omitempty"`
+	Details    *map[string]interface{} `json:"details,omitempty"`
+	// Metadata
+	SessionUID   string  `json:"session,omitempty"`
+	SessionBegan int64   `json:"session_began,omitempty"`
+	TLS          bool    `json:"tls,omitempty"`
+	Transport    string  `json:"transport,omitempty"`
+	Continuous   bool    `json:"continuous,omitempty"`
+	BestID       string  `json:"best_id,omitempty"`
+	DeviceUID    string  `json:"device,omitempty"`
+	DeviceSN     string  `json:"sn,omitempty"`
+	ProductUID   string  `json:"product,omitempty"`
+	AppUID       string  `json:"app,omitempty"`
+	Received     float64 `json:"received,omitempty"`
+	Req          string  `json:"req,omitempty"`
+	Error        string  `json:"err,omitempty"`
+	Updates      int32   `json:"updates,omitempty"`
+	Deleted      bool    `json:"deleted,omitempty"`
+	Sent         bool    `json:"queued,omitempty"`
+	Bulk         bool    `json:"bulk,omitempty"`
 	// This field is ONLY used when we remove the payload for storage reasons, to show the app how large it was
 	MissingPayloadLength int64 `json:"payload_length,omitempty"`
 	// Location
@@ -101,19 +113,7 @@ type Event struct {
 	TriCountry       string  `json:"tri_country,omitempty"`
 	TriTimeZone      string  `json:"tri_timezone,omitempty"`
 	TriPoints        int32   `json:"tri_points,omitempty"`
-	// Motion
-	Moved       int64  `json:"moved,omitempty"`
-	Orientation string `json:"orientation,omitempty"`
-	// Signal strength/quality of the cell
-	Rssi int    `json:"rssi,omitempty"`
-	Sinr int    `json:"sinr,omitempty"`
-	Rsrp int    `json:"rsrp,omitempty"`
-	Rsrq int    `json:"rsrq,omitempty"`
-	Rat  string `json:"rat,omitempty"`
-	Bars uint32 `json:"bars,omitempty"`
-	// Physical device info
-	Voltage float64 `json:"voltage,omitempty"`
-	Temp    float64 `json:"temp,omitempty"`
+
 	// Triangulation
 	Triangulate *map[string]interface{} `json:"triangulate,omitempty"`
 	// "Routed" environment variables beginning with a "$" prefix
@@ -121,10 +121,51 @@ type Event struct {
 	Status    EventRoutingStatus `json:"status,omitempty"`
 	FleetUIDs *[]string          `json:"fleets,omitempty"`
 
-	// Extended details for routed events.  This is not referenced in the source
-	// code because it gets optionally populated by a JSONata transform.  It was
-	// added to support the v1 API /v1/projects/<UID>/webhooks/<UID>
-	Details *map[string]interface{} `json:"details,omitempty"`
+	// ONLY POPULATED FOR EventSessionBegin with info both from notecard and notehub
+	DeviceSKU          string  `json:"sku,omitempty"`
+	DeviceOrderingCode string  `json:"ordering_code,omitempty"`
+	DeviceFirmware     int64   `json:"firmware,omitempty"`
+	Bearer             string  `json:"bearer,omitempty"`
+	CellID             string  `json:"cellid,omitempty"`
+	Bssid              string  `json:"bssid,omitempty"`
+	Ssid               string  `json:"ssid,omitempty"`
+	Iccid              string  `json:"iccid,omitempty"`
+	Apn                string  `json:"apn,omitempty"`
+	Rssi               int     `json:"rssi,omitempty"`
+	Sinr               int     `json:"sinr,omitempty"`
+	Rsrp               int     `json:"rsrp,omitempty"`
+	Rsrq               int     `json:"rsrq,omitempty"`
+	Rat                string  `json:"rat,omitempty"`
+	Bars               uint32  `json:"bars,omitempty"`
+	Voltage            float64 `json:"voltage,omitempty"`
+	Temp               float64 `json:"temp,omitempty"`
+	Moved              int64   `json:"moved,omitempty"`
+	Orientation        string  `json:"orientation,omitempty"`
+	PowerCharging      bool    `json:"power_charging,omitempty"`
+	PowerUsb           bool    `json:"power_usb,omitempty"`
+	PowerPrimary       bool    `json:"power_primary,omitempty"`
+	PowerMahUsed       float64 `json:"power_mah,omitempty"`
+
+	// ONLY POPULATED FOR EventSessionEnd because it comes from the notehub
+	NotehubLastWorkDone int64  `json:"hub_last_work_done,omitempty"`
+	NotehubDurationSecs int64  `json:"hub_duration_secs,omitempty"`
+	NotehubEventCount   int64  `json:"hub_events_routed,omitempty"`
+	NotehubRcvdBytes    uint32 `json:"hub_rcvd_bytes,omitempty"`
+	NotehubSentBytes    uint32 `json:"hub_sent_bytes,omitempty"`
+	NotehubTCPSessions  uint32 `json:"hub_tcp_sessions,omitempty"`
+	NotehubTLSSessions  uint32 `json:"hub_tls_sessions,omitempty"`
+	NotehubRcvdNotes    uint32 `json:"hub_rcvd_notes,omitempty"`
+	NotehubSentNotes    uint32 `json:"hub_sent_notes,omitempty"`
+
+	// ONLY POPULATED for EventSessionEndNotecard because it comes from the notecard
+	NotecardRcvdBytes          uint32 `json:"card_rcvd_bytes,omitempty"`
+	NotecardSentBytes          uint32 `json:"card_sent_bytes,omitempty"`
+	NotecardRcvdBytesSecondary uint32 `json:"card_rcvd_bytes_secondary,omitempty"`
+	NotecardSentBytesSecondary uint32 `json:"card_sent_bytes_secondary,omitempty"`
+	NotecardTCPSessions        uint32 `json:"card_tcp_sessions,omitempty"`
+	NotecardTLSSessions        uint32 `json:"card_tls_sessions,omitempty"`
+	NotecardRcvdNotes          uint32 `json:"card_rcvd_notes,omitempty"`
+	NotecardSentNotes          uint32 `json:"card_sent_notes,omitempty"`
 }
 
 type EventRoutingStatus string

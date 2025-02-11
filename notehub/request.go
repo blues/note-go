@@ -134,6 +134,9 @@ var allFileTypes = []UploadType{
 }
 
 func ParseUploadType(fileType string) UploadType {
+	if fileType == "host" {
+		return UploadTypeHostFirmware
+	}
 	for _, validType := range allFileTypes {
 		if string(validType) == fileType {
 			return validType
@@ -141,6 +144,8 @@ func ParseUploadType(fileType string) UploadType {
 	}
 	return UploadTypeUnknown
 }
+
+const TestFirmwareString = "(test firmware)"
 
 // HubRequestFileFirmware is firmware-specific metadata
 type HubRequestFileFirmware struct {
@@ -183,9 +188,9 @@ type UploadMetadata struct {
 	Contains string                  `json:"contains,omitempty"`
 	Found    string                  `json:"found,omitempty"`
 	FileType UploadType              `json:"type,omitempty"`
-	Tags     string                  `json:"tags,omitempty"`  // comma-separated, no spaces, case-insensitive
-	Notes    string                  `json:"notes,omitempty"` // Should be simple text
-	Firmware *HubRequestFileFirmware `json:"firmware,omitempty"`
+	Tags     string                  `json:"tags,omitempty"`     // comma-separated, no spaces, case-insensitive
+	Notes    string                  `json:"notes,omitempty"`    // Should be simple text
+	Firmware *HubRequestFileFirmware `json:"firmware,omitempty"` // This value is pulled out of the firmware binary itself
 	// Arbitrary metadata that the user may define - we don't interpret the schema at all
 	Info map[string]interface{} `json:"info,omitempty"`
 }

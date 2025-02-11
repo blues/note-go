@@ -106,6 +106,9 @@ const ErrHubNoHandler = "{no-handler}"
 // ErrIdle (golint)
 const ErrIdle = "{idle}"
 
+// ErrNtnIdle (golint)
+const ErrNtnIdle = "{ntn-idle}"
+
 // ErrDeviceNotFound (golint)
 const ErrDeviceNotFound = "{device-noexist}"
 
@@ -144,6 +147,15 @@ const ErrAccessDenied = "{access-denied}"
 
 // ErrDoNotRoute (golint)
 const ErrDoNotRoute = "{do-not-route}"
+
+// ErrAddToFleet (golint)
+const ErrAddToFleet = "{add-to-fleet}"
+
+// ErrRemoveFromFleet (golint)
+const ErrRemoveFromFleet = "{remove-from-fleet}"
+
+// ErrLeaveFleetAlone (golint)
+const ErrLeaveFleetAlone = "{leave-fleet-alone}"
 
 // ErrWebPayload (golint)
 const ErrWebPayload = "{web-payload}"
@@ -212,7 +224,7 @@ func ErrorClean(err error) error {
 			errstr += strings.TrimPrefix(b[1], " ")
 		}
 	}
-	return fmt.Errorf(errstr)
+	return fmt.Errorf("%s", errstr)
 }
 
 // ErrorString safely returns a string from any error, returning "" for nil

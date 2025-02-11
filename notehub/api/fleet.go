@@ -16,8 +16,7 @@ type FleetResponse struct {
 	// RFC3339 timestamp, in UTC.
 	Created string `json:"created"`
 
-	Is     string   `json:"is,omitempty"`
-	IsLike []string `json:"is_like,omitempty"`
+	SmartRule string `json:"smart_rule,omitempty"`
 }
 
 // PutDeviceFleetsRequest v1
@@ -50,8 +49,7 @@ type DeleteDeviceFleetsRequest struct {
 type PostFleetRequest struct {
 	Label string `json:"label"`
 
-	Is     string   `json:"is,omitempty"`
-	IsLike []string `json:"is_like,omitempty"`
+	SmartRule string `json:"smart_rule,omitempty"`
 }
 
 // PutFleetRequest v1
@@ -61,6 +59,6 @@ type PutFleetRequest struct {
 	Label         string   `json:"label"`
 	AddDevices    []string `json:"addDevices,omitempty"`
 	RemoveDevices []string `json:"removeDevices,omitempty"`
-	Is            string   `json:"is,omitempty"`
-	IsLike        []string `json:"is_like,omitempty"`
+
+	SmartRule string `json:"smart_rule,omitempty"`
 }

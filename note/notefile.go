@@ -16,11 +16,17 @@ const NotecardResponseNotefile = "_rsp.qos"
 // LogNotefile is the hard-wired notefile that the notecard uses for debug logging
 const LogNotefile = "_log.qo"
 
+// EnvNotefile is the hard-wired notefile that the notecard uses for env vars
+const EnvNotefile = "_env.dbs"
+
 // SessionNotefile is the hard-wired notefile that the notehub uses when starting a session
 const SessionNotefile = "_session.qo"
 
 // HealthNotefile is the hard-wired notefile that the notecard uses for health-related info
 const HealthNotefile = "_health.qo"
+
+// HealthHostNotefile is the hard-wired notefile that the host uses for health-related info
+const HealthHostNotefile = "_health_host.qo"
 
 // GeolocationNotefile is the hard-wired notefile that the notehub uses when performing a geolocation
 const GeolocationNotefile = "_geolocate.qo"
@@ -71,4 +77,14 @@ type NotefileInfo struct {
 	ImportTime int64 `json:"import_time,omitempty"`
 	// ExportTime is the epoch time of when an external data source (such as a feed) last sync'ed data outbound
 	ExportTime int64 `json:"export_time,omitempty"`
+}
+
+// Information about notefiles and their templates
+type NotefileDesc struct {
+	NotefileID      string       `json:"file,omitempty"`
+	Info            NotefileInfo `json:"info,omitempty"`
+	BodyTemplate    string       `json:"body_template,omitempty"`
+	PayloadTemplate uint32       `json:"payload_template,omitempty"`
+	TemplateFormat  uint32       `json:"template_format,omitempty"`
+	TemplatePort    uint16       `json:"template_port,omitempty"`
 }

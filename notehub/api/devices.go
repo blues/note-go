@@ -63,8 +63,9 @@ type DevicePublicKey struct {
 //
 // The request object for provisioning a device
 type ProvisionDeviceRequest struct {
-	ProductUID string `json:"product_uid"`
-	DeviceSN   string `json:"device_sn"`
+	ProductUID string    `json:"product_uid"`
+	DeviceSN   string    `json:"device_sn"`
+	FleetUIDs  *[]string `json:"fleet_uids,omitempty"`
 }
 
 // GetDeviceLatestResponse v1
@@ -117,18 +118,21 @@ type HealthLogEntry struct {
 
 // DFUState is the state of the DFU in progress
 type DFUState struct {
-	Type              string `json:"type,omitempty"`
-	File              string `json:"file,omitempty"`
-	Length            uint32 `json:"length,omitempty"`
-	CRC32             uint32 `json:"crc32,omitempty"`
-	MD5               string `json:"md5,omitempty"`
-	Phase             string `json:"mode,omitempty"`
-	Status            string `json:"status,omitempty"`
-	BeganSecs         uint32 `json:"began,omitempty"`
-	RetryCount        uint32 `json:"retry,omitempty"`
-	ConsecutiveErrors uint32 `json:"errors,omitempty"`
-	ReadFromService   uint32 `json:"read,omitempty"`
-	UpdatedSecs       uint32 `json:"updated,omitempty"`
+	Type               string `json:"type,omitempty"`
+	File               string `json:"file,omitempty"`
+	Length             uint32 `json:"length,omitempty"`
+	CRC32              uint32 `json:"crc32,omitempty"`
+	MD5                string `json:"md5,omitempty"`
+	Phase              string `json:"mode,omitempty"`
+	Status             string `json:"status,omitempty"`
+	BeganSecs          uint32 `json:"began,omitempty"`
+	RetryCount         uint32 `json:"retry,omitempty"`
+	ConsecutiveErrors  uint32 `json:"errors,omitempty"`
+	ReadFromService    uint32 `json:"read,omitempty"`
+	UpdatedSecs        uint32 `json:"updated,omitempty"`
+	DownloadComplete   bool   `json:"dl_complete,omitempty"`
+	DisabledReason     string `json:"disabled,omitempty"`
+	MinNotecardVersion string `json:"min_card_version,omitempty"`
 
 	// This will always point to the current running version
 	Version string `json:"version,omitempty"`
@@ -178,5 +182,6 @@ func ParseDfuPhase(phase string) DfuPhase {
 
 func (phase DfuPhase) IsTerminal() bool {
 	return phase == DfuPhaseError ||
-		phase == DfuPhaseCompleted
+		phase == DfuPhaseCompleted ||
+		phase == DfuPhaseIdle
 }

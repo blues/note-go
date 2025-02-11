@@ -8,6 +8,14 @@ package note
 type DeviceSession struct {
 	// Session ID that can be mapped to the events created during that session
 	SessionUID string `json:"session,omitempty"`
+	// When the session was initially opened
+	SessionBegan int64 `json:"session_began,omitempty"`
+	// Why a session was opened
+	WhySessionOpened string `json:"why_session_opened,omitempty"`
+	// When the session was initially opened
+	SessionEnded int64 `json:"session_ended,omitempty"`
+	// Why the session was closed
+	WhySessionClosed string `json:"why_session_closed,omitempty"`
 	// Log key for this session
 	SessionLogKey string `json:"session_log_key,omitempty"`
 	// Info from the device structure
@@ -35,6 +43,8 @@ type DeviceSession struct {
 	Ssid   string `json:"ssid,omitempty"`
 	Iccid  string `json:"iccid,omitempty"`
 	Apn    string `json:"apn,omitempty"`
+	// Composed by wire.go for use in Request.Transport && Event.Transport
+	Transport string `json:"transport,omitempty"`
 	// Last known tower and triangulated location as determined at the start of session
 	Tower TowerLocation `json:"tower,omitempty"`
 	Tri   TowerLocation `json:"tri,omitempty"`
@@ -63,8 +73,6 @@ type DeviceSession struct {
 	// Motion of the notecard
 	Moved       int64  `json:"moved,omitempty"`
 	Orientation string `json:"orientation,omitempty"`
-	// Why a session was triggered
-	Trigger string `json:"trigger,omitempty"`
 	// Last known power stats at start of session
 	HighPowerSecsTotal   uint32 `json:"hp_secs_total,omitempty"`
 	HighPowerSecsData    uint32 `json:"hp_secs_data,omitempty"`
@@ -78,6 +86,12 @@ type DeviceSession struct {
 	NextPtr *DeviceUsage `json:"next,omitempty"`
 	// Usage during the period - initially estimated, but then corrected when we get to the next period
 	PeriodPtr *DeviceUsage `json:"period,omitempty"`
+	// NotecardPowerSource flags
+	PowerCharging bool `json:"power_charging,omitempty"`
+	PowerUsb      bool `json:"power_usb,omitempty"`
+	PowerPrimary  bool `json:"power_primary,omitempty"`
+	// Mojo power usage
+	PowerMahUsed float64 `json:"power_mah,omitempty"`
 }
 
 func (s *DeviceSession) This() *DeviceUsage {

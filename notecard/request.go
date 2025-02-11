@@ -43,9 +43,6 @@ const ReqNoteChanges = "note.changes"
 // ReqNoteAdd (golint)
 const ReqNoteAdd = "note.add"
 
-// ReqNoteEvent (golint)
-const ReqNoteEvent = "note.event"
-
 // ReqNoteTemplate (golint)
 const ReqNoteTemplate = "note.template"
 
@@ -142,9 +139,6 @@ const ReqCardMonitor = "card.monitor"
 // ReqCardCarrier (golint)
 const ReqCardCarrier = "card.carrier"
 
-// ReqCardReserve (golint)
-const ReqCardReserve = "card.reserve"
-
 // ReqCardTrace (golint)
 const ReqCardTrace = "card.trace"
 
@@ -153,9 +147,6 @@ const ReqCardUsageGet = "card.usage.get"
 
 // ReqCardUsageTest (golint)
 const ReqCardUsageTest = "card.usage.test"
-
-// ReqCardUsageRate (golint)
-const ReqCardUsageRate = "card.usage.rate"
 
 // ReqEnvModified (golint)
 const ReqEnvModified = "env.modified"
@@ -322,6 +313,7 @@ type Request struct {
 	Cmd                    string                        `json:"cmd,omitempty"`
 	Err                    string                        `json:"err,omitempty"`
 	RequestID              uint32                        `json:"id,omitempty"`
+	Transport              string                        `json:"transport,omitempty"`
 	NotefileID             string                        `json:"file,omitempty"`
 	TrackerID              string                        `json:"tracker,omitempty"`
 	NoteID                 string                        `json:"note,omitempty"`
@@ -332,6 +324,7 @@ type Request struct {
 	Stop                   bool                          `json:"stop,omitempty"`
 	Delete                 bool                          `json:"delete,omitempty"`
 	USB                    bool                          `json:"usb,omitempty"`
+	Primary                bool                          `json:"primary,omitempty"`
 	Edge                   bool                          `json:"edge,omitempty"`
 	Connected              bool                          `json:"connected,omitempty"`
 	Secure                 bool                          `json:"secure,omitempty"`
@@ -368,6 +361,7 @@ type Request struct {
 	Files                  *[]string                     `json:"files,omitempty"`
 	Names                  *[]string                     `json:"names,omitempty"`
 	FileInfo               *map[string]note.NotefileInfo `json:"info,omitempty"`
+	FileDesc               *[]note.NotefileDesc          `json:"desc,omitempty"`
 	Notes                  *map[string]note.Info         `json:"notes,omitempty"`
 	Pad                    int32                         `json:"pad,omitempty"`
 	Storage                int32                         `json:"storage,omitempty"`
@@ -452,7 +446,7 @@ type Request struct {
 	Temperature            float64                       `json:"temperature,omitempty"`
 	Pressure               float64                       `json:"pressure,omitempty"`
 	Humidity               float64                       `json:"humidity,omitempty"`
-	API                    int32                         `json:"api,omitempty"`
+	MinVersion             string                        `json:"minver,omitempty"`
 	SSID                   string                        `json:"ssid,omitempty"`
 	Password               string                        `json:"password,omitempty"`
 	Security               string                        `json:"security,omitempty"`
@@ -481,6 +475,7 @@ type Request struct {
 	Format                 string                        `json:"format,omitempty"`
 	Voltage                float64                       `json:"voltage,omitempty"`
 	MilliampHours          float64                       `json:"milliamp_hours,omitempty"`
+	Default                bool                          `json:"default,omitempty"`
 }
 
 // A Note on Time
