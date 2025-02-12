@@ -57,6 +57,7 @@ type History struct {
 // Info is a general "content" structure
 type Info struct {
 	NoteID  string                  `json:"id,omitempty"`
+	When    int64                   `json:"time,omitempty"`
 	Body    *map[string]interface{} `json:"body,omitempty"`
 	Payload *[]byte                 `json:"payload,omitempty"`
 	Deleted bool                    `json:"deleted,omitempty"`

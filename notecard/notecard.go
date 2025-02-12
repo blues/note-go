@@ -44,7 +44,8 @@ var (
 	multiportTransLock [128]sync.RWMutex
 )
 
-// SerialTimeoutMs is the response timeout for Notecard serial communications.
+// SerialTimeoutMs is the response timeout for Notecard serial communications.  (This is public
+// in case someone wants to alter it.)
 var SerialTimeoutMs = 30000
 
 // IgnoreWindowsHWErrSecs is the amount of time to ignore a Windows serial communiction error.
@@ -239,7 +240,10 @@ func Open(moduleInterface string, port string, portConfig int) (context *Context
 	return
 }
 
-// Reset serial to a known state
+// Reset serial to a known state.  Note that this is performed by sending
+// a newline and then draining the input buffer.  If a newline is not
+// received, it is NOT a bug because, for example, Starnote does not
+// perform the echo'ing of \n *by design*.
 func cardResetSerial(context *Context, portConfig int) (err error) {
 	// Exit if not open
 	if !context.portIsOpen {
@@ -260,7 +264,7 @@ func cardResetSerial(context *Context, portConfig int) (err error) {
 		if debugSerialIO {
 			fmt.Printf("cardResetSerial: about to write newline\n")
 		}
-		serialIOBegin(context)
+		serialIOBegin(context, SerialTimeoutMs)
 		_, err = context.serialPort.Write([]byte("\n"))
 		err = serialIOEnd(context, err)
 		if debugSerialIO {
@@ -271,12 +275,12 @@ func cardResetSerial(context *Context, portConfig int) (err error) {
 			cardReportError(context, err)
 			return
 		}
-		time.Sleep(750 * time.Millisecond)
+		time.Sleep(250 * time.Millisecond)
 		if debugSerialIO {
 			fmt.Printf("cardResetSerial: about to read up to %d bytes\n", len(buf))
 		}
 		readBeganMs := int(time.Now().UnixNano() / 1000000)
-		serialIOBegin(context)
+		serialIOBegin(context, 750)
 		length, err = context.serialPort.Read(buf)
 		err = serialIOEnd(context, err)
 		readElapsedMs := int(time.Now().UnixNano()/1000000) - readBeganMs
@@ -288,9 +292,9 @@ func cardResetSerial(context *Context, portConfig int) (err error) {
 			err = fmt.Errorf("hardware failure")
 		}
 		if err != nil {
-			err = fmt.Errorf("error reading from module after reset: %s %s", err, note.ErrCardIo)
-			cardReportError(context, err)
-			return
+			// Ignore errors after reset, as the only purpose of reset is to drain the input buffer
+			err = cardReopenSerial(context, portConfig)
+			return err
 		}
 		somethingFound := false
 		nonCRLFFound := false
@@ -333,8 +337,7 @@ func serialTimeoutHelper(context *Context, portConfig int) {
 }
 
 // Begin a serial I/O
-func serialIOBegin(context *Context) {
-	timeoutMs := SerialTimeoutMs
+func serialIOBegin(context *Context, timeoutMs int) {
 	context.ioStartSignal <- timeoutMs
 	if debugSerialIO {
 		if !context.portIsOpen {
@@ -572,10 +575,12 @@ func cardReopenSerial(context *Context, portConfig int) (err error) {
 	context.reopenRequired = false
 
 	// Unless we've been instructed not to reset on open, reset serial to a known good state
-	if context.reopenBecauseOfOpen && InitialResetMode {
-		err = cardResetSerial(context, portConfig)
+	if context.reopenBecauseOfOpen {
+		context.reopenBecauseOfOpen = false
+		if InitialResetMode {
+			err = cardResetSerial(context, portConfig)
+		}
 	}
-	context.reopenBecauseOfOpen = false
 
 	// Done
 	return err
@@ -1066,7 +1071,7 @@ func cardTransactionSerial(context *Context, portConfig int, noResponse bool, re
 			if debugSerialIO {
 				fmt.Printf("cardTransactionSerial: about to write %d bytes\n", segLen)
 			}
-			serialIOBegin(context)
+			serialIOBegin(context, SerialTimeoutMs)
 			_, err = context.serialPort.Write(reqJSON[segOff : segOff+segLen])
 			err = serialIOEnd(context, err)
 			if debugSerialIO {
@@ -1101,7 +1106,7 @@ func cardTransactionSerial(context *Context, portConfig int, noResponse bool, re
 			fmt.Printf("cardTransactionSerial: about to read up to %d bytes\n", len(buf))
 		}
 		readBeganMs := int(time.Now().UnixNano() / 1000000)
-		serialIOBegin(context)
+		serialIOBegin(context, SerialTimeoutMs)
 		length, err = context.serialPort.Read(buf)
 		err = serialIOEnd(context, err)
 		readElapsedMs := int(time.Now().UnixNano()/1000000) - readBeganMs

@@ -11,6 +11,15 @@ type GetEventsResponse struct {
 	HasMore bool         `json:"has_more"`
 }
 
+// GetEventsResponseSelectedFields v1
+//
+// The response object for getting events with selected fields.
+type GetEventsResponseSelectedFields struct {
+	Events  []note.Event `json:"events"`
+	Through string       `json:"through,omitempty"`
+	HasMore bool         `json:"has_more"`
+}
+
 // GetEventsByCursorResponse v1
 //
 // The response object for getting events by cursor.
