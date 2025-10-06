@@ -19,6 +19,9 @@ const ReqFileSet = "file.set"
 // ReqFileDelete (golint)
 const ReqFileDelete = "file.delete"
 
+// ReqFileClear (golint)
+const ReqFileClear = "file.clear"
+
 // ReqFileGetL (golint)
 const ReqFileGetL = "file.get"
 

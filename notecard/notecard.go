@@ -6,6 +6,7 @@ package notecard
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"hash/crc32"
 	"io"
@@ -44,9 +45,8 @@ var (
 	multiportTransLock [128]sync.RWMutex
 )
 
-// SerialTimeoutMs is the response timeout for Notecard serial communications.  (This is public
-// in case someone wants to alter it.)
-var SerialTimeoutMs = 30000
+// Default transaction timeout (before receiving anything from the notecard)
+const transactionTimeoutMsDefault = 30000
 
 // IgnoreWindowsHWErrSecs is the amount of time to ignore a Windows serial communiction error.
 var IgnoreWindowsHWErrSecs = 2
@@ -127,6 +127,13 @@ type Context struct {
 	ResetFn        func(context *Context, portConfig int) (err error)
 	TransactionFn  func(context *Context, portConfig int, noResponse bool, reqJSON []byte) (rspJSON []byte, err error)
 
+	// Transaction timeout (0 for default)
+	transactionTimeoutMs int
+
+	// User-specified heartbeat function
+	HeartbeatCtx interface{}
+	HeartbeatFn  func(context *Context, userCtx interface{}, response []byte) bool
+
 	// Trace functions
 	traceOpenFn  func(context *Context) (err error)
 	traceReadFn  func(context *Context) (data []byte, err error)
@@ -174,6 +181,25 @@ func cardReportError(context *Context, err error) {
 		time.Sleep(500 * time.Millisecond)
 		context.reopenRequired = true
 	}
+}
+
+// Set the transaction function
+func (context *Context) GetTransactionTimeoutMs() int {
+	if context.transactionTimeoutMs == 0 {
+		return transactionTimeoutMsDefault
+	}
+	return context.transactionTimeoutMs
+}
+
+// Set the request timeout (0 to restore for default)
+func (context *Context) SetTransactionTimeoutMs(msec int) {
+	context.transactionTimeoutMs = msec
+}
+
+// Set or clear the heartbeat function
+func (context *Context) SetTransactionHeartbeatFn(userFn func(context *Context, userCtx interface{}, rsp []byte) bool, userCtx interface{}) {
+	context.HeartbeatFn = userFn
+	context.HeartbeatCtx = userCtx
 }
 
 // DebugOutput enables/disables debug output
@@ -264,7 +290,7 @@ func cardResetSerial(context *Context, portConfig int) (err error) {
 		if debugSerialIO {
 			fmt.Printf("cardResetSerial: about to write newline\n")
 		}
-		serialIOBegin(context, SerialTimeoutMs)
+		serialIOBegin(context, context.GetTransactionTimeoutMs())
 		_, err = context.serialPort.Write([]byte("\n"))
 		err = serialIOEnd(context, err)
 		if debugSerialIO {
@@ -293,7 +319,7 @@ func cardResetSerial(context *Context, portConfig int) (err error) {
 		}
 		if err != nil {
 			// Ignore errors after reset, as the only purpose of reset is to drain the input buffer
-			err = cardReopenSerial(context, portConfig)
+			err = CardReopenSerial(context, portConfig)
 			return err
 		}
 		somethingFound := false
@@ -381,7 +407,7 @@ func OpenSerial(port string, portConfig int) (context *Context, err error) {
 	context.PortEnumFn = serialPortEnum
 	context.PortDefaultsFn = serialDefault
 	context.CloseFn = cardCloseSerial
-	context.ReopenFn = cardReopenSerial
+	context.ReopenFn = CardReopenSerial
 	context.ResetFn = cardResetSerial
 	context.TransactionFn = cardTransactionSerial
 	context.traceOpenFn = serialTraceOpen
@@ -390,11 +416,14 @@ func OpenSerial(port string, portConfig int) (context *Context, err error) {
 
 	// Record serial configuration, and whether or not we are using the default
 	context.isSerial = true
+	context.serialName, context.serialConfig.BaudRate = serialDefault()
 	if port == "" {
 		context.serialUseDefault = true
-		context.serialName, context.serialConfig.BaudRate = serialDefault()
 	} else {
 		context.serialName = port
+
+	}
+	if portConfig != 0 {
 		context.serialConfig.BaudRate = portConfig
 	}
 
@@ -519,7 +548,7 @@ func cardCloseSerial(context *Context) {
 
 // Close I2C
 func cardCloseI2C(context *Context) {
-	i2cClose()
+	_ = i2cClose()
 	context.portIsOpen = false
 }
 
@@ -539,7 +568,7 @@ func (context *Context) Reopen(portConfig int) (err error) {
 }
 
 // Reopen serial
-func cardReopenSerial(context *Context, portConfig int) (err error) {
+func CardReopenSerial(context *Context, portConfig int) (err error) {
 
 	// Close if open
 	cardCloseSerial(context)
@@ -552,6 +581,9 @@ func cardReopenSerial(context *Context, portConfig int) (err error) {
 		return fmt.Errorf("error opening serial port: serial device not available %s", note.ErrCardIo)
 	}
 
+	if portConfig != 0 {
+		context.serialConfig.BaudRate = portConfig
+	}
 	// Set default speed if not set
 	if context.serialConfig.BaudRate == 0 {
 		_, context.serialConfig.BaudRate = serialDefault()
@@ -559,7 +591,7 @@ func cardReopenSerial(context *Context, portConfig int) (err error) {
 
 	// Open the serial port
 	if debugSerialIO {
-		fmt.Printf("cardReopenSerial: about to open '%s'\n", context.serialName)
+		fmt.Printf("CardReopenSerial: about to open '%s'\n", context.serialName)
 	}
 	context.serialPort, err = serial.Open(context.serialName, &context.serialConfig)
 	if debugSerialIO {
@@ -746,7 +778,7 @@ func (context *Context) SendBytes(reqBytes []byte) (err error) {
 
 	// Do a reset if one was pending
 	if context.resetRequired {
-		context.Reset(portConfig)
+		_ = context.Reset(portConfig)
 	}
 
 	// Do the send, with no response requested
@@ -775,7 +807,7 @@ func (context *Context) receiveBytes(portConfig int) (rspBytes []byte, err error
 
 	// Do a reset if one was pending
 	if context.resetRequired {
-		context.Reset(portConfig)
+		_ = context.Reset(portConfig)
 	}
 
 	// Request is empty
@@ -878,10 +910,7 @@ func (context *Context) transactionJSON(reqJSON []byte, multiport bool, portConf
 
 	// Transaction retry loop.  Note that "err" must be set before breaking out of loop
 	err = nil
-	for {
-		if lastRequestRetries > requestRetriesAllowed {
-			break
-		}
+	for lastRequestRetries <= requestRetriesAllowed {
 
 		// Only do reopen/reset in the single-port case, because we may not be talking to the port in error
 		if !multiport {
@@ -898,7 +927,7 @@ func (context *Context) transactionJSON(reqJSON []byte, multiport bool, portConf
 
 			// Do a reset if one was pending
 			if context.resetRequired {
-				context.Reset(portConfig)
+				_ = context.Reset(portConfig)
 			}
 
 		}
@@ -909,7 +938,7 @@ func (context *Context) transactionJSON(reqJSON []byte, multiport bool, portConf
 			// We can defer the error if a single port, but we need to reset it NOW if multiport
 			if multiport {
 				if context.ResetFn != nil {
-					context.ResetFn(context, portConfig)
+					_ = context.ResetFn(context, portConfig)
 				}
 			} else {
 				context.resetRequired = true
@@ -950,7 +979,7 @@ func (context *Context) transactionJSON(reqJSON []byte, multiport bool, portConf
 			// We can defer the error if a single port, but we need to reset it NOW if multiport
 			if multiport {
 				if context.ResetFn != nil {
-					context.ResetFn(context, portConfig)
+					_ = context.ResetFn(context, portConfig)
 				}
 			} else {
 				context.resetRequired = true
@@ -1055,7 +1084,7 @@ func cardTransactionSerial(context *Context, portConfig int, noResponse bool, re
 	}
 
 	// Set the serial read timeout to 30 seconds, preventing reads under windows from stalling indefinitely on a serial error.
-	context.serialPort.SetReadTimeout(30 * time.Second)
+	_ = context.serialPort.SetReadTimeout(30 * time.Second)
 
 	// Handle the special case where we are looking only for a reply
 	if len(reqJSON) > 0 {
@@ -1071,7 +1100,7 @@ func cardTransactionSerial(context *Context, portConfig int, noResponse bool, re
 			if debugSerialIO {
 				fmt.Printf("cardTransactionSerial: about to write %d bytes\n", segLen)
 			}
-			serialIOBegin(context, SerialTimeoutMs)
+			serialIOBegin(context, context.GetTransactionTimeoutMs())
 			_, err = context.serialPort.Write(reqJSON[segOff : segOff+segLen])
 			err = serialIOEnd(context, err)
 			if debugSerialIO {
@@ -1098,7 +1127,8 @@ func cardTransactionSerial(context *Context, portConfig int, noResponse bool, re
 	}
 
 	// Read the reply until we get '\n' at the end
-	waitBeganSecs := time.Now().Unix()
+	waitBegan := time.Now()
+	waitExpires := waitBegan.Add(time.Duration(context.GetTransactionTimeoutMs()) * time.Millisecond)
 	for {
 		var length int
 		buf := make([]byte, 2048)
@@ -1106,7 +1136,8 @@ func cardTransactionSerial(context *Context, portConfig int, noResponse bool, re
 			fmt.Printf("cardTransactionSerial: about to read up to %d bytes\n", len(buf))
 		}
 		readBeganMs := int(time.Now().UnixNano() / 1000000)
-		serialIOBegin(context, SerialTimeoutMs)
+		waitRemainingMs := int(time.Until(waitExpires).Milliseconds())
+		serialIOBegin(context, waitRemainingMs)
 		length, err = context.serialPort.Read(buf)
 		err = serialIOEnd(context, err)
 		readElapsedMs := int(time.Now().UnixNano()/1000000) - readBeganMs
@@ -1130,7 +1161,7 @@ func cardTransactionSerial(context *Context, portConfig int, noResponse bool, re
 				continue
 			}
 			// Ignore [flaky, rare, Windows] hardware errors for up to several seconds
-			if (time.Now().Unix() - waitBeganSecs) > int64(IgnoreWindowsHWErrSecs) {
+			if (time.Now().Unix() - waitBegan.Unix()) > int64(IgnoreWindowsHWErrSecs) {
 				err = fmt.Errorf("error reading from module: %s %s", err, note.ErrCardIo)
 				cardReportError(context, err)
 				return
@@ -1139,36 +1170,64 @@ func cardTransactionSerial(context *Context, portConfig int, noResponse bool, re
 			continue
 		}
 		rspJSON = append(rspJSON, buf[:length]...)
-		if strings.Contains(string(rspJSON), "\n") {
+		if !strings.Contains(string(rspJSON), "\n") {
+			continue
+		}
 
-			// At this point, if we split the string at \n its len must be >= 2
-			lines := strings.Split(string(rspJSON), "\n")
-			lastLine := lines[len(lines)-1]
-			secondToLastLine := lines[len(lines)-2]
+		// We now have at least one whole line.  If we're just gathering a reply, we're done.
+		if len(reqJSON) == 0 {
+			break
+		}
 
+		// At this point, if we split the string at \n its len must be >= 2
+		// If the json didn't END in \n, we are still collecting a partial line
+		lines := strings.Split(string(rspJSON), "\n")
+		lastLine := lines[len(lines)-1]
+		secondToLastLine := lines[len(lines)-2]
+		if lastLine != "" {
 			// The reply should be only a single line.  However, if the user had been
 			// in trace mode (likely on USB) we may be receiving trace lines that
 			// were sent to us and inserted into the serial buffer prior to the JSON reply.
-			if lastLine != "" {
-				// If the json didn't END in \n, we are still collecting a partial line
-				rspJSON = []byte(lastLine)
-			} else if len(reqJSON) == 0 {
-				// If we're just gathering a reply, we accept binary because it may be COBS
-				break
-			} else {
-
-				// We're done if and only if the response looks like JSON
-				if len(secondToLastLine) > 0 && secondToLastLine[0] == '{' {
-					break
-				}
-
-				// Drop it, because the line doesn't look like JSON
-				rspJSON = []byte{}
-
-			}
-
+			rspJSON = []byte(lastLine)
+			continue
 		}
 
+		// Skip the line if it's empty or doesn't look like JSON
+		if len(secondToLastLine) == 0 || secondToLastLine[0] != '{' {
+			rspJSON = []byte{}
+			continue
+		}
+
+		// ** We now have a clean response in rspJSON **
+
+		// We're done if it's not a heartbeat
+		fn := context.HeartbeatFn
+		if fn == nil {
+			break
+		}
+		m := make(map[string]string)
+		if json.Unmarshal(rspJSON, &m) != nil {
+			break
+		}
+		v, errPresent := m["err"]
+		if !errPresent {
+			break
+		}
+		if !strings.Contains(v, note.ErrCardHeartbeat) {
+			break
+		}
+
+		// Call the heartbeat function, and abort if it requests that we do so
+		if fn(context, context.HeartbeatCtx, rspJSON) {
+			err = fmt.Errorf("aborted by heartbeat function")
+			cardReportError(context, err)
+			return
+		}
+
+		// Reset the JSON and timeout and start again
+		rspJSON = []byte{}
+		waitBegan = time.Now()
+		waitExpires = waitBegan.Add(time.Duration(context.GetTransactionTimeoutMs()) * time.Millisecond)
 	}
 
 	// Done
@@ -1219,10 +1278,8 @@ func cardTransactionI2C(context *Context, portConfig int, noResponse bool, reqJS
 	jsonbufLen = 0
 	receivedNewline := false
 	chunklen := 0
-	expireSecs := 60
-	expires := time.Now().Add(time.Duration(expireSecs) * time.Second)
-	longExpireSecs := 240
-	longexpires := time.Now().Add(time.Duration(longExpireSecs) * time.Second)
+	waitBegan := time.Now()
+	waitExpires := waitBegan.Add(time.Duration(context.GetTransactionTimeoutMs()) * time.Millisecond)
 	for {
 
 		// Read the next chunk
@@ -1237,9 +1294,10 @@ func cardTransactionI2C(context *Context, portConfig int, noResponse bool, reqJS
 		readlen := len(readbuf)
 		jsonbufLen += readlen
 
-		// If we received something, reset the expiration
+		// If we received something, reset the expiration to what we'd expect for just the
+		// I/O portion of a transaction.
 		if readlen > 0 {
-			expires = time.Now().Add(time.Duration(90) * time.Second)
+			waitExpires = time.Now().Add(time.Duration(5) * time.Second)
 		}
 
 		// If the last byte of the chunk is \n, chances are that we're done.  However, just so
@@ -1260,26 +1318,53 @@ func cardTransactionI2C(context *Context, portConfig int, noResponse bool, reqJS
 			continue
 		}
 
-		// If there's nothing available and we received a newline, we're done
-		if receivedNewline {
+		// See if we're done
+		if !receivedNewline {
+
+			// If we've timed out and nothing's available, exit
+			expired := time.Now().After(waitExpires)
+			if context.i2cMultiport {
+				expired = time.Now().After(waitBegan.Add(time.Duration(90) * time.Second))
+			}
+			if expired {
+				err = fmt.Errorf("transaction timeout (%d bytes received before timeout) %s", jsonbufLen, note.ErrCardIo+note.ErrTimeout)
+				return
+			}
+
+			// Continue receiving
+			continue
+		}
+
+		// ** We now have a clean response in rspJSON **
+
+		// We're done if it's not a heartbeat
+		fn := context.HeartbeatFn
+		if fn == nil {
+			break
+		}
+		m := make(map[string]string)
+		if json.Unmarshal(rspJSON, &m) != nil {
+			break
+		}
+		v, errPresent := m["err"]
+		if !errPresent {
+			break
+		}
+		if !strings.Contains(v, note.ErrCardHeartbeat) {
 			break
 		}
 
-		// If we've timed out and nothing's available, exit
-		expired := false
-		timeoutSecs := 0
-		if !context.i2cMultiport || jsonbufLen == 0 {
-			expired = time.Now().After(expires)
-			timeoutSecs = expireSecs
-		} else {
-			expired = time.Now().After(longexpires)
-			timeoutSecs = longExpireSecs
-		}
-		if expired {
-			err = fmt.Errorf("transaction timeout (received %d bytes in %d secs) %s", jsonbufLen, timeoutSecs, note.ErrCardIo+note.ErrTimeout)
+		// Call the heartbeat function, and abort if it requests that we do so
+		if fn(context, context.HeartbeatCtx, rspJSON) {
+			err = fmt.Errorf("aborted by heartbeat function")
+			cardReportError(context, err)
 			return
 		}
 
+		// Reset the JSON and timeout and start again
+		rspJSON = []byte{}
+		waitBegan = time.Now()
+		waitExpires = waitBegan.Add(time.Duration(context.GetTransactionTimeoutMs()) * time.Millisecond)
 	}
 
 	// Done

@@ -6,6 +6,7 @@ package notehub
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/blues/note-go/note"
 	"github.com/blues/note-go/notecard"
@@ -36,6 +37,33 @@ const HubUpload = "hub.upload.add"
 
 // HubAppUploads (golint)
 const HubAppUploads = "hub.app.upload.query"
+
+// HubAppJobSubmit (golint)
+const HubAppJobSubmit = "hub.app.job.submit"
+
+// HubAppJobGet (golint)
+const HubAppJobGet = "hub.app.job.get"
+
+// HubAppJobPut (golint)
+const HubAppJobPut = "hub.app.job.put"
+
+// HubAppJobDelete (golint)
+const HubAppJobDelete = "hub.app.job.delete"
+
+// HubAppJobsGet (golint)
+const HubAppJobsGet = "hub.app.jobs.get"
+
+// HubAppReportGet (golint)
+const HubAppReportGet = "hub.app.report.get"
+
+// HubAppReportDelete (golint)
+const HubAppReportDelete = "hub.app.report.delete"
+
+// HubAppReportCancel (golint)
+const HubAppReportCancel = "hub.app.report.cancel"
+
+// HubAppReportsGet (golint)
+const HubAppReportsGet = "hub.app.reports.get"
 
 // HubUploads (golint)
 const HubUploads = "hub.upload.query"
@@ -113,6 +141,7 @@ type HubRequest struct {
 	Compress         string                        `json:"compress,omitempty"`
 	MD5              string                        `json:"md5,omitempty"`
 	DeviceEndpoint   bool                          `json:"device_endpoint,omitempty"`
+	DryRun           bool                          `json:"dry_run,omitempty"`
 }
 
 type UploadType string
@@ -122,7 +151,9 @@ const (
 	UploadTypeHostFirmware     UploadType = "firmware"
 	UploadTypeNotecardFirmware UploadType = "notecard"
 	UploadTypeModemFirmware    UploadType = "modem"
+	UploadTypeStarnoteFirmware UploadType = "starnote"
 	UploadTypeUserData         UploadType = "data"
+	UploadTypeJob              UploadType = "job"
 )
 
 var allFileTypes = []UploadType{
@@ -130,7 +161,9 @@ var allFileTypes = []UploadType{
 	UploadTypeHostFirmware,
 	UploadTypeNotecardFirmware,
 	UploadTypeModemFirmware,
+	UploadTypeStarnoteFirmware,
 	UploadTypeUserData,
+	UploadTypeJob,
 }
 
 func ParseUploadType(fileType string) UploadType {
@@ -191,8 +224,24 @@ type UploadMetadata struct {
 	Tags     string                  `json:"tags,omitempty"`     // comma-separated, no spaces, case-insensitive
 	Notes    string                  `json:"notes,omitempty"`    // Should be simple text
 	Firmware *HubRequestFileFirmware `json:"firmware,omitempty"` // This value is pulled out of the firmware binary itself
+	Version  string                  `json:"version,omitempty"`  // User-specified version string provided at time of upload
 	// Arbitrary metadata that the user may define - we don't interpret the schema at all
 	Info map[string]interface{} `json:"info,omitempty"`
+}
+
+func (upload UploadMetadata) IsArchSpecificNotecardFirmware() bool {
+	return upload.FileType == UploadTypeNotecardFirmware && (strings.Contains(upload.Name, "-s3-") ||
+		strings.Contains(upload.Name, "-u5-") ||
+		strings.Contains(upload.Name, "-wl-"))
+}
+
+func (upload UploadMetadata) IsPublished() bool {
+	for _, tag := range strings.Split(upload.Tags, ",") {
+		if strings.TrimSpace(strings.ToLower(tag)) == "publish" {
+			return true
+		}
+	}
+	return false
 }
 
 // HubRequestFileTagPublish indicates that this should be published in the UI
