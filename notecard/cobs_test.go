@@ -9,14 +9,14 @@ import (
 )
 
 func TestCob(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	min := 100
 	max := 1000
-	len := rand.Intn(max-min+1) + min
+	len := rng.Intn(max-min+1) + min
 	buf := make([]byte, len)
-	xor := byte(rand.Int())
+	xor := byte(rng.Int())
 
-	_, err := rand.Read(buf)
+	_, err := rng.Read(buf)
 	require.NoError(t, err)
 
 	encoded, err := CobsEncode(buf, xor)

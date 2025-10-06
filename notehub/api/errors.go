@@ -5,7 +5,6 @@
 package api
 
 import (
-	"io"
 	"net/http"
 )
 
@@ -62,18 +61,9 @@ var SuspendedBillingAccountResponse = ErrorResponse{
 // and adds the request Body (if it exists) into the response.Details["body"] as a string
 func (e ErrorResponse) WithRequest(r *http.Request) ErrorResponse {
 	e.Request = r.RequestURI
-	var bodyBytes []byte
-	if r.Body != nil {
-		var err error
-		bodyBytes, err = io.ReadAll(r.Body)
-		if err != nil {
-			return e
-		}
-	}
 	if len(e.Details) == 0 {
 		e.Details = make(map[string]interface{})
 	}
-	e.Details["body"] = string(bodyBytes)
 	return e
 }
 

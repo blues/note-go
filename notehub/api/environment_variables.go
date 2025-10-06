@@ -117,6 +117,13 @@ type GetDeviceEnvironmentVariablesResponse struct {
 	//
 	// required: true
 	EnvironmentVariablesEnvDefault map[string]string `json:"environment_variables_env_default"`
+
+	// EnvironmentVariablesEffective
+	//
+	// The environment variables for the device as though they were fully resolved by resolution rules
+	//
+	// required: true
+	EnvironmentVariablesEffective map[string]string `json:"environment_variables_effective"`
 }
 
 // PutDeviceEnvironmentVariablesRequest v1

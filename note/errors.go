@@ -13,6 +13,12 @@ import (
 // ErrTimeout (golint)
 const ErrTimeout = "{timeout}"
 
+// ErrInternalTimeout of a notehub-to-notehub transaction (golint)
+const ErrInternalTimeout = "{internal-timeout}"
+
+// ErrRouteTimeout of a notehub-to-customer-service transaction (golint)
+const ErrRouteTimeout = "{route-timeout}"
+
 // ErrClosed (golint)
 const ErrClosed = "{closed}"
 
@@ -115,6 +121,9 @@ const ErrDeviceNotFound = "{device-noexist}"
 // ErrDeviceNotSpecified (golint)
 const ErrDeviceNotSpecified = "{device-none}"
 
+// ErrDeviceId (golint)
+const ErrDeviceId = "{device-id-invalid}"
+
 // ErrDeviceDisabled (golint)
 const ErrDeviceDisabled = "{device-disabled}"
 
@@ -141,6 +150,9 @@ const ErrFleetNotFound = "{fleet-noexist}"
 
 // ErrCardIo (golint)
 const ErrCardIo = "{io}"
+
+// ErrCardHeartbeat (golint)
+const ErrCardHeartbeat = "{heartbeat}"
 
 // ErrAccessDenied (golint)
 const ErrAccessDenied = "{access-denied}"

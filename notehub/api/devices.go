@@ -10,14 +10,21 @@ import (
 //
 // The response object for getting devices.
 type GetDevicesResponse struct {
-	Devices []DeviceResponse `json:"devices"`
-	HasMore bool             `json:"has_more"`
+	Devices []GetDeviceResponse `json:"devices"`
+	HasMore bool                `json:"has_more"`
+}
+
+// Part of the response object for a device.
+type DeviceHealthLogEntry struct {
+	When  string `json:"when"`
+	Text  string `json:"text"`
+	Alert bool   `json:"alert"`
 }
 
 // DeviceResponse v1
 //
 // The response object for a device.
-type DeviceResponse struct {
+type GetDeviceResponse struct {
 	UID          string `json:"uid"`
 	SerialNumber string `json:"serial_number,omitempty"`
 	SKU          string `json:"sku,omitempty"`
@@ -25,6 +32,9 @@ type DeviceResponse struct {
 	// RFC3339 timestamps, in UTC.
 	Provisioned  string  `json:"provisioned"`
 	LastActivity *string `json:"last_activity"`
+
+	FirmwareHost     string `json:"firmware_host,omitempty"`
+	FirmwareNotecard string `json:"firmware_notecard,omitempty"`
 
 	Contact *ContactResponse `json:"contact,omitempty"`
 
@@ -36,11 +46,20 @@ type DeviceResponse struct {
 	GPSLocation          *Location         `json:"gps_location,omitempty"`
 	TriangulatedLocation *Location         `json:"triangulated_location,omitempty"`
 
-	Voltage     float64 `json:"voltage"`
-	Temperature float64 `json:"temperature"`
-	DFUEnv      *DFUEnv `json:"dfu,omitempty"`
-	Disabled    bool    `json:"disabled,omitempty"`
-	Tags        string  `json:"tags,omitempty"`
+	Voltage     float64      `json:"voltage"`
+	Temperature float64      `json:"temperature"`
+	DFUEnv      *note.DFUEnv `json:"dfu,omitempty"`
+	Disabled    bool         `json:"disabled,omitempty"`
+	Tags        string       `json:"tags,omitempty"`
+
+	// Activity
+	RecentActivityBase   string `json:"recent_event_base,omitempty"`
+	RecentEventCount     []int  `json:"recent_event_count,omitempty"`
+	RecentSessionCount   []int  `json:"recent_session_count,omitempty"`
+	RecentSessionSeconds []int  `json:"recent_session_seconds,omitempty"`
+
+	// Health
+	HealthLog []DeviceHealthLogEntry `json:"health_log,omitempty"`
 }
 
 // GetDevicesPublicKeysResponse v1
@@ -116,72 +135,30 @@ type HealthLogEntry struct {
 	Text  string `json:"text"`
 }
 
-// DFUState is the state of the DFU in progress
-type DFUState struct {
-	Type               string `json:"type,omitempty"`
-	File               string `json:"file,omitempty"`
-	Length             uint32 `json:"length,omitempty"`
-	CRC32              uint32 `json:"crc32,omitempty"`
-	MD5                string `json:"md5,omitempty"`
-	Phase              string `json:"mode,omitempty"`
-	Status             string `json:"status,omitempty"`
-	BeganSecs          uint32 `json:"began,omitempty"`
-	RetryCount         uint32 `json:"retry,omitempty"`
-	ConsecutiveErrors  uint32 `json:"errors,omitempty"`
-	ReadFromService    uint32 `json:"read,omitempty"`
-	UpdatedSecs        uint32 `json:"updated,omitempty"`
-	DownloadComplete   bool   `json:"dl_complete,omitempty"`
-	DisabledReason     string `json:"disabled,omitempty"`
-	MinNotecardVersion string `json:"min_card_version,omitempty"`
-
-	// This will always point to the current running version
-	Version string `json:"version,omitempty"`
+var allDfuPhases = []note.DfuPhase{
+	note.DfuPhaseUnknown,
+	note.DfuPhaseIdle,
+	note.DfuPhaseError,
+	note.DfuPhaseDownloading,
+	note.DfuPhaseSideloading,
+	note.DfuPhaseReady,
+	note.DfuPhaseReadyRetry,
+	note.DfuPhaseUpdating,
+	note.DfuPhaseCompleted,
 }
 
-// DFUEnv is the data structure passed to Notehub when DFU info changes
-type DFUEnv struct {
-	Card *DFUState `json:"card,omitempty"`
-	User *DFUState `json:"user,omitempty"`
-}
-
-type DfuPhase string
-
-const (
-	DfuPhaseUnknown     DfuPhase = ""
-	DfuPhaseIdle        DfuPhase = "idle"
-	DfuPhaseError       DfuPhase = "error"
-	DfuPhaseDownloading DfuPhase = "downloading"
-	DfuPhaseSideloading DfuPhase = "sideloading"
-	DfuPhaseReady       DfuPhase = "ready"
-	DfuPhaseReadyRetry  DfuPhase = "ready-retry"
-	DfuPhaseUpdating    DfuPhase = "updating"
-	DfuPhaseCompleted   DfuPhase = "completed"
-)
-
-var allDfuPhases = []DfuPhase{
-	DfuPhaseUnknown,
-	DfuPhaseIdle,
-	DfuPhaseError,
-	DfuPhaseDownloading,
-	DfuPhaseSideloading,
-	DfuPhaseReady,
-	DfuPhaseReadyRetry,
-	DfuPhaseUpdating,
-	DfuPhaseCompleted,
-}
-
-func ParseDfuPhase(phase string) DfuPhase {
+func ParseDfuPhase(phase string) note.DfuPhase {
 	phase = strings.ToLower(phase)
 	for _, validPhase := range allDfuPhases {
 		if phase == string(validPhase) {
 			return validPhase
 		}
 	}
-	return DfuPhaseUnknown
+	return note.DfuPhaseUnknown
 }
 
-func (phase DfuPhase) IsTerminal() bool {
-	return phase == DfuPhaseError ||
-		phase == DfuPhaseCompleted ||
-		phase == DfuPhaseIdle
+func IsDfuTerminal(phase note.DfuPhase) bool {
+	return phase == note.DfuPhaseError ||
+		phase == note.DfuPhaseCompleted ||
+		phase == note.DfuPhaseIdle
 }

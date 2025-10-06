@@ -16,7 +16,10 @@ type FleetResponse struct {
 	// RFC3339 timestamp, in UTC.
 	Created string `json:"created"`
 
-	SmartRule string `json:"smart_rule,omitempty"`
+	EnvironmentVariables map[string]string `json:"environment_variables"`
+
+	SmartRule    string `json:"smart_rule,omitempty"`
+	WatchdogMins int64  `json:"watchdog_mins,omitempty"`
 }
 
 // PutDeviceFleetsRequest v1
@@ -49,7 +52,8 @@ type DeleteDeviceFleetsRequest struct {
 type PostFleetRequest struct {
 	Label string `json:"label"`
 
-	SmartRule string `json:"smart_rule,omitempty"`
+	SmartRule    string `json:"smart_rule,omitempty"`
+	WatchdogMins int64  `json:"watchdog_mins,omitempty"`
 }
 
 // PutFleetRequest v1
@@ -60,5 +64,6 @@ type PutFleetRequest struct {
 	AddDevices    []string `json:"addDevices,omitempty"`
 	RemoveDevices []string `json:"removeDevices,omitempty"`
 
-	SmartRule string `json:"smart_rule,omitempty"`
+	SmartRule    string `json:"smart_rule,omitempty"`
+	WatchdogMins int64  `json:"watchdog_mins,omitempty"`
 }
