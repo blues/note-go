@@ -103,9 +103,20 @@ func RevokeAccessToken(hub, token string) error {
 // InitiateBrowserBasedLogin starts the OAuth2 login flow by opening the user's browser.
 // the `hub` parameter is the hostname of Notehub where it is assumed that an OAuth2 client
 // with client ID `notehub_cli` is configured for authorization code flow.
-func InitiateBrowserBasedLogin(hub string) (*AccessToken, error) {
+func InitiateBrowserBasedLogin(notehubApiHost string) (*AccessToken, error) {
 	// this is the hard-coded OAuth client ID that's persisted in Hydra
 	clientId := "notehub_cli"
+
+	if !strings.HasPrefix(notehubApiHost, "api.") {
+		notehubApiHost = "api." + notehubApiHost
+	}
+
+	var notehubUiHost string
+	if notehubApiHost == "api.notefile.net" {
+		notehubUiHost = "notehub.io"
+	} else {
+		notehubUiHost = strings.TrimPrefix(notehubApiHost, "api.")
+	}
 
 	// Try these ports in order until one is available:
 	//
@@ -157,7 +168,7 @@ func InitiateBrowserBasedLogin(hub string) (*AccessToken, error) {
 		tokenResp, err := http.Post(
 			(&url.URL{
 				Scheme: "https",
-				Host:   hub,
+				Host:   notehubUiHost,
 				Path:   "/oauth2/token",
 			}).String(),
 			"application/x-www-form-urlencoded",
@@ -217,7 +228,7 @@ func InitiateBrowserBasedLogin(hub string) (*AccessToken, error) {
 		// Get user's information (specifically email)
 		///////////////////////////////////////////
 
-		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://%s/userinfo", hub), nil)
+		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://%s/userinfo", notehubApiHost), nil)
 		if err != nil {
 			errHandler("could not create request for /userinfo: " + err.Error())
 			return
@@ -253,7 +264,7 @@ func InitiateBrowserBasedLogin(hub string) (*AccessToken, error) {
 		///////////////////////////////////////////
 
 		accessToken = &AccessToken{
-			Host:        hub,
+			Host:        notehubApiHost,
 			Email:       email,
 			AccessToken: accessTokenString,
 			ExpiresAt:   time.Now().Add(expiresIn),
@@ -304,7 +315,7 @@ func InitiateBrowserBasedLogin(hub string) (*AccessToken, error) {
 	// Build the authorize URL using the chosen port
 	authorizeUrl := url.URL{
 		Scheme: "https",
-		Host:   hub,
+		Host:   notehubUiHost,
 		Path:   "/oauth2/auth",
 		RawQuery: url.Values{
 			"client_id":             {clientId},
@@ -319,7 +330,9 @@ func InitiateBrowserBasedLogin(hub string) (*AccessToken, error) {
 
 	// Open web browser to authorize
 	fmt.Printf("Opening web browser to initiate authentication (redirect port %d)...\n", chosenPort)
-	open(authorizeUrl.String())
+	if err := open(authorizeUrl.String()); err != nil {
+		fmt.Printf("error opening web browser: %v", err)
+	}
 
 	// Wait for exchange to finish
 	<-done

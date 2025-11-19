@@ -18,8 +18,9 @@ type FleetResponse struct {
 
 	EnvironmentVariables map[string]string `json:"environment_variables"`
 
-	SmartRule    string `json:"smart_rule,omitempty"`
-	WatchdogMins int64  `json:"watchdog_mins,omitempty"`
+	SmartRule             string                     `json:"smart_rule,omitempty"`
+	WatchdogMins          int64                      `json:"watchdog_mins,omitempty"`
+	ConnectivityAssurance FleetConnectivityAssurance `json:"connectivity_assurance,omitempty"`
 }
 
 // PutDeviceFleetsRequest v1
@@ -66,4 +67,12 @@ type PutFleetRequest struct {
 
 	SmartRule    string `json:"smart_rule,omitempty"`
 	WatchdogMins int64  `json:"watchdog_mins,omitempty"`
+}
+
+// FleetConnectivityAssurance v1
+//
+// Includes, Enabled = Whether Connectivity Assurance is enabled for this fleet
+// With flexibility to add more information in the future
+type FleetConnectivityAssurance struct {
+	Enabled bool `json:"enabled"`
 }

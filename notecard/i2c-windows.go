@@ -3,7 +3,6 @@
 // copyright holder including that found in the LICENSE file.
 
 //go:build windows
-// +build windows
 
 package notecard
 

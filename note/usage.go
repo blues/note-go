@@ -14,6 +14,8 @@ type DeviceUsage struct {
 	SentBytesSecondary uint32 `json:"bytes_sent_secondary,omitempty"`
 	TCPSessions        uint32 `json:"sessions_tcp,omitempty"`
 	TLSSessions        uint32 `json:"sessions_tls,omitempty"`
+	PacketSessions     uint32 `json:"sessions_packet,omitempty"`
+	WebhookSessions    uint32 `json:"sessions_webhook,omitempty"`
 	RcvdNotes          uint32 `json:"notes_rcvd,omitempty"`
 	SentNotes          uint32 `json:"notes_sent,omitempty"`
 }
