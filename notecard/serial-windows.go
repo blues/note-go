@@ -3,7 +3,6 @@
 // copyright holder including that found in the LICENSE file.
 
 //go:build windows
-// +build windows
 
 // If you have odd serial port behavior (where responses are apparently lost or delayed), try this:
 // 1) open Control Panel -> Device Manager -> Ports (COM & LPT)

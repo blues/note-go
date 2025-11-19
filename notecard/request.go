@@ -479,6 +479,7 @@ type Request struct {
 	Voltage                float64                       `json:"voltage,omitempty"`
 	MilliampHours          float64                       `json:"milliamp_hours,omitempty"`
 	Default                bool                          `json:"default,omitempty"`
+	In                     bool                          `json:"in,omitempty"`
 }
 
 // A Note on Time

@@ -17,6 +17,15 @@ import (
 // HubDeviceContact (golint)
 const HubDeviceContact = "hub.device.contact"
 
+// HubDeviceSessionBegin (golint)
+const HubDeviceSessionBegin = "hub.device.session.begin"
+
+// HubDeviceSessionUsage (golint)
+const HubDeviceSessionUsage = "hub.device.session.usage"
+
+// HubDeviceSessionEnd (golint)
+const HubDeviceSessionEnd = "hub.device.session.end"
+
 // HubAppGetSchemas (golint)
 const HubAppGetSchemas = "hub.app.schemas.get"
 

@@ -5,7 +5,6 @@
 // Forked from github.com/davecheney/i2c
 
 //go:build !windows
-// +build !windows
 
 // Before usage you must load the i2c-dev kernel module.
 // Each i2c bus can address 127 independent i2c devices, and most
