@@ -83,9 +83,12 @@ func i2cWriteBytes(buf []byte, i2cAddr int) (err error) {
 		i2cAddr = notecardDefaultI2CAddress
 	}
 	time.Sleep(1 * time.Millisecond) // By design, must not send more than once every 1Ms
-	reg := make([]byte, 1)
+
+	// Single allocation for header + payload (avoids make + append pattern)
+	reg := make([]byte, 1+len(buf))
 	reg[0] = byte(len(buf))
-	reg = append(reg, buf...)
+	copy(reg[1:], buf)
+
 	i2cLock.Lock()
 	openI2CPort.device = &i2c.Dev{Bus: openI2CPort.bus, Addr: uint16(i2cAddr)}
 	err = openI2CPort.device.Tx(reg, nil)
@@ -103,13 +106,14 @@ func i2cReadBytes(datalen int, i2cAddr int) (outbuf []byte, available int, err e
 	}
 	time.Sleep(1 * time.Millisecond) // By design, must not send more than once every 1Ms
 	readbuf := make([]byte, datalen+2)
+
+	// Pre-allocate register buffer once outside retry loop
+	reg := [2]byte{0, byte(datalen)}
+
 	for i := 0; ; i++ { // Retry just for robustness
-		reg := make([]byte, 2)
-		reg[0] = byte(0)
-		reg[1] = byte(datalen)
 		i2cLock.Lock()
 		openI2CPort.device = &i2c.Dev{Bus: openI2CPort.bus, Addr: uint16(i2cAddr)}
-		err = openI2CPort.device.Tx(reg, readbuf)
+		err = openI2CPort.device.Tx(reg[:], readbuf)
 		i2cLock.Unlock()
 		if err == nil {
 			break

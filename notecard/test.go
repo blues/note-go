@@ -65,6 +65,13 @@ type CardTest struct {
 	IriSn    string `json:"iri_sn,omitempty"`
 	IriImei  string `json:"iri_imei,omitempty"`
 	IriIccid string `json:"iri_iccid,omitempty"`
+	// For Starnote
+	Hardware string `json:"hardware,omitempty"`
+	Mtu      uint16 `json:"mtu,omitempty"`
+	DownMtu  uint16 `json:"down_mtu,omitempty"`
+	UpMtu    uint16 `json:"up_mtu,omitempty"`
+	Policy   string `json:"policy,omitempty"`
+	Cid      uint32 `json:"cid,omitempty"`
 }
 
 // Remove fields that are not useful or are sensitive when externalizing for public consumption

@@ -5,6 +5,8 @@
 package notecard
 
 import (
+	"errors"
+
 	"github.com/blues/note-go/note"
 )
 
@@ -349,6 +351,7 @@ type Request struct {
 	Status                 string                        `json:"status,omitempty"`
 	Version                string                        `json:"version,omitempty"`
 	Name                   string                        `json:"name,omitempty"`
+	Label                  string                        `json:"label,omitempty"`
 	Org                    string                        `json:"org,omitempty"`
 	Role                   string                        `json:"role,omitempty"`
 	Email                  string                        `json:"email,omitempty"`
@@ -480,6 +483,13 @@ type Request struct {
 	MilliampHours          float64                       `json:"milliamp_hours,omitempty"`
 	Default                bool                          `json:"default,omitempty"`
 	In                     bool                          `json:"in,omitempty"`
+}
+
+func (req *Request) Error() error {
+	if req.Err != "" {
+		return errors.New(req.Err)
+	}
+	return nil
 }
 
 // A Note on Time

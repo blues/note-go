@@ -128,7 +128,7 @@ func leaseClose(context *Context) {
 }
 
 // Perform a remote transaction
-func leaseTransaction(context *Context, portConfig int, noResponse bool, reqJSON []byte) (rspJSON []byte, err error) {
+func leaseTransaction(context *Context, portConfig int, noResponse bool, reqJSON []byte, delay bool) (rspJSON []byte, err error) {
 
 	// Perform the lease transaction
 	req := LeaseTransaction{}

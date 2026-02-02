@@ -41,6 +41,9 @@ const EventSessionEnd = "session.end"
 // EventGeolocation (golint)
 const EventGeolocation = "device.geolocation"
 
+// EventTower (golint)
+const EventTower = "device.tower"
+
 // EventSocket (golint)
 const EventSocket = "web.socket"
 

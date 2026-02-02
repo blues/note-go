@@ -40,7 +40,9 @@ func CobsEncodedLength(length int) int {
 func CobsEncode(input []byte, xor byte) ([]byte, error) {
 	length := len(input)
 	inOffset := 0
-	output := make([]byte, CobsEncodedLength(len(input)))
+	// Allocate with +1 capacity so append(result, '\n') won't reallocate
+	maxLen := CobsEncodedLength(len(input))
+	output := make([]byte, maxLen, maxLen+1)
 	outOffset := 0
 	outStartOffset := outOffset
 	var ch, code uint8
@@ -65,4 +67,15 @@ func CobsEncode(input []byte, xor byte) ([]byte, error) {
 	}
 	output[outCodeOffset] = code ^ xor
 	return output[outStartOffset:outOffset], nil
+}
+
+// CobsEncodeAppend encodes data and appends a delimiter in one operation.
+// This avoids the reallocation that would occur with append(CobsEncode(...), delim).
+func CobsEncodeAppend(input []byte, xor byte, delimiter byte) ([]byte, error) {
+	encoded, err := CobsEncode(input, xor)
+	if err != nil {
+		return nil, err
+	}
+	// Since CobsEncode allocates with +1 capacity, this append won't reallocate
+	return append(encoded, delimiter), nil
 }

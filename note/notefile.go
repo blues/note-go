@@ -31,6 +31,9 @@ const HealthHostNotefile = "_health_host.qo"
 // GeolocationNotefile is the hard-wired notefile that the notehub uses when performing a geolocation
 const GeolocationNotefile = "_geolocate.qo"
 
+// TowerNotefile is the hard-wired notefile that the notehub uses when performing tower updates
+const TowerNotefile = "_tower.qo"
+
 // SocketNotefile is the hard-wired notefile that the notehub uses when doing websocket I/O
 const SocketNotefile = "_socket.qo"
 

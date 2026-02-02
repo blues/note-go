@@ -7,6 +7,7 @@ package note
 import (
 	"bytes"
 	"encoding/json"
+	"math"
 	"strings"
 	"time"
 )
@@ -56,11 +57,16 @@ type History struct {
 
 // Info is a general "content" structure
 type Info struct {
-	NoteID  string                  `json:"id,omitempty"`
-	When    int64                   `json:"time,omitempty"`
-	Body    *map[string]interface{} `json:"body,omitempty"`
-	Payload *[]byte                 `json:"payload,omitempty"`
-	Deleted bool                    `json:"deleted,omitempty"`
+	NoteID    string                  `json:"id,omitempty"`
+	When      int64                   `json:"time,omitempty"`
+	WhereLat  float64                 `json:"lat,omitempty"`
+	WhereLon  float64                 `json:"lon,omitempty"`
+	WhereWhen int64                   `json:"ltime,omitempty"`
+	Body      *map[string]interface{} `json:"body,omitempty"`
+	Payload   *[]byte                 `json:"payload,omitempty"`
+	Deleted   bool                    `json:"deleted,omitempty"`
+	Edge      bool                    `json:"edge,omitempty"`
+	Pending   bool                    `json:"pending,omitempty"`
 }
 
 // CreateNote creates the core data structure for an object, given a JSON body
@@ -185,8 +191,21 @@ func (note *Note) When() (when int64) {
 	if note.Histories == nil || len(*note.Histories) == 0 {
 		return 0
 	}
-	histories := *note.Histories
-	return histories[0].When
+	h := (*note.Histories)[0]
+	if h.When < 1483228800 || h.When > math.MaxUint32 {
+		// Before 1/1/2017 or can't fit into a uint32
+		h.When = 0
+	}
+	return h.When
+}
+
+// GetEndpointID retrieves the endpoint that last modified the note
+func (note *Note) GetEndpointID() (endpointID string) {
+	if note.Histories == nil || len(*note.Histories) == 0 {
+		return ""
+	}
+	h := (*note.Histories)[0]
+	return h.EndpointID
 }
 
 // GetModified retrieves information about the note's modification
