@@ -29,6 +29,8 @@ type DeviceSession struct {
 	Handler string `json:"handler,omitempty"`
 	// Cell ID where the session originated and quality ("mcc,mnc,lac,cellid")
 	CellID string `json:"cell,omitempty"`
+	// Elevation of cell tower if known
+	Elevation float64 `json:"elevation,omitempty"`
 	// Parameters passed by device as a result of scanning towers/APs
 	ScanResults *[]byte                 `json:"scan,omitempty"`
 	Triangulate *map[string]interface{} `json:"triangulate,omitempty"`
@@ -66,8 +68,9 @@ type DeviceSession struct {
 	Voltage float64 `json:"voltage,omitempty"`
 	Temp    float64 `json:"temp,omitempty"`
 	// Type of session
-	ContinuousSession bool `json:"continuous,omitempty"`
-	TLSSession        bool `json:"tls,omitempty"`
+	ContinuousSession  bool `json:"continuous,omitempty"`
+	TLSSession         bool `json:"tls,omitempty"`
+	TimeBoundedSession bool `json:"time_bounded,omitempty"`
 	// For keeping track of when the last work was done for a session
 	LastWorkDone int64 `json:"work,omitempty"`
 	// Number of Events routed

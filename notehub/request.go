@@ -5,6 +5,7 @@
 package notehub
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -128,9 +129,59 @@ const HubCompressModeSnappy = "snappy"
 // HubCompressModeCobs (golint)
 const HubCompressModeCobs = "cobs"
 
+// RequestType handles the polymorphic "type" field (int32 for sessions, string for uploads)
+type RequestType struct {
+	sessionType int32
+	fileType    UploadType
+}
+
+func (rt *RequestType) SessionType() int32 {
+	return rt.sessionType
+}
+
+func (rt *RequestType) FileType() UploadType {
+	return rt.fileType
+}
+
+func (rt *RequestType) SetSessionType(st int32) {
+	rt.sessionType = st
+	rt.fileType = ""
+}
+
+func (rt *RequestType) SetFileType(ft UploadType) {
+	rt.fileType = ft
+	rt.sessionType = 0
+}
+
+func (rt *RequestType) UnmarshalJSON(data []byte) error {
+	// Try int32 first
+	var i int32
+	if err := json.Unmarshal(data, &i); err == nil {
+		rt.sessionType = i
+		rt.fileType = ""
+		return nil
+	}
+	// Try string
+	var s string
+	if err := json.Unmarshal(data, &s); err == nil {
+		rt.sessionType = 0
+		rt.fileType = UploadType(s)
+		return nil
+	}
+	return nil
+}
+
+func (rt RequestType) MarshalJSON() ([]byte, error) {
+	if rt.fileType != "" {
+		return json.Marshal(string(rt.fileType))
+	}
+	return json.Marshal(rt.sessionType)
+}
+
 // HubRequest is is the core data structure for notehub-specific requests
 type HubRequest struct {
 	notecard.Request `json:",omitempty"`
+	Type             *RequestType                  `json:"type,omitempty"` // Shadows Request.Type to handle both int32 and string
 	Contact          *note.Contact                 `json:"contact,omitempty"`
 	AppUID           string                        `json:"app,omitempty"`
 	FleetUID         string                        `json:"fleet,omitempty"`
@@ -139,7 +190,6 @@ type HubRequest struct {
 	Uploads          []UploadMetadata              `json:"uploads,omitempty"`
 	Contains         string                        `json:"contains,omitempty"`
 	Handlers         *[]string                     `json:"handlers,omitempty"`
-	FileType         UploadType                    `json:"type,omitempty"`
 	FileTags         string                        `json:"tags,omitempty"`
 	FileNotes        string                        `json:"filenotes,omitempty"`
 	Provision        bool                          `json:"provision,omitempty"`
@@ -151,6 +201,34 @@ type HubRequest struct {
 	MD5              string                        `json:"md5,omitempty"`
 	DeviceEndpoint   bool                          `json:"device_endpoint,omitempty"`
 	DryRun           bool                          `json:"dry_run,omitempty"`
+}
+
+func (h *HubRequest) FileType() UploadType {
+	if h.Type == nil {
+		return ""
+	}
+	return h.Type.FileType()
+}
+
+func (h *HubRequest) SetFileType(ft UploadType) {
+	if h.Type == nil {
+		h.Type = &RequestType{}
+	}
+	h.Type.SetFileType(ft)
+}
+
+func (h *HubRequest) SessionType() int32 {
+	if h.Type == nil {
+		return 0
+	}
+	return h.Type.SessionType()
+}
+
+func (h *HubRequest) SetSessionType(st int32) {
+	if h.Type == nil {
+		h.Type = &RequestType{}
+	}
+	h.Type.SetSessionType(st)
 }
 
 type UploadType string

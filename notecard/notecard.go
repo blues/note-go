@@ -45,6 +45,14 @@ var (
 	multiportTransLock [128]sync.RWMutex
 )
 
+// Buffer pool for serial read operations to reduce GC pressure
+var serialReadBufPool = sync.Pool{
+	New: func() interface{} {
+		buf := make([]byte, 2048)
+		return &buf
+	},
+}
+
 // Default transaction timeout (before receiving anything from the notecard)
 const transactionTimeoutMsDefault = 30000
 
@@ -125,7 +133,7 @@ type Context struct {
 	CloseFn        func(context *Context)
 	ReopenFn       func(context *Context, portConfig int) (err error)
 	ResetFn        func(context *Context, portConfig int) (err error)
-	TransactionFn  func(context *Context, portConfig int, noResponse bool, reqJSON []byte) (rspJSON []byte, err error)
+	TransactionFn  func(context *Context, portConfig int, noResponse bool, reqJSON []byte, delay bool) (rspJSON []byte, err error)
 
 	// Transaction timeout (0 for default)
 	transactionTimeoutMs int
@@ -285,7 +293,10 @@ func cardResetSerial(context *Context, portConfig int) (err error) {
 	// anything pending on serial", because the nature of read() is
 	// that it blocks (until timeout) if there's nothing available.
 	var length int
-	buf := make([]byte, 2048)
+	bufPtr := serialReadBufPool.Get().(*[]byte)
+	buf := *bufPtr
+	defer serialReadBufPool.Put(bufPtr)
+
 	for {
 		if debugSerialIO {
 			fmt.Printf("cardResetSerial: about to write newline\n")
@@ -781,8 +792,8 @@ func (context *Context) SendBytes(reqBytes []byte) (err error) {
 		_ = context.Reset(portConfig)
 	}
 
-	// Do the send, with no response requested
-	_, err = context.TransactionFn(context, portConfig, true, reqBytes)
+	// Do the send, with no response requested and no delays (binary transfer)
+	_, err = context.TransactionFn(context, portConfig, true, reqBytes, false)
 
 	// Done
 	unlockTrans(false, portConfig)
@@ -812,8 +823,8 @@ func (context *Context) receiveBytes(portConfig int) (rspBytes []byte, err error
 
 	// Request is empty
 	var reqBytes []byte
-	// Perform the transaction
-	rspBytes, err = context.TransactionFn(context, portConfig, false, reqBytes)
+	// Perform the transaction with no delays (binary transfer)
+	rspBytes, err = context.TransactionFn(context, portConfig, false, reqBytes, false)
 
 	unlockTrans(false, portConfig)
 
@@ -866,18 +877,15 @@ func (context *Context) transactionJSON(reqJSON []byte, multiport bool, portConf
 
 		if !DoNotReterminateJSON {
 			// Make sure that the JSON has a single \n terminator
-			for {
-				if strings.HasSuffix(string(reqJSON), "\n") {
-					reqJSON = []byte(strings.TrimSuffix(string(reqJSON), "\n"))
-					continue
+			// Use byte operations instead of string conversions
+			for len(reqJSON) > 0 {
+				last := reqJSON[len(reqJSON)-1]
+				if last != '\n' && last != '\r' {
+					break
 				}
-				if strings.HasSuffix(string(reqJSON), "\r") {
-					reqJSON = []byte(strings.TrimSuffix(string(reqJSON), "\r"))
-					continue
-				}
-				break
+				reqJSON = reqJSON[:len(reqJSON)-1]
 			}
-			reqJSON = []byte(string(reqJSON) + "\n")
+			reqJSON = append(reqJSON, '\n')
 		}
 	}
 
@@ -932,8 +940,8 @@ func (context *Context) transactionJSON(reqJSON []byte, multiport bool, portConf
 
 		}
 
-		// Perform the transaction
-		rspJSON, err = context.TransactionFn(context, portConfig, noResponseRequested, reqJSON)
+		// Perform the transaction with delays (JSON requires pacing for the Notecard)
+		rspJSON, err = context.TransactionFn(context, portConfig, noResponseRequested, reqJSON, true)
 		if err != nil {
 			// We can defer the error if a single port, but we need to reset it NOW if multiport
 			if multiport {
@@ -1067,7 +1075,7 @@ func (context *Context) transactionJSON(reqJSON []byte, multiport bool, portConf
 }
 
 // Perform a card transaction over serial under the assumption that request already has '\n' terminator
-func cardTransactionSerial(context *Context, portConfig int, noResponse bool, reqJSON []byte) (rspJSON []byte, err error) {
+func cardTransactionSerial(context *Context, portConfig int, noResponse bool, reqJSON []byte, delay bool) (rspJSON []byte, err error) {
 	// Exit if not open
 	if !context.portIsOpen {
 		err = fmt.Errorf("port not open " + note.ErrCardIo)
@@ -1116,7 +1124,9 @@ func cardTransactionSerial(context *Context, portConfig int, noResponse bool, re
 			if segLeft == 0 {
 				break
 			}
-			time.Sleep(time.Duration(RequestSegmentDelayMs) * time.Millisecond)
+			if delay {
+				time.Sleep(time.Duration(RequestSegmentDelayMs) * time.Millisecond)
+			}
 		}
 
 	}
@@ -1129,9 +1139,17 @@ func cardTransactionSerial(context *Context, portConfig int, noResponse bool, re
 	// Read the reply until we get '\n' at the end
 	waitBegan := time.Now()
 	waitExpires := waitBegan.Add(time.Duration(context.GetTransactionTimeoutMs()) * time.Millisecond)
+
+	// Get pooled buffer for reading to reduce allocations
+	bufPtr := serialReadBufPool.Get().(*[]byte)
+	buf := *bufPtr
+	defer serialReadBufPool.Put(bufPtr)
+
+	// Pre-allocate response buffer
+	rspJSON = make([]byte, 0, 4096)
+
 	for {
 		var length int
-		buf := make([]byte, 2048)
 		if debugSerialIO {
 			fmt.Printf("cardTransactionSerial: about to read up to %d bytes\n", len(buf))
 		}
@@ -1170,7 +1188,9 @@ func cardTransactionSerial(context *Context, portConfig int, noResponse bool, re
 			continue
 		}
 		rspJSON = append(rspJSON, buf[:length]...)
-		if !strings.Contains(string(rspJSON), "\n") {
+
+		// Use bytes.IndexByte instead of strings.Contains
+		if bytes.IndexByte(rspJSON, '\n') == -1 {
 			continue
 		}
 
@@ -1179,22 +1199,37 @@ func cardTransactionSerial(context *Context, portConfig int, noResponse bool, re
 			break
 		}
 
-		// At this point, if we split the string at \n its len must be >= 2
-		// If the json didn't END in \n, we are still collecting a partial line
-		lines := strings.Split(string(rspJSON), "\n")
-		lastLine := lines[len(lines)-1]
-		secondToLastLine := lines[len(lines)-2]
-		if lastLine != "" {
+		// Find the last newline position
+		lastNewline := bytes.LastIndexByte(rspJSON, '\n')
+		if lastNewline == -1 {
+			continue
+		}
+
+		// Check if there's a partial line after the last newline
+		if lastNewline < len(rspJSON)-1 {
 			// The reply should be only a single line.  However, if the user had been
 			// in trace mode (likely on USB) we may be receiving trace lines that
 			// were sent to us and inserted into the serial buffer prior to the JSON reply.
-			rspJSON = []byte(lastLine)
+			rspJSON = rspJSON[lastNewline+1:]
 			continue
+		}
+
+		// Find the second-to-last line
+		prevNewline := -1
+		if lastNewline > 0 {
+			prevNewline = bytes.LastIndexByte(rspJSON[:lastNewline], '\n')
+		}
+
+		var secondToLastLine []byte
+		if prevNewline == -1 {
+			secondToLastLine = rspJSON[:lastNewline]
+		} else {
+			secondToLastLine = rspJSON[prevNewline+1 : lastNewline]
 		}
 
 		// Skip the line if it's empty or doesn't look like JSON
 		if len(secondToLastLine) == 0 || secondToLastLine[0] != '{' {
-			rspJSON = []byte{}
+			rspJSON = rspJSON[:0]
 			continue
 		}
 
@@ -1235,7 +1270,7 @@ func cardTransactionSerial(context *Context, portConfig int, noResponse bool, re
 }
 
 // Perform a card transaction over I2C under the assumption that request already has '\n' terminator
-func cardTransactionI2C(context *Context, portConfig int, noResponse bool, reqJSON []byte) (rspJSON []byte, err error) {
+func cardTransactionI2C(context *Context, portConfig int, noResponse bool, reqJSON []byte, delay bool) (rspJSON []byte, err error) {
 	// Initialize timing parameters
 	if RequestSegmentMaxLen < 0 {
 		RequestSegmentMaxLen = CardRequestI2CSegmentMaxLen
@@ -1261,11 +1296,13 @@ func cardTransactionI2C(context *Context, portConfig int, noResponse bool, reqJS
 		chunkoffset += chunklen
 		jsonbufLen -= chunklen
 		sentInSegment += chunklen
-		if sentInSegment > RequestSegmentMaxLen {
-			sentInSegment = 0
+		if delay {
+			if sentInSegment > RequestSegmentMaxLen {
+				sentInSegment = 0
+				time.Sleep(time.Duration(RequestSegmentDelayMs) * time.Millisecond)
+			}
 			time.Sleep(time.Duration(RequestSegmentDelayMs) * time.Millisecond)
 		}
-		time.Sleep(time.Duration(RequestSegmentDelayMs) * time.Millisecond)
 	}
 
 	// If no response, we're done

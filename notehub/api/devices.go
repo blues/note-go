@@ -45,6 +45,7 @@ type GetDeviceResponse struct {
 	TowerLocation        *Location         `json:"tower_location,omitempty"`
 	GPSLocation          *Location         `json:"gps_location,omitempty"`
 	TriangulatedLocation *Location         `json:"triangulated_location,omitempty"`
+	BestLocation         *Location         `json:"best_location,omitempty"`
 
 	Voltage     float64      `json:"voltage"`
 	Temperature float64      `json:"temperature"`
