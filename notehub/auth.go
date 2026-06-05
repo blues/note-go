@@ -253,10 +253,15 @@ func InitiateBrowserBasedLogin(notehubApiHost string) (*AccessToken, error) {
 			return
 		}
 
-		email, ok := userinfoData["email"].(string)
-		if !ok {
-			errHandler("could not retrieve email")
-			return
+		// /userinfo may omit "email" depending on IdP configuration; fall
+		// back to the subject ID so we still have a stable user identifier.
+		email, _ := userinfoData["email"].(string)
+		if email == "" {
+			if sub, _ := userinfoData["sub"].(string); sub != "" {
+				email = sub
+			} else {
+				email = "(oauth)"
+			}
 		}
 
 		///////////////////////////////////////////
