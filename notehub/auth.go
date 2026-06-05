@@ -1,6 +1,7 @@
 package notehub
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
@@ -34,9 +35,20 @@ const (
 	maxDetailBytes = 1024
 )
 
-// readResponseBody reads up to maxResponseBytes from an HTTP response body.
+// readResponseBody reads an HTTP response body, capping it at maxResponseBytes
+// so a hostile or misconfigured endpoint cannot exhaust memory. Reading one
+// byte past the cap lets it distinguish "too large" from "exactly the limit"
+// and report an explicit error rather than silently truncating (which would
+// later surface as a misleading parse failure).
 func readResponseBody(resp *http.Response) ([]byte, error) {
-	return io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(body) > maxResponseBytes {
+		return nil, fmt.Errorf("response exceeds %d-byte limit", maxResponseBytes)
+	}
+	return body, nil
 }
 
 // safeDetail renders an untrusted value for inclusion in logs and returned
@@ -64,6 +76,15 @@ var sensitiveResponseFields = []string{"access_token", "refresh_token", "id_toke
 func redactSensitive(body []byte) string {
 	var obj map[string]interface{}
 	if err := json.Unmarshal(body, &obj); err != nil {
+		// The body did not parse, so it cannot be redacted field-by-field. If
+		// it nonetheless mentions a credential-bearing field (e.g. a truncated
+		// token response), suppress it entirely rather than risk leaking a
+		// secret; otherwise return it unchanged.
+		for _, field := range sensitiveResponseFields {
+			if bytes.Contains(body, []byte(field)) {
+				return "[unparseable response suppressed: may contain credentials]"
+			}
+		}
 		return string(body)
 	}
 	redacted := false
