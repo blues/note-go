@@ -17,9 +17,39 @@ import (
 	"os/exec"
 	"os/signal"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
+
+const (
+	// maxResponseBytes bounds how much of an OAuth/OIDC HTTP response body we
+	// read, so a hostile or misconfigured endpoint cannot exhaust memory. It
+	// is far larger than any legitimate token or userinfo response.
+	maxResponseBytes = 1 << 20 // 1 MiB
+
+	// maxDetailBytes bounds how much of an (untrusted) value is embedded into
+	// a log line or returned error.
+	maxDetailBytes = 1024
+)
+
+// readResponseBody reads up to maxResponseBytes from an HTTP response body.
+func readResponseBody(resp *http.Response) ([]byte, error) {
+	return io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
+}
+
+// safeDetail renders an untrusted value for inclusion in logs and returned
+// errors. It truncates to maxDetailBytes and quotes the result so control
+// characters (such as terminal escape sequences) are shown as printable
+// escapes rather than interpreted by a terminal.
+func safeDetail(s string) string {
+	suffix := ""
+	if len(s) > maxDetailBytes {
+		s = s[:maxDetailBytes]
+		suffix = " (truncated)"
+	}
+	return strconv.Quote(s) + suffix
+}
 
 type AccessToken struct {
 	Host        string
@@ -149,19 +179,28 @@ func InitiateBrowserBasedLogin(notehubApiHost string) (*AccessToken, error) {
 		authorizationCode := r.URL.Query().Get("code")
 		callbackState := r.URL.Query().Get("state")
 
-		errHandler := func(msg string) {
-			// text/plain so any server-controlled bytes that reach this
-			// callback (OAuth error_description, JSON unmarshal errors,
-			// etc.) cannot be rendered as HTML by the browser.
+		// fail records an authentication failure exactly one way for every
+		// error path in this handler. The browser callback only ever receives
+		// `summary` -- a constant, developer-authored string, never server-
+		// controlled data -- and always as text/plain, so the callback cannot
+		// be used to reflect injected markup or scripts. `detail` (already
+		// passed through safeDetail by the caller) carries diagnostics to the
+		// local log and the returned Go error only.
+		fail := func(summary, detail string) {
 			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, "error: %s", msg)
+			fmt.Fprintf(w, "error: %s", summary)
+
+			msg := summary
+			if detail != "" {
+				msg = summary + ": " + detail
+			}
 			fmt.Printf("error: %s\n", msg)
 			accessTokenErr = errors.New(msg)
 		}
 
 		if callbackState != state {
-			errHandler("state mismatch")
+			fail("state mismatch", "")
 			return
 		}
 
@@ -185,42 +224,41 @@ func InitiateBrowserBasedLogin(notehubApiHost string) (*AccessToken, error) {
 			}.Encode()),
 		)
 		if err != nil {
-			errHandler("error on /oauth2/token: " + err.Error())
+			fail("could not reach /oauth2/token", safeDetail(err.Error()))
 			return
 		}
 		defer tokenResp.Body.Close()
 
-		body, err := io.ReadAll(tokenResp.Body)
+		body, err := readResponseBody(tokenResp)
 		if err != nil {
-			errHandler("could not read body from /oauth2/token: " + err.Error())
+			fail("could not read /oauth2/token response", safeDetail(err.Error()))
 			return
 		}
 
 		var tokenData map[string]interface{}
 		if err := json.Unmarshal(body, &tokenData); err != nil {
-			// Surface the HTTP status when /oauth2/token returns a non-200
-			// with a non-JSON body, so the underlying failure isn't hidden
-			// behind a generic unmarshal error.
+			// A non-200 with a non-JSON body would otherwise be hidden behind
+			// a generic unmarshal error, so surface the HTTP status too.
 			if tokenResp.StatusCode != http.StatusOK {
-				errHandler(fmt.Sprintf("/oauth2/token returned HTTP %d: %q", tokenResp.StatusCode, body))
+				fail(fmt.Sprintf("/oauth2/token returned HTTP %d", tokenResp.StatusCode), safeDetail(string(body)))
 			} else {
-				errHandler("could not unmarshal body from /oauth2/token: " + err.Error())
+				fail("could not parse /oauth2/token response", safeDetail(string(body)))
 			}
 			return
 		}
 
 		if errCode, ok := tokenData["error"].(string); ok {
+			detail := errCode
 			if errDescription, ok2 := tokenData["error_description"].(string); ok2 {
-				errHandler(fmt.Sprintf("%s: %s", errCode, errDescription))
-			} else {
-				errHandler(errCode)
+				detail = errCode + ": " + errDescription
 			}
+			fail("/oauth2/token returned an error", safeDetail(detail))
 			return
 		}
 
 		accessTokenString, ok := tokenData["access_token"].(string)
 		if !ok {
-			errHandler("unexpected error: no access token returned")
+			fail("no access token in /oauth2/token response", "")
 			return
 		}
 
@@ -241,41 +279,31 @@ func InitiateBrowserBasedLogin(notehubApiHost string) (*AccessToken, error) {
 
 		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://%s/userinfo", notehubApiHost), nil)
 		if err != nil {
-			errHandler("could not create request for /userinfo: " + err.Error())
+			fail("could not create /userinfo request", safeDetail(err.Error()))
 			return
 		}
 		req.Header.Set("Authorization", "Bearer "+accessTokenString)
 		userinfoResp, err := http.DefaultClient.Do(req)
 		if err != nil {
-			errHandler("could not get userinfo: " + err.Error())
+			fail("could not reach /userinfo", safeDetail(err.Error()))
 			return
 		}
 		defer userinfoResp.Body.Close()
 
-		userinfoBody, err := io.ReadAll(userinfoResp.Body)
+		userinfoBody, err := readResponseBody(userinfoResp)
 		if err != nil {
-			errHandler("could not read body from /userinfo: " + err.Error())
+			fail("could not read /userinfo response", safeDetail(err.Error()))
 			return
 		}
 
 		if userinfoResp.StatusCode != http.StatusOK {
-			// Keep the raw response body out of the browser-facing message
-			// (the localhost callback page renders as HTML by default and
-			// could otherwise execute injected markup from a hostile or
-			// misconfigured /userinfo response). The body is still
-			// captured in the returned Go error and the local log so the
-			// caller has the detail needed to diagnose the failure.
-			detail := fmt.Sprintf("/userinfo returned HTTP %d: %q", userinfoResp.StatusCode, userinfoBody)
-			accessTokenErr = errors.New(detail)
-			fmt.Printf("error: %s\n", detail)
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, "error: /userinfo returned HTTP %d", userinfoResp.StatusCode)
+			fail(fmt.Sprintf("/userinfo returned HTTP %d", userinfoResp.StatusCode), safeDetail(string(userinfoBody)))
 			return
 		}
 
 		var userinfoData map[string]interface{}
 		if err := json.Unmarshal(userinfoBody, &userinfoData); err != nil {
-			errHandler("could not unmarshal body from /userinfo: " + err.Error())
+			fail("could not parse /userinfo response", safeDetail(string(userinfoBody)))
 			return
 		}
 
@@ -286,7 +314,7 @@ func InitiateBrowserBasedLogin(notehubApiHost string) (*AccessToken, error) {
 		if email == "" {
 			sub, _ := userinfoData["sub"].(string)
 			if sub == "" {
-				errHandler("/userinfo response missing both email and sub")
+				fail("/userinfo response missing both email and sub", "")
 				return
 			}
 			email = sub
