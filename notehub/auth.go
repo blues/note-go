@@ -19,6 +19,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -79,6 +80,35 @@ func redactSensitive(body []byte) string {
 		return string(out)
 	}
 	return string(body)
+}
+
+// callbackAction classifies an inbound request to the local OAuth callback
+// server.
+type callbackAction int
+
+const (
+	// callbackIgnore: not the OAuth redirect (e.g. favicon, prefetch, a bare
+	// visit to the root). Must be answered benignly without affecting the flow.
+	callbackIgnore callbackAction = iota
+	// callbackStateMismatch: carries an authorization code but the wrong state
+	// (a CSRF attempt or a stale redirect). Must fail closed.
+	callbackStateMismatch
+	// callbackProceed: a well-formed redirect whose state matches.
+	callbackProceed
+)
+
+// classifyCallback decides how to treat a request to the callback server. A
+// request without an authorization code is not the OAuth redirect at all and
+// is ignored; one with a code is honored only if its state matches the value
+// the flow generated.
+func classifyCallback(r *http.Request, expectedState string) callbackAction {
+	if r.URL.Query().Get("code") == "" {
+		return callbackIgnore
+	}
+	if r.URL.Query().Get("state") != expectedState {
+		return callbackStateMismatch
+	}
+	return callbackProceed
 }
 
 type AccessToken struct {
@@ -198,6 +228,11 @@ func InitiateBrowserBasedLogin(notehubApiHost string) (*AccessToken, error) {
 	signal.Notify(quit, os.Interrupt)
 	defer signal.Reset(os.Interrupt)
 
+	// Ensures exactly one OAuth callback is processed; spurious or duplicate
+	// requests to the callback server are answered benignly without touching
+	// the shared result or triggering shutdown.
+	var once sync.Once
+
 	router := http.NewServeMux()
 
 	// We'll fill this after we pick a port but declare it now so the handler can close over it.
@@ -206,8 +241,28 @@ func InitiateBrowserBasedLogin(notehubApiHost string) (*AccessToken, error) {
 	// The browser will be redirected to this endpoint with an authorization code
 	// and then this endpoint will exchange that authorization code for an access token
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		action := classifyCallback(r, state)
+
+		// A request that isn't the OAuth redirect (favicon, prefetch, a bare
+		// visit to the root) must not be mistaken for a failed sign-in nor tear
+		// the flow down before the real redirect arrives.
+		if action == callbackIgnore {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		// Handle exactly one callback; answer any duplicate benignly so a
+		// second request cannot race the shared result or signal shutdown twice.
+		handled := false
+		once.Do(func() { handled = true })
+		if !handled {
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprint(w, "authentication already completed; you may close this window")
+			return
+		}
+
 		authorizationCode := r.URL.Query().Get("code")
-		callbackState := r.URL.Query().Get("state")
 
 		// fail records an authentication failure exactly one way for every
 		// error path in this handler. The browser callback only ever receives
@@ -240,7 +295,7 @@ func InitiateBrowserBasedLogin(notehubApiHost string) (*AccessToken, error) {
 			}
 		}
 
-		if callbackState != state {
+		if action == callbackStateMismatch {
 			fail("state mismatch", "")
 			return
 		}
@@ -441,5 +496,12 @@ func InitiateBrowserBasedLogin(notehubApiHost string) (*AccessToken, error) {
 
 	// Wait for exchange to finish
 	<-done
+
+	// A shutdown with neither result set means the flow was interrupted (e.g.
+	// an OS signal) before any callback completed. Return an error rather than
+	// a nil token and nil error, which a caller would dereference.
+	if accessToken == nil && accessTokenErr == nil {
+		accessTokenErr = errors.New("authentication canceled before completion")
+	}
 	return accessToken, accessTokenErr
 }
