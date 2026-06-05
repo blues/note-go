@@ -1,6 +1,7 @@
 package notehub
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
@@ -17,9 +18,131 @@ import (
 	"os/exec"
 	"os/signal"
 	"runtime"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
+
+const (
+	// maxResponseBytes bounds how much of an OAuth/OIDC HTTP response body we
+	// read, so a hostile or misconfigured endpoint cannot exhaust memory. It
+	// is far larger than any legitimate token or userinfo response.
+	maxResponseBytes = 1 << 20 // 1 MiB
+
+	// maxDetailBytes bounds how much of an (untrusted) value is embedded into
+	// a log line or returned error.
+	maxDetailBytes = 1024
+)
+
+// readResponseBody reads an HTTP response body, capping it at maxResponseBytes
+// so a hostile or misconfigured endpoint cannot exhaust memory. Reading one
+// byte past the cap lets it distinguish "too large" from "exactly the limit"
+// and report an explicit error rather than silently truncating (which would
+// later surface as a misleading parse failure).
+func readResponseBody(resp *http.Response) ([]byte, error) {
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(body) > maxResponseBytes {
+		return nil, fmt.Errorf("response exceeds %d-byte limit", maxResponseBytes)
+	}
+	return body, nil
+}
+
+// safeDetail renders an untrusted value for inclusion in logs and returned
+// errors. It truncates to maxDetailBytes and quotes the result so control
+// characters (such as terminal escape sequences) are shown as printable
+// escapes rather than interpreted by a terminal.
+func safeDetail(s string) string {
+	suffix := ""
+	if len(s) > maxDetailBytes {
+		s = s[:maxDetailBytes]
+		suffix = " (truncated)"
+	}
+	return strconv.Quote(s) + suffix
+}
+
+// sensitiveResponseFields are response fields that may carry credentials and
+// must never be written to logs or returned errors.
+var sensitiveResponseFields = []string{"access_token", "refresh_token", "id_token"}
+
+// redactSensitive returns a representation of an HTTP response body that is
+// safe to log: when the body is a JSON object, values of known credential-
+// bearing fields are replaced with a placeholder; otherwise the body is
+// returned unchanged (token endpoints return credentials as JSON, so a
+// non-JSON body has no field to target).
+func redactSensitive(body []byte) string {
+	var obj map[string]interface{}
+	if err := json.Unmarshal(body, &obj); err != nil {
+		// The body did not parse, so it cannot be redacted field-by-field. If
+		// it nonetheless mentions a credential-bearing field (e.g. a truncated
+		// token response), suppress it entirely rather than risk leaking a
+		// secret; otherwise return it unchanged.
+		for _, field := range sensitiveResponseFields {
+			if bytes.Contains(body, []byte(field)) {
+				return "[unparseable response suppressed: may contain credentials]"
+			}
+		}
+		return string(body)
+	}
+	redacted := false
+	for _, field := range sensitiveResponseFields {
+		if _, ok := obj[field]; ok {
+			obj[field] = "[REDACTED]"
+			redacted = true
+		}
+	}
+	if !redacted {
+		return string(body)
+	}
+	if out, err := json.Marshal(obj); err == nil {
+		return string(out)
+	}
+	return string(body)
+}
+
+// callbackAction classifies an inbound request to the local OAuth callback
+// server.
+type callbackAction int
+
+const (
+	// callbackIgnore: not the OAuth redirect (e.g. favicon, prefetch, a bare
+	// visit to the root). Must be answered benignly without affecting the flow.
+	callbackIgnore callbackAction = iota
+	// callbackStateMismatch: a redirect whose state doesn't match the value the
+	// flow generated (a CSRF attempt or a stale redirect). Must fail closed.
+	callbackStateMismatch
+	// callbackError: the provider reported an authorization failure (e.g. the
+	// user denied consent), redirecting with an "error" parameter and no code.
+	callbackError
+	// callbackProceed: a well-formed redirect carrying a code whose state
+	// matches.
+	callbackProceed
+)
+
+// classifyCallback decides how to treat a request to the callback server. A
+// request carrying neither an authorization code nor an OAuth error is not the
+// redirect at all and is ignored. Anything that is the redirect is honored only
+// if its state matches the value the flow generated; an "error" parameter (with
+// no code) signals that authorization was refused or failed.
+func classifyCallback(r *http.Request, expectedState string) callbackAction {
+	q := r.URL.Query()
+	code := q.Get("code")
+	oauthErr := q.Get("error")
+
+	if code == "" && oauthErr == "" {
+		return callbackIgnore
+	}
+	if q.Get("state") != expectedState {
+		return callbackStateMismatch
+	}
+	if oauthErr != "" {
+		return callbackError
+	}
+	return callbackProceed
+}
 
 type AccessToken struct {
 	Host        string
@@ -138,6 +261,11 @@ func InitiateBrowserBasedLogin(notehubApiHost string) (*AccessToken, error) {
 	signal.Notify(quit, os.Interrupt)
 	defer signal.Reset(os.Interrupt)
 
+	// Ensures exactly one OAuth callback is processed; spurious or duplicate
+	// requests to the callback server are answered benignly without touching
+	// the shared result or triggering shutdown.
+	var once sync.Once
+
 	router := http.NewServeMux()
 
 	// We'll fill this after we pick a port but declare it now so the handler can close over it.
@@ -146,18 +274,80 @@ func InitiateBrowserBasedLogin(notehubApiHost string) (*AccessToken, error) {
 	// The browser will be redirected to this endpoint with an authorization code
 	// and then this endpoint will exchange that authorization code for an access token
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		authorizationCode := r.URL.Query().Get("code")
-		callbackState := r.URL.Query().Get("state")
+		action := classifyCallback(r, state)
 
-		errHandler := func(msg string) {
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, "error: %s", msg)
-			fmt.Printf("error: %s\n", msg)
-			accessTokenErr = errors.New(msg)
+		switch action {
+		case callbackIgnore:
+			// Not the OAuth redirect (favicon, prefetch, a bare visit to the
+			// root); ignore it without affecting the flow.
+			w.WriteHeader(http.StatusNoContent)
+			return
+		case callbackStateMismatch:
+			// A request whose state doesn't match this attempt is unrelated to
+			// it -- a stray local request, another browser tab, or (since the
+			// callback ports are a predictable, hard-coded list) a webpage
+			// probing localhost. Reject it benignly: it must neither abort the
+			// in-progress login nor consume the single-callback slot below, so
+			// it cannot be used to deny service to a legitimate sign-in.
+			w.WriteHeader(http.StatusBadRequest)
+			return
 		}
 
-		if callbackState != state {
-			errHandler("state mismatch")
+		// Only a redirect whose state matches reaches here. Handle exactly one;
+		// answer any duplicate benignly so a second request cannot race the
+		// shared result or signal shutdown twice.
+		handled := false
+		once.Do(func() { handled = true })
+		if !handled {
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprint(w, "authentication already completed; you may close this window")
+			return
+		}
+
+		authorizationCode := r.URL.Query().Get("code")
+
+		// fail records an authentication failure exactly one way for every
+		// error path in this handler. The browser callback only ever receives
+		// `summary`, which is composed solely of developer-authored text and
+		// non-injectable scalars such as the numeric HTTP status code -- never
+		// free-form server-controlled bytes -- and is always written as
+		// text/plain, so the callback cannot be used to reflect injected
+		// markup or scripts. `detail` (already passed through safeDetail by
+		// the caller) carries diagnostics to the local log and the returned
+		// Go error only.
+		fail := func(summary, detail string) {
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "error: %s", summary)
+
+			msg := summary
+			if detail != "" {
+				msg = summary + ": " + detail
+			}
+			fmt.Printf("error: %s\n", msg)
+			accessTokenErr = errors.New(msg)
+
+			// Signal the server to shut down so InitiateBrowserBasedLogin does
+			// not block on <-done waiting for a success that will never come.
+			// Non-blocking: the buffered channel may already hold a signal
+			// (e.g. an OS interrupt or a prior callback).
+			select {
+			case quit <- os.Interrupt:
+			default:
+			}
+		}
+
+		// The provider refused or failed the authorization (e.g. the user
+		// denied consent). Report it instead of waiting for a code that will
+		// never arrive.
+		if action == callbackError {
+			oauthErr := r.URL.Query().Get("error")
+			detail := oauthErr
+			if desc := r.URL.Query().Get("error_description"); desc != "" {
+				detail = oauthErr + ": " + desc
+			}
+			fail("authorization was not granted", safeDetail(detail))
 			return
 		}
 
@@ -181,35 +371,44 @@ func InitiateBrowserBasedLogin(notehubApiHost string) (*AccessToken, error) {
 			}.Encode()),
 		)
 		if err != nil {
-			errHandler("error on /oauth2/token: " + err.Error())
+			fail("could not reach /oauth2/token", safeDetail(err.Error()))
 			return
 		}
 		defer tokenResp.Body.Close()
 
-		body, err := io.ReadAll(tokenResp.Body)
+		body, err := readResponseBody(tokenResp)
 		if err != nil {
-			errHandler("could not read body from /oauth2/token: " + err.Error())
+			fail("could not read /oauth2/token response", safeDetail(err.Error()))
+			return
+		}
+
+		// Treat any non-200 as a hard failure before consuming any fields, so
+		// we never accept an access token from -- or hide the status of -- an
+		// unsuccessful response, regardless of whether its body happens to
+		// parse as JSON.
+		if tokenResp.StatusCode != http.StatusOK {
+			fail(fmt.Sprintf("/oauth2/token returned HTTP %d", tokenResp.StatusCode), safeDetail(redactSensitive(body)))
 			return
 		}
 
 		var tokenData map[string]interface{}
 		if err := json.Unmarshal(body, &tokenData); err != nil {
-			errHandler("could not unmarshal body from /oauth2/token: " + err.Error())
+			fail("could not parse /oauth2/token response", safeDetail(err.Error()+": "+redactSensitive(body)))
 			return
 		}
 
 		if errCode, ok := tokenData["error"].(string); ok {
+			detail := errCode
 			if errDescription, ok2 := tokenData["error_description"].(string); ok2 {
-				errHandler(fmt.Sprintf("%s: %s", errCode, errDescription))
-			} else {
-				errHandler(errCode)
+				detail = errCode + ": " + errDescription
 			}
+			fail("/oauth2/token returned an error", safeDetail(detail))
 			return
 		}
 
 		accessTokenString, ok := tokenData["access_token"].(string)
 		if !ok {
-			errHandler("unexpected error: no access token returned")
+			fail("no access token in /oauth2/token response", "")
 			return
 		}
 
@@ -230,33 +429,45 @@ func InitiateBrowserBasedLogin(notehubApiHost string) (*AccessToken, error) {
 
 		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://%s/userinfo", notehubApiHost), nil)
 		if err != nil {
-			errHandler("could not create request for /userinfo: " + err.Error())
+			fail("could not create /userinfo request", safeDetail(err.Error()))
 			return
 		}
 		req.Header.Set("Authorization", "Bearer "+accessTokenString)
 		userinfoResp, err := http.DefaultClient.Do(req)
 		if err != nil {
-			errHandler("could not get userinfo: " + err.Error())
+			fail("could not reach /userinfo", safeDetail(err.Error()))
 			return
 		}
 		defer userinfoResp.Body.Close()
 
-		userinfoBody, err := io.ReadAll(userinfoResp.Body)
+		userinfoBody, err := readResponseBody(userinfoResp)
 		if err != nil {
-			errHandler("could not read body from /userinfo: " + err.Error())
+			fail("could not read /userinfo response", safeDetail(err.Error()))
+			return
+		}
+
+		if userinfoResp.StatusCode != http.StatusOK {
+			fail(fmt.Sprintf("/userinfo returned HTTP %d", userinfoResp.StatusCode), safeDetail(redactSensitive(userinfoBody)))
 			return
 		}
 
 		var userinfoData map[string]interface{}
 		if err := json.Unmarshal(userinfoBody, &userinfoData); err != nil {
-			errHandler("could not unmarshal body from /userinfo: " + err.Error())
+			fail("could not parse /userinfo response", safeDetail(err.Error()+": "+redactSensitive(userinfoBody)))
 			return
 		}
 
-		email, ok := userinfoData["email"].(string)
-		if !ok {
-			errHandler("could not retrieve email")
-			return
+		// /userinfo may omit "email" depending on IdP configuration; fall
+		// back to the subject identifier, which OIDC requires the userinfo
+		// response to include.
+		email, _ := userinfoData["email"].(string)
+		if email == "" {
+			sub, _ := userinfoData["sub"].(string)
+			if sub == "" {
+				fail("/userinfo response missing both email and sub", "")
+				return
+			}
+			email = sub
 		}
 
 		///////////////////////////////////////////
@@ -336,5 +547,12 @@ func InitiateBrowserBasedLogin(notehubApiHost string) (*AccessToken, error) {
 
 	// Wait for exchange to finish
 	<-done
+
+	// A shutdown with neither result set means the flow was interrupted (e.g.
+	// an OS signal) before any callback completed. Return an error rather than
+	// a nil token and nil error, which a caller would dereference.
+	if accessToken == nil && accessTokenErr == nil {
+		accessTokenErr = errors.New("authentication canceled before completion")
+	}
 	return accessToken, accessTokenErr
 }
