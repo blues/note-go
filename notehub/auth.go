@@ -150,6 +150,10 @@ func InitiateBrowserBasedLogin(notehubApiHost string) (*AccessToken, error) {
 		callbackState := r.URL.Query().Get("state")
 
 		errHandler := func(msg string) {
+			// text/plain so any server-controlled bytes that reach this
+			// callback (OAuth error_description, JSON unmarshal errors,
+			// etc.) cannot be rendered as HTML by the browser.
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprintf(w, "error: %s", msg)
 			fmt.Printf("error: %s\n", msg)
@@ -194,7 +198,14 @@ func InitiateBrowserBasedLogin(notehubApiHost string) (*AccessToken, error) {
 
 		var tokenData map[string]interface{}
 		if err := json.Unmarshal(body, &tokenData); err != nil {
-			errHandler("could not unmarshal body from /oauth2/token: " + err.Error())
+			// Surface the HTTP status when /oauth2/token returns a non-200
+			// with a non-JSON body, so the underlying failure isn't hidden
+			// behind a generic unmarshal error.
+			if tokenResp.StatusCode != http.StatusOK {
+				errHandler(fmt.Sprintf("/oauth2/token returned HTTP %d: %q", tokenResp.StatusCode, body))
+			} else {
+				errHandler("could not unmarshal body from /oauth2/token: " + err.Error())
+			}
 			return
 		}
 
