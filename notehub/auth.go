@@ -235,15 +235,18 @@ func InitiateBrowserBasedLogin(notehubApiHost string) (*AccessToken, error) {
 			return
 		}
 
+		// Treat any non-200 as a hard failure before consuming any fields, so
+		// we never accept an access token from -- or hide the status of -- an
+		// unsuccessful response, regardless of whether its body happens to
+		// parse as JSON.
+		if tokenResp.StatusCode != http.StatusOK {
+			fail(fmt.Sprintf("/oauth2/token returned HTTP %d", tokenResp.StatusCode), safeDetail(string(body)))
+			return
+		}
+
 		var tokenData map[string]interface{}
 		if err := json.Unmarshal(body, &tokenData); err != nil {
-			// A non-200 with a non-JSON body would otherwise be hidden behind
-			// a generic unmarshal error, so surface the HTTP status too.
-			if tokenResp.StatusCode != http.StatusOK {
-				fail(fmt.Sprintf("/oauth2/token returned HTTP %d", tokenResp.StatusCode), safeDetail(string(body)))
-			} else {
-				fail("could not parse /oauth2/token response", safeDetail(string(body)))
-			}
+			fail("could not parse /oauth2/token response", safeDetail(string(body)))
 			return
 		}
 
