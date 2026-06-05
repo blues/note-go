@@ -111,23 +111,35 @@ const (
 	// callbackIgnore: not the OAuth redirect (e.g. favicon, prefetch, a bare
 	// visit to the root). Must be answered benignly without affecting the flow.
 	callbackIgnore callbackAction = iota
-	// callbackStateMismatch: carries an authorization code but the wrong state
-	// (a CSRF attempt or a stale redirect). Must fail closed.
+	// callbackStateMismatch: a redirect whose state doesn't match the value the
+	// flow generated (a CSRF attempt or a stale redirect). Must fail closed.
 	callbackStateMismatch
-	// callbackProceed: a well-formed redirect whose state matches.
+	// callbackError: the provider reported an authorization failure (e.g. the
+	// user denied consent), redirecting with an "error" parameter and no code.
+	callbackError
+	// callbackProceed: a well-formed redirect carrying a code whose state
+	// matches.
 	callbackProceed
 )
 
 // classifyCallback decides how to treat a request to the callback server. A
-// request without an authorization code is not the OAuth redirect at all and
-// is ignored; one with a code is honored only if its state matches the value
-// the flow generated.
+// request carrying neither an authorization code nor an OAuth error is not the
+// redirect at all and is ignored. Anything that is the redirect is honored only
+// if its state matches the value the flow generated; an "error" parameter (with
+// no code) signals that authorization was refused or failed.
 func classifyCallback(r *http.Request, expectedState string) callbackAction {
-	if r.URL.Query().Get("code") == "" {
+	q := r.URL.Query()
+	code := q.Get("code")
+	oauthErr := q.Get("error")
+
+	if code == "" && oauthErr == "" {
 		return callbackIgnore
 	}
-	if r.URL.Query().Get("state") != expectedState {
+	if q.Get("state") != expectedState {
 		return callbackStateMismatch
+	}
+	if oauthErr != "" {
+		return callbackError
 	}
 	return callbackProceed
 }
@@ -318,6 +330,19 @@ func InitiateBrowserBasedLogin(notehubApiHost string) (*AccessToken, error) {
 
 		if action == callbackStateMismatch {
 			fail("state mismatch", "")
+			return
+		}
+
+		// The provider refused or failed the authorization (e.g. the user
+		// denied consent). Report it instead of waiting for a code that will
+		// never arrive.
+		if action == callbackError {
+			oauthErr := r.URL.Query().Get("error")
+			detail := oauthErr
+			if desc := r.URL.Query().Get("error_description"); desc != "" {
+				detail = oauthErr + ": " + desc
+			}
+			fail("authorization was not granted", safeDetail(detail))
 			return
 		}
 
