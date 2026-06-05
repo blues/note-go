@@ -247,6 +247,11 @@ func InitiateBrowserBasedLogin(notehubApiHost string) (*AccessToken, error) {
 			return
 		}
 
+		if userinfoResp.StatusCode != http.StatusOK {
+			errHandler(fmt.Sprintf("/userinfo returned HTTP %d: %s", userinfoResp.StatusCode, string(userinfoBody)))
+			return
+		}
+
 		var userinfoData map[string]interface{}
 		if err := json.Unmarshal(userinfoBody, &userinfoData); err != nil {
 			errHandler("could not unmarshal body from /userinfo: " + err.Error())
@@ -254,14 +259,16 @@ func InitiateBrowserBasedLogin(notehubApiHost string) (*AccessToken, error) {
 		}
 
 		// /userinfo may omit "email" depending on IdP configuration; fall
-		// back to the subject ID so we still have a stable user identifier.
+		// back to the subject identifier, which OIDC requires the userinfo
+		// response to include.
 		email, _ := userinfoData["email"].(string)
 		if email == "" {
-			if sub, _ := userinfoData["sub"].(string); sub != "" {
-				email = sub
-			} else {
-				email = "(oauth)"
+			sub, _ := userinfoData["sub"].(string)
+			if sub == "" {
+				errHandler("/userinfo response missing both email and sub")
+				return
 			}
+			email = sub
 		}
 
 		///////////////////////////////////////////
