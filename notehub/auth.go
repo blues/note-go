@@ -51,6 +51,36 @@ func safeDetail(s string) string {
 	return strconv.Quote(s) + suffix
 }
 
+// sensitiveResponseFields are response fields that may carry credentials and
+// must never be written to logs or returned errors.
+var sensitiveResponseFields = []string{"access_token", "refresh_token", "id_token"}
+
+// redactSensitive returns a representation of an HTTP response body that is
+// safe to log: when the body is a JSON object, values of known credential-
+// bearing fields are replaced with a placeholder; otherwise the body is
+// returned unchanged (token endpoints return credentials as JSON, so a
+// non-JSON body has no field to target).
+func redactSensitive(body []byte) string {
+	var obj map[string]interface{}
+	if err := json.Unmarshal(body, &obj); err != nil {
+		return string(body)
+	}
+	redacted := false
+	for _, field := range sensitiveResponseFields {
+		if _, ok := obj[field]; ok {
+			obj[field] = "[REDACTED]"
+			redacted = true
+		}
+	}
+	if !redacted {
+		return string(body)
+	}
+	if out, err := json.Marshal(obj); err == nil {
+		return string(out)
+	}
+	return string(body)
+}
+
 type AccessToken struct {
 	Host        string
 	Email       string
@@ -199,6 +229,15 @@ func InitiateBrowserBasedLogin(notehubApiHost string) (*AccessToken, error) {
 			}
 			fmt.Printf("error: %s\n", msg)
 			accessTokenErr = errors.New(msg)
+
+			// Signal the server to shut down so InitiateBrowserBasedLogin does
+			// not block on <-done waiting for a success that will never come.
+			// Non-blocking: the buffered channel may already hold a signal
+			// (e.g. an OS interrupt or a prior callback).
+			select {
+			case quit <- os.Interrupt:
+			default:
+			}
 		}
 
 		if callbackState != state {
@@ -242,13 +281,13 @@ func InitiateBrowserBasedLogin(notehubApiHost string) (*AccessToken, error) {
 		// unsuccessful response, regardless of whether its body happens to
 		// parse as JSON.
 		if tokenResp.StatusCode != http.StatusOK {
-			fail(fmt.Sprintf("/oauth2/token returned HTTP %d", tokenResp.StatusCode), safeDetail(string(body)))
+			fail(fmt.Sprintf("/oauth2/token returned HTTP %d", tokenResp.StatusCode), safeDetail(redactSensitive(body)))
 			return
 		}
 
 		var tokenData map[string]interface{}
 		if err := json.Unmarshal(body, &tokenData); err != nil {
-			fail("could not parse /oauth2/token response", safeDetail(err.Error()+": "+string(body)))
+			fail("could not parse /oauth2/token response", safeDetail(err.Error()+": "+redactSensitive(body)))
 			return
 		}
 
@@ -302,13 +341,13 @@ func InitiateBrowserBasedLogin(notehubApiHost string) (*AccessToken, error) {
 		}
 
 		if userinfoResp.StatusCode != http.StatusOK {
-			fail(fmt.Sprintf("/userinfo returned HTTP %d", userinfoResp.StatusCode), safeDetail(string(userinfoBody)))
+			fail(fmt.Sprintf("/userinfo returned HTTP %d", userinfoResp.StatusCode), safeDetail(redactSensitive(userinfoBody)))
 			return
 		}
 
 		var userinfoData map[string]interface{}
 		if err := json.Unmarshal(userinfoBody, &userinfoData); err != nil {
-			fail("could not parse /userinfo response", safeDetail(err.Error()+": "+string(userinfoBody)))
+			fail("could not parse /userinfo response", safeDetail(err.Error()+": "+redactSensitive(userinfoBody)))
 			return
 		}
 
