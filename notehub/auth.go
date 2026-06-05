@@ -276,16 +276,26 @@ func InitiateBrowserBasedLogin(notehubApiHost string) (*AccessToken, error) {
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		action := classifyCallback(r, state)
 
-		// A request that isn't the OAuth redirect (favicon, prefetch, a bare
-		// visit to the root) must not be mistaken for a failed sign-in nor tear
-		// the flow down before the real redirect arrives.
-		if action == callbackIgnore {
+		switch action {
+		case callbackIgnore:
+			// Not the OAuth redirect (favicon, prefetch, a bare visit to the
+			// root); ignore it without affecting the flow.
 			w.WriteHeader(http.StatusNoContent)
+			return
+		case callbackStateMismatch:
+			// A request whose state doesn't match this attempt is unrelated to
+			// it -- a stray local request, another browser tab, or (since the
+			// callback ports are a predictable, hard-coded list) a webpage
+			// probing localhost. Reject it benignly: it must neither abort the
+			// in-progress login nor consume the single-callback slot below, so
+			// it cannot be used to deny service to a legitimate sign-in.
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
-		// Handle exactly one callback; answer any duplicate benignly so a
-		// second request cannot race the shared result or signal shutdown twice.
+		// Only a redirect whose state matches reaches here. Handle exactly one;
+		// answer any duplicate benignly so a second request cannot race the
+		// shared result or signal shutdown twice.
 		handled := false
 		once.Do(func() { handled = true })
 		if !handled {
@@ -326,11 +336,6 @@ func InitiateBrowserBasedLogin(notehubApiHost string) (*AccessToken, error) {
 			case quit <- os.Interrupt:
 			default:
 			}
-		}
-
-		if action == callbackStateMismatch {
-			fail("state mismatch", "")
-			return
 		}
 
 		// The provider refused or failed the authorization (e.g. the user
