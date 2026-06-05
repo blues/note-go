@@ -181,11 +181,13 @@ func InitiateBrowserBasedLogin(notehubApiHost string) (*AccessToken, error) {
 
 		// fail records an authentication failure exactly one way for every
 		// error path in this handler. The browser callback only ever receives
-		// `summary` -- a constant, developer-authored string, never server-
-		// controlled data -- and always as text/plain, so the callback cannot
-		// be used to reflect injected markup or scripts. `detail` (already
-		// passed through safeDetail by the caller) carries diagnostics to the
-		// local log and the returned Go error only.
+		// `summary`, which is composed solely of developer-authored text and
+		// non-injectable scalars such as the numeric HTTP status code -- never
+		// free-form server-controlled bytes -- and is always written as
+		// text/plain, so the callback cannot be used to reflect injected
+		// markup or scripts. `detail` (already passed through safeDetail by
+		// the caller) carries diagnostics to the local log and the returned
+		// Go error only.
 		fail := func(summary, detail string) {
 			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 			w.WriteHeader(http.StatusInternalServerError)
@@ -246,7 +248,7 @@ func InitiateBrowserBasedLogin(notehubApiHost string) (*AccessToken, error) {
 
 		var tokenData map[string]interface{}
 		if err := json.Unmarshal(body, &tokenData); err != nil {
-			fail("could not parse /oauth2/token response", safeDetail(string(body)))
+			fail("could not parse /oauth2/token response", safeDetail(err.Error()+": "+string(body)))
 			return
 		}
 
@@ -306,7 +308,7 @@ func InitiateBrowserBasedLogin(notehubApiHost string) (*AccessToken, error) {
 
 		var userinfoData map[string]interface{}
 		if err := json.Unmarshal(userinfoBody, &userinfoData); err != nil {
-			fail("could not parse /userinfo response", safeDetail(string(userinfoBody)))
+			fail("could not parse /userinfo response", safeDetail(err.Error()+": "+string(userinfoBody)))
 			return
 		}
 
