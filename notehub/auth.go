@@ -248,7 +248,17 @@ func InitiateBrowserBasedLogin(notehubApiHost string) (*AccessToken, error) {
 		}
 
 		if userinfoResp.StatusCode != http.StatusOK {
-			errHandler(fmt.Sprintf("/userinfo returned HTTP %d: %s", userinfoResp.StatusCode, string(userinfoBody)))
+			// Keep the raw response body out of the browser-facing message
+			// (the localhost callback page renders as HTML by default and
+			// could otherwise execute injected markup from a hostile or
+			// misconfigured /userinfo response). The body is still
+			// captured in the returned Go error and the local log so the
+			// caller has the detail needed to diagnose the failure.
+			detail := fmt.Sprintf("/userinfo returned HTTP %d: %s", userinfoResp.StatusCode, string(userinfoBody))
+			accessTokenErr = errors.New(detail)
+			fmt.Printf("error: %s\n", detail)
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "error: /userinfo returned HTTP %d", userinfoResp.StatusCode)
 			return
 		}
 
