@@ -53,7 +53,7 @@ type ErrorResponse struct {
 var SuspendedBillingAccountResponse = ErrorResponse{
 	Code:   http.StatusForbidden,
 	Status: "Forbidden",
-	Error:  "this billing account is suspended",
+	Error:  "this organization is suspended",
 }
 
 // WithRequest is a an easy way to add http.Request information to an error.

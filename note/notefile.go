@@ -4,6 +4,9 @@
 
 package note
 
+// TempNotefile is the hard-wired notefile that the notecard uses for automatic temperature reporting
+const TempNotefile = "_temp.qo"
+
 // TrackNotefile is the hard-wired notefile that the notecard can use for tracking the device
 const TrackNotefile = "_track.qo"
 
@@ -18,6 +21,13 @@ const LogNotefile = "_log.qo"
 
 // EnvNotefile is the hard-wired notefile that the notecard uses for env vars
 const EnvNotefile = "_env.dbs"
+
+// FenceNotefile is the hard-wired notefile that the notecard uses for user-defined
+// polygon geofences.  Each note's ID is the fence name; its body's "values" array
+// is the [lat,lon,lat,lon,...] polygon vertex sequence (closure between last and
+// first vertex is implicit).  Authored via var.set/var.get/var.delete with
+// file="_fence.dbs".
+const FenceNotefile = "_fence.dbs"
 
 // SessionNotefile is the hard-wired notefile that the notehub uses when starting a session
 const SessionNotefile = "_session.qo"

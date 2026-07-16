@@ -69,6 +69,9 @@ const ReqNoteDecrypt = "note.decrypt"
 // ReqCardTime (golint)
 const ReqCardTime = "card.time"
 
+// ReqCardTimeCalibration (golint)
+const ReqCardTimeCalibration = "card.time.calibration"
+
 // ReqCardRandom (golint)
 const ReqCardRandom = "card.random"
 
@@ -380,6 +383,7 @@ type Request struct {
 	SN                     string                        `json:"sn,omitempty"`
 	APN                    string                        `json:"apn,omitempty"`
 	Text                   string                        `json:"text,omitempty"`
+	Values                 *[]float64                    `json:"values,omitempty"`
 	Base                   int32                         `json:"base,omitempty"`
 	Offset                 int32                         `json:"offset,omitempty"`
 	Length                 int32                         `json:"length,omitempty"`
@@ -428,6 +432,7 @@ type Request struct {
 	Threshold              int32                         `json:"threshold,omitempty"`
 	Count                  uint32                        `json:"count,omitempty"`
 	Sync                   bool                          `json:"sync,omitempty"`
+	Notify                 bool                          `json:"notify,omitempty"`
 	Live                   bool                          `json:"live,omitempty"`
 	Now                    bool                          `json:"now,omitempty"`
 	Type                   int32                         `json:"type,omitempty"`
@@ -471,6 +476,7 @@ type Request struct {
 	UPeriodic              bool                          `json:"uperiodic,omitempty"`
 	Milliseconds           int32                         `json:"ms,omitempty"`
 	Full                   bool                          `json:"full,omitempty"`
+	All                    bool                          `json:"all,omitempty"`
 	Async                  bool                          `json:"async,omitempty"`
 	Binary                 bool                          `json:"binary,omitempty"`
 	Cobs                   int32                         `json:"cobs,omitempty"`

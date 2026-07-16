@@ -6,6 +6,7 @@
 package note
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -262,6 +263,7 @@ const ErrAddToFleet = "{add-to-fleet}"
 const ErrRemoveFromFleet = "{remove-from-fleet}"
 const ErrLeaveFleetAlone = "{leave-fleet-alone}"
 const ErrDoNotRoute = "{do-not-route}"
+const ErrRouteConfig = "{route-config}"
 
 // These can be sent from Notehub to the notecard to indicate it should pause before reconnecting
 // Currently unused
@@ -338,12 +340,15 @@ func ErrorString(err error) string {
 
 // ErrorJSON returns a JSON object with nothing but an error code, and with an optional message
 func ErrorJSON(message string, err error) (rspJSON []byte) {
-	if message == "" {
-		rspJSON = []byte(fmt.Sprintf("{\"err\":\"%q\"}", err))
-	} else if err == nil {
-		rspJSON = []byte(fmt.Sprintf("{\"err\":\"%q\"}", message))
-	} else {
-		rspJSON = []byte(fmt.Sprintf("{\"err\":\"%q: %q\"}", message, err))
+	var text string
+	switch {
+	case message == "":
+		text = ErrorString(err)
+	case err == nil:
+		text = message
+	default:
+		text = fmt.Sprintf("%s: %s", message, ErrorString(err))
 	}
+	rspJSON, _ = json.Marshal(map[string]string{"err": text})
 	return
 }

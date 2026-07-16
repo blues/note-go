@@ -51,6 +51,8 @@ type CardTest struct {
 	SetupRequests string `json:"setup,omitempty"`
 	// Detailed information about LSE stability
 	LSEStability string `json:"lse,omitempty"`
+	// Seconds to calibrate the RTC for this hardware (generated using card.time.calibrate)
+	LSECalibrationDailySecs float64 `json:"daily,omitempty"`
 	// LoRa notecard provisioning info
 	DevEui    string `json:"deveui,omitempty"`
 	AppEui    string `json:"appeui,omitempty"`
@@ -60,6 +62,7 @@ type CardTest struct {
 	PHVersion string `json:"regional,omitempty"`
 	// For manufacturing
 	CPN string `json:"cpn,omitempty"`
+	PUK string `json:"puk,omitempty"`
 	// For Iridium
 	IriSku   string `json:"iri_sku,omitempty"`
 	IriSn    string `json:"iri_sn,omitempty"`

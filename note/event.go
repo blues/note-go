@@ -65,6 +65,7 @@ type Event struct {
 	// These fields, and only these fields, are regarded as "user data".  All
 	// the rest of the fields are regarded as "metadata".
 	When       int64                   `json:"when,omitempty"`
+	WhenMs     int64                   `json:"when_ms,omitempty"`
 	NotefileID string                  `json:"file,omitempty"`
 	NoteID     string                  `json:"note,omitempty"`
 	Body       *map[string]interface{} `json:"body,omitempty"`
@@ -78,6 +79,7 @@ type Event struct {
 	Continuous       bool    `json:"continuous,omitempty"`
 	BestID           string  `json:"best_id,omitempty"`
 	DeviceUID        string  `json:"device,omitempty"`
+	SensorUID        string  `json:"sensor,omitempty"`
 	DeviceSN         string  `json:"sn,omitempty"`
 	ProductUID       string  `json:"product,omitempty"`
 	AppUID           string  `json:"app,omitempty"`
@@ -194,6 +196,7 @@ type RouteLogEntry struct {
 	RouteSerial int64         `json:"route,omitempty"`
 	Date        time.Time     `json:"date,omitempty"`
 	Attn        bool          `json:"attn,omitempty"`
+	Terminal    bool          `json:"terminal,omitempty"`
 	Status      string        `json:"status,omitempty"`
 	Text        string        `json:"text,omitempty"`
 	URL         string        `json:"url,omitempty"`
@@ -203,6 +206,14 @@ type RouteLogEntry struct {
 	// We're making a simplifying assumption that the route will always
 	// take at least 1ms. So 0 means we didn't record the duration.
 	Duration int64 `json:"duration,omitempty"`
+}
+
+// ShortenedText returns the Text field truncated to maxLen characters.
+func (r RouteLogEntry) ShortenedText(maxLen int) string {
+	if len(r.Text) <= maxLen {
+		return r.Text
+	}
+	return r.Text[:maxLen] + "..."
 }
 
 type RoutingSource uint8
@@ -236,6 +247,27 @@ func (s RoutingSource) String() string {
 		return "Test" // only used for tests
 	default:
 		return "invalid"
+	}
+}
+
+func (s RoutingSource) LogTag() string {
+	switch s {
+	case RoutingSourceUnknown:
+		return "" // display nothing if no entry/default
+	case RoutingSourceNormal:
+		return "method:normal"
+	case RoutingSourceProxy:
+		return "method:proxy"
+	case RoutingSourceRetry:
+		return "method:retry"
+	case RoutingSourceManual:
+		return "method:manual"
+	case RoutingSourceDirect:
+		return "method:direct" //only used for test events, should never show in route logs
+	case RoutingSourceTest:
+		return "method:test" // only used for tests
+	default:
+		return "method:invalid"
 	}
 }
 

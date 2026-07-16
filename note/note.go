@@ -24,6 +24,9 @@ const HubDefaultInboundNotefile = "data.qi"
 // HubDefaultOutboundNotefile is the hard-wired default notefile for user data
 const HubDefaultOutboundNotefile = "data.qo"
 
+// HubDefaultVarNotefile is the hard-wired default notefile backing var.* operations
+const HubDefaultVarNotefile = "vars.db"
+
 // Note is the most fundamental data structure, containing
 // user data referred to as its "body" and its "payload".  All
 // access to these fields, and changes to these fields, must

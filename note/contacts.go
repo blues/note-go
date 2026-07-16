@@ -7,6 +7,7 @@ package note
 // structures with cloud services to ensure that storage and testing frameworks
 // are kept in sync with these structures used for business logic
 type Contact struct {
+	ContactUID  string `json:"contact_uid,omitempty"`
 	Name        string `json:"name,omitempty"`
 	Affiliation string `json:"org,omitempty"`
 	Role        string `json:"role,omitempty"`

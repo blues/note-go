@@ -37,6 +37,7 @@ type HubJobType string
 const (
 	HubJobTypeUnspecified    HubJobType = ""
 	HubJobTypeReconciliation HubJobType = "reconciliation"
+	HubJobTypeSmartFleetEval HubJobType = "smart-fleet-evaluation"
 )
 
 const (

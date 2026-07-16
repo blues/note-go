@@ -160,7 +160,7 @@ func (context *Context) Interactive(watch bool, watchLevel int, prompt bool, wat
 
 		// Display the message
 		if watchLevel < SyncLogLevelProg {
-			fmt.Printf("%s\n", note.ErrorClean(fmt.Errorf(body.Text)))
+			fmt.Printf("%s\n", note.ErrorClean(fmt.Errorf("%s", body.Text)))
 		} else {
 			fmt.Printf("%s\n", body.Text)
 		}

@@ -60,6 +60,14 @@ func ErrEventsQueryTimeout() ErrorResponse {
 	}
 }
 
+func ErrRouteLogsQueryTimeout() ErrorResponse {
+	return ErrorResponse{
+		Status: "Took too long",
+		Error:  "Route logs query took too long to complete",
+		Code:   http.StatusGatewayTimeout,
+	}
+}
+
 // ErrBadRequest returns the default for an HTTP 400 BadRequest
 func ErrBadRequest() ErrorResponse {
 	return ErrorResponse{

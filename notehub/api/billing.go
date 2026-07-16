@@ -6,7 +6,7 @@ package api
 type GetBillingAccountResponse struct {
 	UID  string `json:"uid"`
 	Name string `json:"name"`
-	// "billing_admin", "billing_manager", or "project_creator"
+	// "billing_admin", "billing_manager", "project_creator", or "billing_member"
 	Role string `json:"role"`
 }
 

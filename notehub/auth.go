@@ -18,8 +18,50 @@ import (
 	"os/signal"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 )
+
+// callbackAction classifies an inbound request to the local OAuth callback
+// server.
+type callbackAction int
+
+const (
+	// callbackIgnore: not the OAuth redirect (e.g. favicon, prefetch, a bare
+	// visit to the root). Must be answered benignly without affecting the flow.
+	callbackIgnore callbackAction = iota
+	// callbackStateMismatch: a redirect whose state doesn't match the value the
+	// flow generated (a CSRF attempt or a stale redirect). Must fail closed.
+	callbackStateMismatch
+	// callbackError: the provider reported an authorization failure (e.g. the
+	// user denied consent), redirecting with an "error" parameter and no code.
+	callbackError
+	// callbackProceed: a well-formed redirect carrying a code whose state
+	// matches.
+	callbackProceed
+)
+
+// classifyCallback decides how to treat a request to the callback server. A
+// request carrying neither an authorization code nor an OAuth error is not the
+// redirect at all and is ignored. Anything that is the redirect is honored only
+// if its state matches the value the flow generated; an "error" parameter (with
+// no code) signals that authorization was refused or failed.
+func classifyCallback(r *http.Request, expectedState string) callbackAction {
+	q := r.URL.Query()
+	code := q.Get("code")
+	oauthErr := q.Get("error")
+
+	if code == "" && oauthErr == "" {
+		return callbackIgnore
+	}
+	if q.Get("state") != expectedState {
+		return callbackStateMismatch
+	}
+	if oauthErr != "" {
+		return callbackError
+	}
+	return callbackProceed
+}
 
 type AccessToken struct {
 	Host        string
@@ -138,6 +180,11 @@ func InitiateBrowserBasedLogin(notehubApiHost string) (*AccessToken, error) {
 	signal.Notify(quit, os.Interrupt)
 	defer signal.Reset(os.Interrupt)
 
+	// Ensures exactly one OAuth callback is processed; spurious or duplicate
+	// requests to the callback server are answered benignly without touching
+	// the shared result or triggering shutdown.
+	var once sync.Once
+
 	router := http.NewServeMux()
 
 	// We'll fill this after we pick a port but declare it now so the handler can close over it.
@@ -146,8 +193,38 @@ func InitiateBrowserBasedLogin(notehubApiHost string) (*AccessToken, error) {
 	// The browser will be redirected to this endpoint with an authorization code
 	// and then this endpoint will exchange that authorization code for an access token
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		action := classifyCallback(r, state)
+
+		switch action {
+		case callbackIgnore:
+			// Not the OAuth redirect (favicon, prefetch, a bare visit to the
+			// root); ignore it without affecting the flow.
+			w.WriteHeader(http.StatusNoContent)
+			return
+		case callbackStateMismatch:
+			// A request whose state doesn't match this attempt is unrelated to
+			// it -- a stray local request, another browser tab, or (since the
+			// callback ports are a predictable, hard-coded list) a webpage
+			// probing localhost. Reject it benignly: it must neither abort the
+			// in-progress login nor consume the single-callback slot below, so
+			// it cannot be used to deny service to a legitimate sign-in.
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		// Only a redirect whose state matches reaches here. Handle exactly one;
+		// answer any duplicate benignly so a second request cannot race the
+		// shared result or signal shutdown twice.
+		handled := false
+		once.Do(func() { handled = true })
+		if !handled {
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprint(w, "authentication already completed; you may close this window")
+			return
+		}
+
 		authorizationCode := r.URL.Query().Get("code")
-		callbackState := r.URL.Query().Get("state")
 
 		errHandler := func(msg string) {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -156,8 +233,16 @@ func InitiateBrowserBasedLogin(notehubApiHost string) (*AccessToken, error) {
 			accessTokenErr = errors.New(msg)
 		}
 
-		if callbackState != state {
-			errHandler("state mismatch")
+		// The provider refused or failed the authorization (e.g. the user
+		// denied consent). Report it instead of waiting for a code that will
+		// never arrive.
+		if action == callbackError {
+			oauthErr := r.URL.Query().Get("error")
+			msg := oauthErr
+			if desc := r.URL.Query().Get("error_description"); desc != "" {
+				msg = oauthErr + ": " + desc
+			}
+			errHandler("authorization was not granted: " + msg)
 			return
 		}
 
