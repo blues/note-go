@@ -48,6 +48,9 @@ const ReqNoteChanges = "note.changes"
 // ReqNoteAdd (golint)
 const ReqNoteAdd = "note.add"
 
+// ReqNoteAddColumnar (golint)
+const ReqNoteAddColumnar = "note.add.columnar"
+
 // ReqNoteTemplate (golint)
 const ReqNoteTemplate = "note.template"
 
@@ -66,11 +69,14 @@ const ReqNoteEncrypt = "note.encrypt"
 // ReqNoteDecrypt (golint)
 const ReqNoteDecrypt = "note.decrypt"
 
+// ReqCardFile (golint)
+const ReqCardFile = "card.file"
+
 // ReqCardTime (golint)
 const ReqCardTime = "card.time"
 
-// ReqCardTimeCalibration (golint)
-const ReqCardTimeCalibration = "card.time.calibration"
+// ReqCardTimeCalibrate (golint)
+const ReqCardTimeCalibrate = "card.time.calibrate"
 
 // ReqCardRandom (golint)
 const ReqCardRandom = "card.random"
@@ -120,6 +126,12 @@ const ReqCardVoltage = "card.voltage"
 // ReqCardPower (golint)
 const ReqCardPower = "card.power"
 
+// ReqCardPowerNotify (golint)
+const ReqCardPowerNotify = "card.power.notify"
+
+// ReqCardHibernate (golint)
+const ReqCardHibernate = "card.hibernate"
+
 // ReqCardMotion (golint)
 const ReqCardMotion = "card.motion"
 
@@ -143,6 +155,9 @@ const ReqCardAUXSerial = "card.aux.serial"
 
 // ReqCardMonitor (golint)
 const ReqCardMonitor = "card.monitor"
+
+// ReqCardLED (golint)
+const ReqCardLED = "card.led"
 
 // ReqCardCarrier (golint)
 const ReqCardCarrier = "card.carrier"
@@ -222,6 +237,9 @@ const ReqDFUGet = "dfu.get"
 // ReqDFUPut (golint)
 const ReqDFUPut = "dfu.put"
 
+// ReqDFUDirect (golint)
+const ReqDFUDirect = "dfu.direct"
+
 // ReqCardDFU (golint)
 const ReqCardDFU = "card.dfu"
 
@@ -230,6 +248,9 @@ const ReqEnvVersion = "env.version"
 
 // ReqCardVersion (golint)
 const ReqCardVersion = "card.version"
+
+// ReqCardBehavior (golint)
+const ReqCardBehavior = "card.behavior"
 
 // ReqCardBootloader (golint)
 const ReqCardBootloader = "card.bootloader"
@@ -306,22 +327,80 @@ const ReqHubSyncStatus = "hub.sync.status"
 // ReqHubSyncStatusL (golint)
 const ReqHubSyncStatusL = "service.sync.status"
 
+// ReqHubUploadGet (golint)
+const ReqHubUploadGet = "hub.upload.get"
+
 // ReqHubDFUGet (golint)
 const ReqHubDFUGet = "hub.dfu.get"
 
 // ReqHubHubDFUGetL (golint)
 const ReqHubDFUGetL = "dfu.service.get"
 
-// ReqHubFileGet (golint)
-const ReqHubFileGet = "hub.file.get"
+// ReqEcho (golint)
+const ReqEcho = "echo"
 
-// Request is the core API request/response data structure
+// ReqCardConfigGet (golint)
+const ReqCardConfigGet = "card.config.get"
+
+// ReqNTNPrefix is the prefix shared by all NTN (non-terrestrial network) requests
+const ReqNTNPrefix = "ntn."
+
+// ReqNTNEcho (golint)
+const ReqNTNEcho = "ntn.echo"
+
+// ReqNTNHello (golint)
+const ReqNTNHello = "ntn.hello"
+
+// ReqNTNConnect (golint)
+const ReqNTNConnect = "ntn.connect"
+
+// ReqNTNDisconnect (golint)
+const ReqNTNDisconnect = "ntn.disconnect"
+
+// ReqNTNUplink (golint)
+const ReqNTNUplink = "ntn.uplink"
+
+// ReqNTNDownlink (golint)
+const ReqNTNDownlink = "ntn.downlink"
+
+// ReqNTNStatus (golint)
+const ReqNTNStatus = "ntn.status"
+
+// ReqNTNConfig (golint)
+const ReqNTNConfig = "ntn.config"
+
+// ReqNTNReset (golint)
+const ReqNTNReset = "ntn.reset"
+
+// ReqNTNGps (golint)
+const ReqNTNGps = "ntn.gps"
+
+// ReqNTNGpsEnable (golint)
+const ReqNTNGpsEnable = "ntn.gps.enable"
+
+// ReqNTNGpsDisable (golint)
+const ReqNTNGpsDisable = "ntn.gps.disable"
+
+// ReqNTNBinary (golint)
+const ReqNTNBinary = "ntn.binary"
+
+// ReqNTNBinaryPut (golint)
+const ReqNTNBinaryPut = "ntn.binary.put"
+
+// ReqNTNTrace (golint)
+const ReqNTNTrace = "ntn.trace"
+
+// Request is the core API request/response data structure.  It mirrors the Notecard's
+// Request struct in src/app/request.h; the few fields that exist only on Notehub are
+// commented as such below (Transport, FileDesc, Tower).  They stay here rather than moving
+// to notehub.HubRequest because everything passing through note/lib is marshaled and
+// unmarshaled as a bare notecard.Request; note/lib sits below the notehub package layer.
 type Request struct {
 	Req                    string                        `json:"req,omitempty"`
 	Cmd                    string                        `json:"cmd,omitempty"`
 	Err                    string                        `json:"err,omitempty"`
 	RequestID              uint32                        `json:"id,omitempty"`
-	Transport              string                        `json:"transport,omitempty"`
+	Transport              string                        `json:"transport,omitempty"` // Notehub-only: transport the request arrived on.  See note above.
 	NotefileID             string                        `json:"file,omitempty"`
 	TrackerID              string                        `json:"tracker,omitempty"`
 	NoteID                 string                        `json:"note,omitempty"`
@@ -335,6 +414,7 @@ type Request struct {
 	Primary                bool                          `json:"primary,omitempty"`
 	Edge                   bool                          `json:"edge,omitempty"`
 	Connected              bool                          `json:"connected,omitempty"`
+	Continuous             bool                          `json:"continuous,omitempty"`
 	Secure                 bool                          `json:"secure,omitempty"`
 	Unsecure               bool                          `json:"unsecure,omitempty"`
 	Alert                  bool                          `json:"alert,omitempty"`
@@ -370,13 +450,14 @@ type Request struct {
 	Files                  *[]string                     `json:"files,omitempty"`
 	Names                  *[]string                     `json:"names,omitempty"`
 	FileInfo               *map[string]note.NotefileInfo `json:"info,omitempty"`
-	FileDesc               *[]note.NotefileDesc          `json:"desc,omitempty"`
+	FileDesc               *[]note.NotefileDesc          `json:"desc,omitempty"` // Notehub-only: response to file.changes with full:true.  See note above.
 	Notes                  *map[string]note.Info         `json:"notes,omitempty"`
 	Pad                    int32                         `json:"pad,omitempty"`
 	Storage                int32                         `json:"storage,omitempty"`
 	LocationOLC            string                        `json:"olc,omitempty"`
 	Latitude               float64                       `json:"lat,omitempty"`
 	Longitude              float64                       `json:"lon,omitempty"`
+	LocationHDOP           float64                       `json:"dop,omitempty"`
 	LocationTime           int64                         `json:"ltime,omitempty"`
 	Value                  float64                       `json:"value,omitempty"`
 	ValueV                 string                        `json:"vvalue,omitempty"`
@@ -415,12 +496,14 @@ type Request struct {
 	State                  *[]PinState                   `json:"state,omitempty"`
 	Time                   int64                         `json:"time,omitempty"` // Time is defined as uint32 on Notecard and int64 on Notehub. See the rationale below.
 	Motion                 uint32                        `json:"motion,omitempty"`
+	VOff                   float64                       `json:"voff,omitempty"`
 	VMin                   float64                       `json:"vmin,omitempty"`
+	VOn                    float64                       `json:"von,omitempty"`
 	VMax                   float64                       `json:"vmax,omitempty"`
 	VAvg                   float64                       `json:"vavg,omitempty"`
 	Daily                  float64                       `json:"daily,omitempty"`
 	Weekly                 float64                       `json:"weekly,omitempty"`
-	Montly                 float64                       `json:"monthly,omitempty"`
+	Monthly                float64                       `json:"monthly,omitempty"`
 	Verify                 bool                          `json:"verify,omitempty"`
 	Confirm                bool                          `json:"confirm,omitempty"`
 	Port                   int32                         `json:"port,omitempty"`
@@ -432,7 +515,6 @@ type Request struct {
 	Threshold              int32                         `json:"threshold,omitempty"`
 	Count                  uint32                        `json:"count,omitempty"`
 	Sync                   bool                          `json:"sync,omitempty"`
-	Notify                 bool                          `json:"notify,omitempty"`
 	Live                   bool                          `json:"live,omitempty"`
 	Now                    bool                          `json:"now,omitempty"`
 	Type                   int32                         `json:"type,omitempty"`
@@ -444,6 +526,7 @@ type Request struct {
 	Sensitivity            int32                         `json:"sensitivity,omitempty"`
 	Requested              int32                         `json:"requested,omitempty"`
 	Completed              int32                         `json:"completed,omitempty"`
+	Due                    int32                         `json:"due,omitempty"`
 	WiFi                   bool                          `json:"wifi,omitempty"`
 	Cell                   bool                          `json:"cell,omitempty"`
 	GPS                    bool                          `json:"gps,omitempty"`
@@ -482,13 +565,14 @@ type Request struct {
 	Cobs                   int32                         `json:"cobs,omitempty"`
 	Append                 bool                          `json:"append,omitempty"`
 	Details                *map[string]interface{}       `json:"details,omitempty"`
-	Tower                  *note.TowerLocation           `json:"tower,omitempty"`
+	Tower                  *note.TowerLocation           `json:"tower,omitempty"` // Notehub-only: tower location for notes Notehub adds on a device's behalf.  See note above.
 	Change                 float64                       `json:"change,omitempty"`
 	Format                 string                        `json:"format,omitempty"`
 	Voltage                float64                       `json:"voltage,omitempty"`
 	MilliampHours          float64                       `json:"milliamp_hours,omitempty"`
 	Default                bool                          `json:"default,omitempty"`
 	In                     bool                          `json:"in,omitempty"`
+	Out                    bool                          `json:"out,omitempty"`
 }
 
 func (req *Request) Error() error {

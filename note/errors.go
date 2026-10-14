@@ -157,6 +157,11 @@ const ErrDeviceDisabled = "{device-disabled}"
 
 var _ = defineError(ErrDeviceDisabled, http.StatusBadRequest)
 
+// ErrDeviceNotConnected (golint)
+const ErrDeviceNotConnected = "{device-not-connected}"
+
+var _ = defineError(ErrDeviceNotConnected, http.StatusConflict)
+
 // ErrProductNotFound (golint)
 const ErrProductNotFound = "{product-noexist}"
 
@@ -242,6 +247,11 @@ var _ = defineError(ErrTooBig, http.StatusRequestEntityTooLarge)
 const ErrJson = "{not-json}"
 
 var _ = defineError(ErrJson, http.StatusBadRequest)
+
+// ErrNoAcct (golint)
+const ErrNoAcct = "{no-acct}"
+
+var _ = defineError(ErrNoAcct, http.StatusUnauthorized)
 
 // Status messages returned by the notecard in request.Status
 const StatusIdle = "{idle}"

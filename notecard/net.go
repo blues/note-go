@@ -77,6 +77,11 @@ type NetInfo struct {
 	// Overcurrent events
 	OvercurrentEvents    int32 `json:"oc_events,omitempty"`
 	OvercurrentEventSecs int32 `json:"oc_event_time,omitempty"`
+	// Modem temperature, for module temperature testing
+	ModemTemp float64 `json:"modem_temp,omitempty"`
+	// Usage tracking
+	BytesSent     uint32 `json:"sent,omitempty"`
+	BytesReceived uint32 `json:"received,omitempty"`
 	// When the signal strength fields were last updated
 	Modified int64 `json:"updated,omitempty"`
 }

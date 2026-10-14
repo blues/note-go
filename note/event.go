@@ -11,6 +11,9 @@ import (
 // EventAdd (golint)
 const EventAdd = "note.add"
 
+// EventAddColumnar (golint)
+const EventAddColumnar = "note.add.columnar"
+
 // EventUpdate (golint)
 const EventUpdate = "note.update"
 
@@ -86,6 +89,7 @@ type Event struct {
 	Received         float64 `json:"received,omitempty"`
 	Req              string  `json:"req,omitempty"`
 	Error            string  `json:"err,omitempty"`
+	WireLen          uint32  `json:"wire_length,omitempty"` // approx bytes the note's body+payload occupied on the wire from the device
 	Updates          int32   `json:"updates,omitempty"`
 	Deleted          bool    `json:"deleted,omitempty"`
 	Sent             bool    `json:"queued,omitempty"`

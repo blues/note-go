@@ -5,6 +5,10 @@
 // Package note dfu.go contains DFU-related structures generated/parsed by the notecard
 package note
 
+import (
+	"strings"
+)
+
 // DFUState is the state of the DFU in progress
 type DFUState struct {
 	Type               string `json:"type,omitempty"`
@@ -18,6 +22,7 @@ type DFUState struct {
 	RetryCount         uint32 `json:"retry,omitempty"`
 	ConsecutiveErrors  uint32 `json:"errors,omitempty"`
 	BinaryRetries      uint32 `json:"binretry,omitempty"`
+	DownloadRetries    uint32 `json:"dlretry,omitempty"`
 	DFUStartCount      uint32 `json:"dfu_started,omitempty"`
 	DFUCompletedCount  uint32 `json:"dfu_completed,omitempty"`
 	ODFUStartedCount   uint32 `json:"odfu_started,omitempty"`
@@ -53,3 +58,31 @@ const (
 	DfuPhaseUpdating    DfuPhase = "updating"
 	DfuPhaseCompleted   DfuPhase = "completed"
 )
+
+var allDfuPhases = []DfuPhase{
+	DfuPhaseUnknown,
+	DfuPhaseIdle,
+	DfuPhaseError,
+	DfuPhaseDownloading,
+	DfuPhaseSideloading,
+	DfuPhaseReady,
+	DfuPhaseReadyRetry,
+	DfuPhaseUpdating,
+	DfuPhaseCompleted,
+}
+
+func ParseDfuPhase(phase string) DfuPhase {
+	phase = strings.ToLower(phase)
+	for _, validPhase := range allDfuPhases {
+		if phase == string(validPhase) {
+			return validPhase
+		}
+	}
+	return DfuPhaseUnknown
+}
+
+func IsDfuTerminal(phase DfuPhase) bool {
+	return phase == DfuPhaseError ||
+		phase == DfuPhaseCompleted ||
+		phase == DfuPhaseIdle
+}

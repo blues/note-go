@@ -47,6 +47,8 @@ type CardTest struct {
 	// Certificate and cert info
 	CertSN string `json:"certsn,omitempty"`
 	Cert   string `json:"cert,omitempty"`
+	// Unix epoch expiration of the secure element's leaf cert
+	CertExp uint32 `json:"certexp,omitempty"`
 	// Card initialization requests
 	SetupRequests string `json:"setup,omitempty"`
 	// Detailed information about LSE stability

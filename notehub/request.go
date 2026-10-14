@@ -45,7 +45,8 @@ const HubAppUpload = "hub.app.upload.add"
 // HubUpload (golint)
 const HubUpload = "hub.upload.add"
 
-// HubAppUploads (golint)
+// HubAppUploads lists upload metadata. With full=true each upload includes its
+// contents as text for skills or a base64 payload for other file types.
 const HubAppUploads = "hub.app.upload.query"
 
 // HubAppJobSubmit (golint)
@@ -90,7 +91,9 @@ const HubAppUploadDelete = "hub.app.upload.delete"
 // HubUploadDelete (golint)
 const HubUploadDelete = "hub.upload.delete"
 
-// HubAppUploadRead (golint)
+// HubAppUploadRead reads upload metadata or a byte range. With full=true the metadata
+// includes the complete, uncompressed contents as text for skills or a base64
+// payload for other file types, ignoring offset, length, and compress.
 const HubAppUploadRead = "hub.app.upload.get"
 
 // HubUploadRead (golint)
@@ -200,6 +203,7 @@ type HubRequest struct {
 	Compress         string                        `json:"compress,omitempty"`
 	MD5              string                        `json:"md5,omitempty"`
 	DeviceEndpoint   bool                          `json:"device_endpoint,omitempty"`
+	WireLen          uint32                        `json:"wire_length,omitempty"` // with DeviceEndpoint, see note.Event.WireLen
 	DryRun           bool                          `json:"dry_run,omitempty"`
 }
 
@@ -240,6 +244,7 @@ const (
 	UploadTypeModemFirmware    UploadType = "modem"
 	UploadTypeStarnoteFirmware UploadType = "starnote"
 	UploadTypeUserData         UploadType = "data"
+	UploadTypeSkill            UploadType = "skill"
 	UploadTypeJob              UploadType = "job"
 )
 
@@ -250,6 +255,7 @@ var allFileTypes = []UploadType{
 	UploadTypeModemFirmware,
 	UploadTypeStarnoteFirmware,
 	UploadTypeUserData,
+	UploadTypeSkill,
 	UploadTypeJob,
 }
 
@@ -314,6 +320,23 @@ type UploadMetadata struct {
 	Version  string                  `json:"version,omitempty"`  // User-specified version string provided at time of upload
 	// Arbitrary metadata that the user may define - we don't interpret the schema at all
 	Info map[string]interface{} `json:"info,omitempty"`
+	// Complete binary contents of non-skill uploads, included only for full=true.
+	Payload *[]byte `json:"payload,omitempty"`
+	// Complete UTF-8 contents of skill uploads, included only for full=true.
+	Text *string `json:"text,omitempty"`
+}
+
+// SetContents includes the complete file contents in metadata for a full read.
+// Skills are text; other file types use a binary payload that JSON encodes as base64.
+func (upload *UploadMetadata) SetContents(contents []byte) {
+	upload.Payload = nil
+	upload.Text = nil
+	if upload.FileType == UploadTypeSkill {
+		text := string(contents)
+		upload.Text = &text
+	} else {
+		upload.Payload = &contents
+	}
 }
 
 func (upload UploadMetadata) IsArchSpecificNotecardFirmware() bool {

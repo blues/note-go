@@ -29,6 +29,12 @@ const EnvNotefile = "_env.dbs"
 // file="_fence.dbs".
 const FenceNotefile = "_fence.dbs"
 
+// FenceLocalNotefile is the notehub-local counterpart of FenceNotefile, with
+// the same note format.  Because it declares neither sync direction it is never
+// visible to the device, so it is used for fences that are authored and
+// maintained entirely on the notehub, such as by a _feed: environment variable.
+const FenceLocalNotefile = "_fence.dbx"
+
 // SessionNotefile is the hard-wired notefile that the notehub uses when starting a session
 const SessionNotefile = "_session.qo"
 
